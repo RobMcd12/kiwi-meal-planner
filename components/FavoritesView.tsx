@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Meal, PantryItem } from '../types';
 import { getFavoriteMeals, removeFavoriteMeal } from '../services/storageService';
 import { Trash2, Heart, ShoppingCart, ArrowLeft } from 'lucide-react';
@@ -11,12 +11,21 @@ interface FavoritesViewProps {
 }
 
 const FavoritesView: React.FC<FavoritesViewProps> = ({ onBack, onGenerateList, isLoading }) => {
-  const [favorites, setFavorites] = useState<Meal[]>(getFavoriteMeals());
+  const [favorites, setFavorites] = useState<Meal[]>([]);
   const [selectedMeals, setSelectedMeals] = useState<string[]>([]);
 
-  const handleDelete = (name: string) => {
-    removeFavoriteMeal(name);
-    setFavorites(getFavoriteMeals());
+  useEffect(() => {
+    const loadFavorites = async () => {
+      const meals = await getFavoriteMeals();
+      setFavorites(meals);
+    };
+    loadFavorites();
+  }, []);
+
+  const handleDelete = async (name: string) => {
+    await removeFavoriteMeal(name);
+    const meals = await getFavoriteMeals();
+    setFavorites(meals);
     setSelectedMeals(prev => prev.filter(n => n !== name));
   };
 
