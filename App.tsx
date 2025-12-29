@@ -9,6 +9,7 @@ import FavoritesView from './components/FavoritesView';
 import SettingsView from './components/SettingsView';
 import AuthScreen from './components/AuthScreen';
 import ErrorBoundary from './components/ErrorBoundary';
+import InstallPrompt from './components/InstallPrompt';
 import { AuthProvider, useAuth } from './components/AuthProvider';
 import { ToastContainer } from './components/Toast';
 import { useToast } from './hooks/useToast';
@@ -335,6 +336,9 @@ const AppContent: React.FC = () => {
 
       {/* Toast notifications */}
       <ToastContainer toasts={toasts} onDismiss={dismissToast} />
+
+      {/* PWA Install Prompt */}
+      <InstallPrompt />
     </div>
   );
 };

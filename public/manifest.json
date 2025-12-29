@@ -1,0 +1,18 @@
+{
+  "name": "Kiwi Meal Planner",
+  "short_name": "KiwiMeals",
+  "description": "AI-powered weekly meal planning for New Zealand",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#059669",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}
