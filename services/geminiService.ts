@@ -3,7 +3,7 @@ import { UserPreferences, PantryItem, MealPlanResponse, MealConfig, Meal } from 
 import { supabase, isSupabaseConfigured } from "./authService";
 
 // Feature flag: Set to true to use Edge Functions (production), false for client-side (development)
-const USE_EDGE_FUNCTIONS = true; // Production mode enabled
+const USE_EDGE_FUNCTIONS = false; // Disabled - using client-side Gemini API
 
 // --- Schema Definitions ---
 const ingredientSchema: Schema = {
