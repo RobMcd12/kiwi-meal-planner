@@ -6,10 +6,11 @@ export default defineConfig(({ mode }) => {
     // Load env from process.env (for Railway) and .env files
     const env = loadEnv(mode, process.cwd(), '');
 
-    // Debug: Log env vars during build
-    console.log('Build environment check:');
+    // Debug: Log env vars during build (v2)
+    console.log('Build environment check v2:');
     console.log('- VITE_SUPABASE_URL:', process.env.VITE_SUPABASE_URL ? 'SET' : 'NOT SET');
     console.log('- NEXT_PUBLIC_SUPABASE_URL:', process.env.NEXT_PUBLIC_SUPABASE_URL ? 'SET' : 'NOT SET');
+    console.log('- Using hardcoded fallback credentials');
 
     // Get Supabase config from either VITE_ or NEXT_PUBLIC_ prefixed vars
     const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || '';
