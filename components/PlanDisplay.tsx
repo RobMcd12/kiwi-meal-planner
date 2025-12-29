@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { MealPlanResponse, Meal } from '../types';
-import { Calendar, ShoppingCart, ChevronDown, ChevronUp, ExternalLink, Check, RefreshCw, Heart, Loader2, Clock, ChefHat, Image as ImageIcon, Share, LayoutGrid, List } from 'lucide-react';
-import { saveFavoriteMeal, removeFavoriteMeal, getFavoriteMeals, saveCheckedItems, loadCheckedItems, getCachedImage, cacheImage } from '../services/storageService';
+import { Calendar, ShoppingCart, ChevronDown, ChevronUp, ExternalLink, Check, RefreshCw, Heart, Loader2, Clock, ChefHat, Image as ImageIcon, Share, LayoutGrid, List, Save, CheckCircle, X } from 'lucide-react';
+import { saveFavoriteMeal, removeFavoriteMeal, getFavoriteMeals, saveCheckedItems, loadCheckedItems, getCachedImage, cacheImage, saveMealPlan } from '../services/storageService';
 import { generateDishImage } from '../services/geminiService';
 
 interface PlanDisplayProps {
@@ -23,6 +23,12 @@ const PlanDisplay: React.FC<PlanDisplayProps> = ({ data, onReset }) => {
   // Image State
   const [mealImages, setMealImages] = useState<Record<string, string>>({});
   const [loadingImages, setLoadingImages] = useState<Record<string, boolean>>({});
+
+  // Save Plan State
+  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [planName, setPlanName] = useState('');
+  const [isSavingPlan, setIsSavingPlan] = useState(false);
+  const [planSaved, setPlanSaved] = useState(false);
 
   // Check if we have only one meal type per day (single meal mode)
   const isSingleMealMode = data.weeklyPlan.every(day => {
@@ -187,6 +193,31 @@ const PlanDisplay: React.FC<PlanDisplayProps> = ({ data, onReset }) => {
       navigator.clipboard.writeText(text);
       alert("List copied to clipboard (Share not supported on this device)");
     }
+  };
+
+  const handleSavePlan = async () => {
+    if (!planName.trim()) return;
+
+    setIsSavingPlan(true);
+    try {
+      await saveMealPlan(data, planName.trim());
+      setPlanSaved(true);
+      setTimeout(() => {
+        setShowSaveModal(false);
+        setPlanName('');
+        setTimeout(() => setPlanSaved(false), 300);
+      }, 1500);
+    } catch (error) {
+      console.error('Error saving plan:', error);
+    } finally {
+      setIsSavingPlan(false);
+    }
+  };
+
+  const getDefaultPlanName = () => {
+    const days = data.weeklyPlan.map(d => d.day).join(', ');
+    const date = new Date().toLocaleDateString('en-NZ', { month: 'short', day: 'numeric' });
+    return `Meal Plan - ${date}`;
   };
 
   const handleNewWorldIntegration = () => {
@@ -356,29 +387,45 @@ const PlanDisplay: React.FC<PlanDisplayProps> = ({ data, onReset }) => {
     <div className="max-w-4xl mx-auto pb-20">
       
       {/* Header Tabs */}
-      <div className="sticky top-0 z-10 bg-slate-50 pt-4 pb-4 px-4 shadow-sm mb-6 flex justify-center gap-4">
-        <button
-          onClick={() => setActiveTab('plan')}
-          className={`px-6 py-2 rounded-full font-semibold transition-all flex items-center gap-2 ${
-            activeTab === 'plan' 
-              ? 'bg-indigo-600 text-white shadow-md' 
-              : 'bg-white text-slate-600 hover:bg-slate-100'
-          }`}
-        >
-          <Calendar size={18} />
-          Weekly Plan
-        </button>
-        <button
-          onClick={() => setActiveTab('shop')}
-          className={`px-6 py-2 rounded-full font-semibold transition-all flex items-center gap-2 ${
-            activeTab === 'shop' 
-              ? 'bg-emerald-600 text-white shadow-md' 
-              : 'bg-white text-slate-600 hover:bg-slate-100'
-          }`}
-        >
-          <ShoppingCart size={18} />
-          Shopping List
-        </button>
+      <div className="sticky top-0 z-10 bg-slate-50 pt-4 pb-4 px-4 shadow-sm mb-6">
+        <div className="flex justify-center gap-4 mb-3">
+          <button
+            onClick={() => setActiveTab('plan')}
+            className={`px-6 py-2 rounded-full font-semibold transition-all flex items-center gap-2 ${
+              activeTab === 'plan'
+                ? 'bg-indigo-600 text-white shadow-md'
+                : 'bg-white text-slate-600 hover:bg-slate-100'
+            }`}
+          >
+            <Calendar size={18} />
+            Weekly Plan
+          </button>
+          <button
+            onClick={() => setActiveTab('shop')}
+            className={`px-6 py-2 rounded-full font-semibold transition-all flex items-center gap-2 ${
+              activeTab === 'shop'
+                ? 'bg-emerald-600 text-white shadow-md'
+                : 'bg-white text-slate-600 hover:bg-slate-100'
+            }`}
+          >
+            <ShoppingCart size={18} />
+            Shopping List
+          </button>
+        </div>
+
+        {/* Save Plan Button */}
+        <div className="flex justify-center">
+          <button
+            onClick={() => {
+              setPlanName(getDefaultPlanName());
+              setShowSaveModal(true);
+            }}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors"
+          >
+            <Save size={16} />
+            Save This Plan
+          </button>
+        </div>
       </div>
 
       <div className="px-4">
@@ -614,7 +661,7 @@ const PlanDisplay: React.FC<PlanDisplayProps> = ({ data, onReset }) => {
       </div>
        
       <div className="mt-12 text-center pb-8">
-        <button 
+        <button
             onClick={onReset}
             className="text-slate-400 hover:text-slate-600 flex items-center gap-2 mx-auto text-sm"
         >
@@ -623,6 +670,114 @@ const PlanDisplay: React.FC<PlanDisplayProps> = ({ data, onReset }) => {
         </button>
       </div>
 
+      {/* Save Plan Modal */}
+      {showSaveModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div
+            className="bg-white rounded-2xl max-w-md w-full shadow-xl animate-fadeIn"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {planSaved ? (
+              <div className="p-8 text-center">
+                <div className="w-16 h-16 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <CheckCircle className="text-emerald-600" size={32} />
+                </div>
+                <h3 className="text-xl font-bold text-slate-800 mb-2">Plan Saved!</h3>
+                <p className="text-slate-500">Your meal plan has been saved successfully.</p>
+              </div>
+            ) : (
+              <>
+                {/* Header */}
+                <div className="flex items-center justify-between p-6 border-b border-slate-200">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 bg-emerald-100 rounded-full flex items-center justify-center">
+                      <Save className="text-emerald-600" size={20} />
+                    </div>
+                    <h2 className="text-xl font-bold text-slate-800">Save Meal Plan</h2>
+                  </div>
+                  <button
+                    onClick={() => setShowSaveModal(false)}
+                    className="p-2 hover:bg-slate-100 rounded-full transition-colors"
+                  >
+                    <X size={20} className="text-slate-400" />
+                  </button>
+                </div>
+
+                <div className="p-6 space-y-4">
+                  <p className="text-sm text-slate-500">
+                    Save this meal plan with its shopping list to access it later from your cookbook.
+                  </p>
+
+                  {/* Plan Name Input */}
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      Plan Name
+                    </label>
+                    <input
+                      type="text"
+                      value={planName}
+                      onChange={(e) => setPlanName(e.target.value)}
+                      className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none transition-all"
+                      placeholder="e.g., Weekly Plan - Dec 30"
+                      autoFocus
+                    />
+                  </div>
+
+                  {/* Plan Summary */}
+                  <div className="bg-slate-50 rounded-xl p-4">
+                    <h4 className="text-sm font-medium text-slate-700 mb-2">Plan Includes:</h4>
+                    <div className="flex flex-wrap gap-2 text-xs">
+                      <span className="px-2 py-1 bg-indigo-100 text-indigo-700 rounded-full">
+                        {data.weeklyPlan.length} days
+                      </span>
+                      <span className="px-2 py-1 bg-orange-100 text-orange-700 rounded-full">
+                        {data.weeklyPlan.filter(d => d.meals?.breakfast).length} breakfasts
+                      </span>
+                      <span className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full">
+                        {data.weeklyPlan.filter(d => d.meals?.lunch).length} lunches
+                      </span>
+                      <span className="px-2 py-1 bg-purple-100 text-purple-700 rounded-full">
+                        {data.weeklyPlan.filter(d => d.meals?.dinner).length} dinners
+                      </span>
+                      <span className="px-2 py-1 bg-emerald-100 text-emerald-700 rounded-full">
+                        {data.shoppingList.reduce((acc, cat) => acc + cat.items.length, 0)} shopping items
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Footer */}
+                <div className="flex justify-end gap-3 p-6 border-t border-slate-200 bg-slate-50 rounded-b-2xl">
+                  <button
+                    onClick={() => setShowSaveModal(false)}
+                    disabled={isSavingPlan}
+                    className="px-5 py-2.5 text-slate-600 hover:bg-slate-200 rounded-xl font-medium transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleSavePlan}
+                    disabled={isSavingPlan || !planName.trim()}
+                    className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isSavingPlan ? (
+                      <>
+                        <Loader2 size={18} className="animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      <>
+                        <Save size={18} />
+                        Save Plan
+                      </>
+                    )}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

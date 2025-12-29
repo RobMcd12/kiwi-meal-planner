@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { X, Loader2, Bug, Sparkles, HelpCircle, MessageSquare, CheckCircle } from 'lucide-react';
+import React, { useState, useRef, useCallback } from 'react';
+import { X, Loader2, Bug, Sparkles, HelpCircle, MessageSquare, CheckCircle, Camera, Trash2, Image as ImageIcon } from 'lucide-react';
 import { submitFeedback } from '../services/feedbackService';
 import type { FeedbackType } from '../types';
 
@@ -27,6 +27,82 @@ const FeedbackDialog: React.FC<FeedbackDialogProps> = ({ isOpen, onClose, curren
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [screenshot, setScreenshot] = useState<string | null>(null);
+  const [isCapturing, setIsCapturing] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const captureScreenshot = useCallback(async () => {
+    setIsCapturing(true);
+    try {
+      // Use html2canvas to capture the screen
+      const html2canvas = (await import('html2canvas')).default;
+
+      // Temporarily hide the modal
+      const modalElement = document.querySelector('[data-feedback-modal]');
+      if (modalElement) {
+        (modalElement as HTMLElement).style.display = 'none';
+      }
+
+      // Small delay to ensure modal is hidden
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // Capture the document body
+      const canvas = await html2canvas(document.body, {
+        scale: 0.5, // Reduce scale for smaller file size
+        logging: false,
+        useCORS: true,
+        allowTaint: true,
+      });
+
+      // Show modal again
+      if (modalElement) {
+        (modalElement as HTMLElement).style.display = '';
+      }
+
+      // Convert to base64
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+      setScreenshot(dataUrl);
+    } catch (err) {
+      console.error('Screenshot capture failed:', err);
+      setError('Failed to capture screenshot. Please try uploading an image instead.');
+    } finally {
+      setIsCapturing(false);
+    }
+  }, []);
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      setError('Please upload an image file (PNG, JPG, etc.)');
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      setError('Image must be smaller than 5MB');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      setScreenshot(event.target?.result as string);
+      setError(null);
+    };
+    reader.onerror = () => {
+      setError('Failed to read image file');
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const removeScreenshot = () => {
+    setScreenshot(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -42,7 +118,8 @@ const FeedbackDialog: React.FC<FeedbackDialogProps> = ({ isOpen, onClose, curren
         currentUser.email,
         type,
         subject.trim(),
-        message.trim()
+        message.trim(),
+        screenshot || undefined
       );
 
       setSubmitted(true);
@@ -54,6 +131,7 @@ const FeedbackDialog: React.FC<FeedbackDialogProps> = ({ isOpen, onClose, curren
           setSubject('');
           setMessage('');
           setType('feature');
+          setScreenshot(null);
         }, 300);
       }, 2000);
     } catch (err) {
@@ -75,7 +153,8 @@ const FeedbackDialog: React.FC<FeedbackDialogProps> = ({ isOpen, onClose, curren
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
       <div
-        className="bg-white rounded-2xl max-w-lg w-full shadow-xl animate-fadeIn"
+        className="bg-white rounded-2xl max-w-lg w-full shadow-xl animate-fadeIn max-h-[90vh] overflow-y-auto"
+        data-feedback-modal
         onClick={(e) => e.stopPropagation()}
       >
         {submitted ? (
@@ -153,6 +232,66 @@ const FeedbackDialog: React.FC<FeedbackDialogProps> = ({ isOpen, onClose, curren
                   placeholder="Describe in detail..."
                   required
                 />
+              </div>
+
+              {/* Screenshot Section */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Screenshot (optional)
+                </label>
+
+                {screenshot ? (
+                  <div className="relative">
+                    <img
+                      src={screenshot}
+                      alt="Screenshot"
+                      className="w-full rounded-xl border border-slate-200 max-h-48 object-contain bg-slate-50"
+                    />
+                    <button
+                      type="button"
+                      onClick={removeScreenshot}
+                      className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors shadow-md"
+                      title="Remove screenshot"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={captureScreenshot}
+                      disabled={isCapturing}
+                      className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-medium transition-colors disabled:opacity-50"
+                    >
+                      {isCapturing ? (
+                        <>
+                          <Loader2 size={16} className="animate-spin" />
+                          Capturing...
+                        </>
+                      ) : (
+                        <>
+                          <Camera size={16} />
+                          Capture Screen
+                        </>
+                      )}
+                    </button>
+                    <label className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-medium transition-colors cursor-pointer">
+                      <ImageIcon size={16} />
+                      Upload Image
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*"
+                        onChange={handleFileUpload}
+                        className="hidden"
+                      />
+                    </label>
+                  </div>
+                )}
+                <p className="text-xs text-slate-400 mt-2">
+                  Add a screenshot to help us understand the issue better.
+                </p>
               </div>
 
               {/* Error */}

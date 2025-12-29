@@ -59,6 +59,9 @@ export interface Meal {
   userId?: string;
   ownerName?: string;
   createdAt?: string;
+  // Rating fields
+  averageRating?: number; // 1-5 stars average
+  ratingCount?: number; // Number of ratings
 }
 
 export interface DayPlan {
@@ -140,6 +143,7 @@ export interface FeedbackItem {
   type: FeedbackType;
   subject: string;
   message: string;
+  screenshot?: string; // Base64 encoded screenshot image
   status: FeedbackStatus;
   admin_response?: string;
   admin_responded_at?: string;
@@ -204,3 +208,17 @@ export interface UploadTask {
 
 export type RecipeSource = 'generated' | 'uploaded';
 export type CookbookTab = 'generated' | 'uploaded' | 'public';
+
+// ============================================
+// SAVED MEAL PLANS
+// ============================================
+
+export interface SavedMealPlan {
+  id: string;
+  name: string;
+  weeklyPlan: DayPlan[];
+  shoppingList: ShoppingCategory[];
+  createdAt: string;
+  updatedAt?: string;
+  userId?: string;
+}

@@ -1,5 +1,5 @@
 import { supabase, isSupabaseConfigured } from './authService';
-import type { Meal, MealPlanResponse, MealConfig, UserPreferences, PantryItem } from '../types';
+import type { Meal, MealPlanResponse, MealConfig, UserPreferences, PantryItem, SavedMealPlan } from '../types';
 import { CONSTANTS } from '../types';
 import { autoTagRecipe } from './geminiService';
 import { assignTagsToRecipe, getRecipeTags } from './recipeService';
@@ -14,6 +14,7 @@ const STORAGE_KEYS = {
   CONFIG: 'kiwi_meal_planner_config',
   PREFERENCES: 'kiwi_meal_planner_preferences',
   PANTRY: 'kiwi_meal_planner_pantry',
+  SAVED_PLANS: 'kiwi_meal_planner_saved_plans',
 };
 
 // ============================================
@@ -450,6 +451,118 @@ export const cacheImage = async (mealName: string, description: string, imageDat
     meal_description: description,
     image_data: imageData,
   }, { onConflict: 'meal_name' });
+};
+
+// ============================================
+// SAVED MEAL PLANS - Supabase with LocalStorage fallback
+// ============================================
+
+export const saveMealPlan = async (
+  plan: MealPlanResponse,
+  name: string
+): Promise<SavedMealPlan | null> => {
+  const savedPlan: SavedMealPlan = {
+    id: generateId(),
+    name,
+    weeklyPlan: plan.weeklyPlan,
+    shoppingList: plan.shoppingList,
+    createdAt: new Date().toISOString(),
+  };
+
+  if (!isSupabaseConfigured()) {
+    saveMealPlanLocal(savedPlan);
+    return savedPlan;
+  }
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    saveMealPlanLocal(savedPlan);
+    return savedPlan;
+  }
+
+  const { data, error } = await supabase
+    .from('saved_meal_plans')
+    .insert({
+      user_id: user.id,
+      name,
+      weekly_plan: plan.weeklyPlan,
+      shopping_list: plan.shoppingList,
+    })
+    .select('id, created_at')
+    .single();
+
+  if (error) {
+    console.error('Error saving meal plan:', error);
+    saveMealPlanLocal(savedPlan);
+    return savedPlan;
+  }
+
+  return {
+    ...savedPlan,
+    id: data.id,
+    createdAt: data.created_at,
+    userId: user.id,
+  };
+};
+
+export const getSavedMealPlans = async (): Promise<SavedMealPlan[]> => {
+  if (!isSupabaseConfigured()) {
+    return getSavedMealPlansLocal();
+  }
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return getSavedMealPlansLocal();
+
+  const { data, error } = await supabase
+    .from('saved_meal_plans')
+    .select('*')
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false });
+
+  if (error) {
+    console.error('Error loading saved plans:', error);
+    return getSavedMealPlansLocal();
+  }
+
+  return (data || []).map(row => ({
+    id: row.id,
+    name: row.name,
+    weeklyPlan: row.weekly_plan,
+    shoppingList: row.shopping_list,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    userId: row.user_id,
+  }));
+};
+
+export const deleteSavedMealPlan = async (id: string): Promise<void> => {
+  if (!isSupabaseConfigured()) {
+    deleteSavedMealPlanLocal(id);
+    return;
+  }
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    deleteSavedMealPlanLocal(id);
+    return;
+  }
+
+  await supabase.from('saved_meal_plans').delete().eq('id', id);
+};
+
+// Local storage helpers for saved plans
+const saveMealPlanLocal = (plan: SavedMealPlan): void => {
+  const plans = getSavedMealPlansLocal();
+  localStorage.setItem(STORAGE_KEYS.SAVED_PLANS, JSON.stringify([plan, ...plans]));
+};
+
+const getSavedMealPlansLocal = (): SavedMealPlan[] => {
+  return safeParse(localStorage.getItem(STORAGE_KEYS.SAVED_PLANS), []);
+};
+
+const deleteSavedMealPlanLocal = (id: string): void => {
+  const plans = getSavedMealPlansLocal();
+  localStorage.setItem(STORAGE_KEYS.SAVED_PLANS, JSON.stringify(plans.filter(p => p.id !== id)));
 };
 
 // ============================================

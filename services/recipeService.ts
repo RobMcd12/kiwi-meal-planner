@@ -335,7 +335,8 @@ export const getPublicRecipes = async (): Promise<Meal[]> => {
 export const searchRecipes = (
   recipes: Meal[],
   query: string,
-  selectedTags: string[]
+  selectedTags: string[],
+  minRating?: number
 ): Meal[] => {
   const q = query.toLowerCase().trim();
 
@@ -352,7 +353,11 @@ export const searchRecipes = (
         recipe.tags?.some(t => t.toLowerCase() === tag.toLowerCase())
       );
 
-    return matchesQuery && matchesTags;
+    // Rating filter (minimum rating)
+    const matchesRating = !minRating ||
+      (recipe.averageRating && recipe.averageRating >= minRating);
+
+    return matchesQuery && matchesTags && matchesRating;
   });
 };
 
@@ -756,5 +761,127 @@ export const getRecipeAverageRating = async (mealId: string): Promise<{ average:
   } catch (err) {
     console.error('Error getting average rating:', err);
     return { average: 0, count: 0 };
+  }
+};
+
+/**
+ * Save or update a rating (auto-saves without requiring a comment)
+ * Creates a minimal comment entry if user hasn't commented yet
+ */
+export const saveRecipeRating = async (
+  mealId: string,
+  rating: number
+): Promise<{ success: boolean; average: number; count: number }> => {
+  if (!isSupabaseConfigured()) return { success: false, average: 0, count: 0 };
+
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+
+    // Check if user already has a comment/rating for this recipe
+    const { data: existing } = await supabase
+      .from('recipe_comments')
+      .select('id')
+      .eq('meal_id', mealId)
+      .eq('user_id', user.id)
+      .single();
+
+    if (existing) {
+      // Update existing rating
+      const { error } = await supabase
+        .from('recipe_comments')
+        .update({
+          rating: rating,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', existing.id);
+
+      if (error) throw error;
+    } else {
+      // Create new entry with just rating (empty comment)
+      const { error } = await supabase
+        .from('recipe_comments')
+        .insert({
+          meal_id: mealId,
+          user_id: user.id,
+          comment_text: '',
+          rating: rating
+        });
+
+      if (error) throw error;
+    }
+
+    // Return updated average
+    const newAverage = await getRecipeAverageRating(mealId);
+    return { success: true, ...newAverage };
+  } catch (err) {
+    console.error('Error saving rating:', err);
+    return { success: false, average: 0, count: 0 };
+  }
+};
+
+/**
+ * Get user's own rating for a recipe
+ */
+export const getUserRating = async (mealId: string): Promise<number | null> => {
+  if (!isSupabaseConfigured()) return null;
+
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return null;
+
+    const { data, error } = await supabase
+      .from('recipe_comments')
+      .select('rating')
+      .eq('meal_id', mealId)
+      .eq('user_id', user.id)
+      .single();
+
+    if (error && error.code !== 'PGRST116') throw error; // PGRST116 = no rows found
+    return data?.rating || null;
+  } catch (err) {
+    console.error('Error getting user rating:', err);
+    return null;
+  }
+};
+
+/**
+ * Get average ratings for multiple recipes (batch)
+ */
+export const getBatchRecipeRatings = async (mealIds: string[]): Promise<Record<string, { average: number; count: number }>> => {
+  if (!isSupabaseConfigured() || mealIds.length === 0) return {};
+
+  try {
+    const { data, error } = await supabase
+      .from('recipe_comments')
+      .select('meal_id, rating')
+      .in('meal_id', mealIds)
+      .not('rating', 'is', null);
+
+    if (error) throw error;
+
+    // Group ratings by meal_id
+    const ratingsByMeal: Record<string, number[]> = {};
+    (data || []).forEach(item => {
+      if (!ratingsByMeal[item.meal_id]) {
+        ratingsByMeal[item.meal_id] = [];
+      }
+      if (item.rating) {
+        ratingsByMeal[item.meal_id].push(item.rating);
+      }
+    });
+
+    // Calculate averages
+    const result: Record<string, { average: number; count: number }> = {};
+    Object.entries(ratingsByMeal).forEach(([mealId, ratings]) => {
+      const count = ratings.length;
+      const average = count > 0 ? ratings.reduce((a, b) => a + b, 0) / count : 0;
+      result[mealId] = { average: Math.round(average * 10) / 10, count };
+    });
+
+    return result;
+  } catch (err) {
+    console.error('Error getting batch ratings:', err);
+    return {};
   }
 };

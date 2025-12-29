@@ -10,7 +10,8 @@ export const submitFeedback = async (
   userEmail: string | undefined,
   type: FeedbackType,
   subject: string,
-  message: string
+  message: string,
+  screenshot?: string
 ): Promise<FeedbackItem | null> => {
   const { data, error } = await supabase
     .from('feedback')
@@ -21,6 +22,7 @@ export const submitFeedback = async (
       type,
       subject,
       message,
+      screenshot,
       status: 'new',
       user_viewed_response: false,
     })

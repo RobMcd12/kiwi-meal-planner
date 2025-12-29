@@ -8,16 +8,18 @@ import {
   getPublicRecipes,
   searchRecipes,
   toggleRecipePublic,
-  assignTagsToRecipe
+  assignTagsToRecipe,
+  getBatchRecipeRatings
 } from '../services/recipeService';
 import { useUpload } from '../contexts/UploadContext';
 import RecipeUploadModal from './RecipeUploadModal';
 import RecipeNotesSection from './RecipeNotesSection';
+import RecipePrintView from './RecipePrintView';
 import TagEditor from './TagEditor';
 import {
   Trash2, Heart, ShoppingCart, ArrowLeft, X, ChefHat, Clock,
   Image as ImageIcon, Loader2, Search, Grid, List, Plus, Upload,
-  Globe, Lock, Tag, User, Sparkles, FileText, Pencil, RefreshCw
+  Globe, Lock, Tag, User, Sparkles, FileText, Pencil, RefreshCw, Star, Printer
 } from 'lucide-react';
 
 interface FavoritesViewProps {
@@ -42,6 +44,7 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({ onBack, onGenerateList, i
   // Search and filter
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [minRating, setMinRating] = useState<number | undefined>(undefined);
 
   // Selection and modal state
   const [selectedMeals, setSelectedMeals] = useState<string[]>([]);
@@ -50,6 +53,7 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({ onBack, onGenerateList, i
   const [showTagEditor, setShowTagEditor] = useState(false);
   const [showImageEditor, setShowImageEditor] = useState(false);
   const [imageEditPrompt, setImageEditPrompt] = useState('');
+  const [showPrintView, setShowPrintView] = useState(false);
 
   // Images
   const [mealImages, setMealImages] = useState<Record<string, string>>({});
@@ -103,6 +107,28 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({ onBack, onGenerateList, i
       } else if (activeTab === 'public') {
         loadedRecipes = await getPublicRecipes();
         setPublicRecipes(loadedRecipes);
+      }
+
+      // Fetch ratings for all loaded recipes
+      if (loadedRecipes.length > 0) {
+        const mealIds = loadedRecipes.map(m => m.id);
+        const ratings = await getBatchRecipeRatings(mealIds);
+
+        // Update recipes with ratings
+        loadedRecipes = loadedRecipes.map(meal => ({
+          ...meal,
+          averageRating: ratings[meal.id]?.average || 0,
+          ratingCount: ratings[meal.id]?.count || 0
+        }));
+
+        // Update the correct state based on tab
+        if (activeTab === 'generated') {
+          setGeneratedRecipes(loadedRecipes);
+        } else if (activeTab === 'uploaded') {
+          setUploadedRecipes(loadedRecipes);
+        } else if (activeTab === 'public') {
+          setPublicRecipes(loadedRecipes);
+        }
       }
 
       // Load cached images and auto-generate for recipes without images
@@ -168,9 +194,9 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({ onBack, onGenerateList, i
     else if (activeTab === 'uploaded') recipes = uploadedRecipes;
     else if (activeTab === 'public') recipes = publicRecipes;
 
-    // Apply search and tag filters
-    return searchRecipes(recipes, searchQuery, selectedTags);
-  }, [activeTab, generatedRecipes, uploadedRecipes, publicRecipes, searchQuery, selectedTags]);
+    // Apply search, tag, and rating filters
+    return searchRecipes(recipes, searchQuery, selectedTags, minRating);
+  }, [activeTab, generatedRecipes, uploadedRecipes, publicRecipes, searchQuery, selectedTags, minRating]);
 
   // Get unique tags from current recipes for filter pills
   const availableTags = useMemo(() => {
@@ -465,36 +491,64 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({ onBack, onGenerateList, i
         </button>
       </div>
 
-      {/* Tag Filter Pills */}
-      {availableTags.length > 0 && (
-        <div className="flex flex-wrap gap-2 mb-6">
+      {/* Filters Row */}
+      <div className="flex flex-wrap items-center gap-4 mb-6">
+        {/* Rating Filter */}
+        <div className="flex items-center gap-2">
           <span className="flex items-center gap-1 text-sm text-slate-500">
-            <Tag size={14} />
-            Filter:
+            <Star size={14} />
+            Rating:
           </span>
-          {availableTags.slice(0, 10).map(tag => (
-            <button
-              key={tag}
-              onClick={() => toggleTagFilter(tag)}
-              className={`px-3 py-1 text-sm rounded-full border transition-colors ${
-                selectedTags.includes(tag)
-                  ? 'bg-emerald-600 text-white border-emerald-600'
-                  : 'bg-white text-slate-600 border-slate-200 hover:border-emerald-300'
-              }`}
-            >
-              {tag}
-            </button>
-          ))}
-          {selectedTags.length > 0 && (
-            <button
-              onClick={() => setSelectedTags([])}
-              className="px-3 py-1 text-sm text-red-600 hover:bg-red-50 rounded-full"
-            >
-              Clear
-            </button>
-          )}
+          <div className="flex gap-1">
+            {[0, 3, 4, 5].map(rating => (
+              <button
+                key={rating}
+                onClick={() => setMinRating(rating === 0 ? undefined : rating)}
+                className={`px-2.5 py-1 text-sm rounded-full border transition-colors ${
+                  (rating === 0 && !minRating) || minRating === rating
+                    ? 'bg-amber-500 text-white border-amber-500'
+                    : 'bg-white text-slate-600 border-slate-200 hover:border-amber-300'
+                }`}
+              >
+                {rating === 0 ? 'All' : `${rating}+`}
+              </button>
+            ))}
+          </div>
         </div>
-      )}
+
+        {/* Tag Filter Pills */}
+        {availableTags.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="flex items-center gap-1 text-sm text-slate-500">
+              <Tag size={14} />
+              Tags:
+            </span>
+            {availableTags.slice(0, 8).map(tag => (
+              <button
+                key={tag}
+                onClick={() => toggleTagFilter(tag)}
+                className={`px-2.5 py-1 text-sm rounded-full border transition-colors ${
+                  selectedTags.includes(tag)
+                    ? 'bg-emerald-600 text-white border-emerald-600'
+                    : 'bg-white text-slate-600 border-slate-200 hover:border-emerald-300'
+                }`}
+              >
+                {tag}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {/* Clear filters */}
+        {(selectedTags.length > 0 || minRating) && (
+          <button
+            onClick={() => { setSelectedTags([]); setMinRating(undefined); }}
+            className="px-3 py-1 text-sm text-red-600 hover:bg-red-50 rounded-full"
+          >
+            Clear All
+          </button>
+        )}
+      </div>
 
       {/* Loading State */}
       {isLoadingRecipes ? (
@@ -589,14 +643,23 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({ onBack, onGenerateList, i
                       </div>
                       <h3 className="font-bold text-slate-800 line-clamp-1">{meal.name}</h3>
                     </div>
-                    {activeTab !== 'public' && (
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleDelete(meal.id, meal.name); }}
-                        className="text-slate-400 hover:text-red-500 p-1"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {/* Rating display */}
+                      {meal.averageRating && meal.averageRating > 0 && (
+                        <div className="flex items-center gap-1 text-amber-500">
+                          <Star size={14} className="fill-amber-400" />
+                          <span className="text-xs font-medium">{meal.averageRating.toFixed(1)}</span>
+                        </div>
+                      )}
+                      {activeTab !== 'public' && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleDelete(meal.id, meal.name); }}
+                          className="text-slate-400 hover:text-red-500 p-1"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      )}
+                    </div>
                   </div>
                   <p className="text-sm text-slate-600 line-clamp-2 pl-7 mb-2">{meal.description}</p>
 
@@ -674,6 +737,13 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({ onBack, onGenerateList, i
                         <Globe size={10} />
                         Shared
                       </span>
+                    )}
+                    {/* Rating display in list view */}
+                    {meal.averageRating && meal.averageRating > 0 && (
+                      <div className="flex items-center gap-1 text-amber-500">
+                        <Star size={12} className="fill-amber-400" />
+                        <span className="text-xs font-medium">{meal.averageRating.toFixed(1)}</span>
+                      </div>
                     )}
                   </div>
                   <h3 className="font-bold text-slate-800 truncate">{meal.name}</h3>
@@ -854,20 +924,33 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({ onBack, onGenerateList, i
               <div className="flex items-start justify-between gap-4 mb-2">
                 <h2 className="text-2xl font-bold text-slate-800">{openMeal.name}</h2>
 
-                {/* Public toggle for uploaded recipes */}
-                {activeTab === 'uploaded' && openMeal.source === 'uploaded' && (
+                {/* Action buttons */}
+                <div className="flex items-center gap-2">
+                  {/* Print button */}
                   <button
-                    onClick={() => handleTogglePublic(openMeal)}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-                      openMeal.isPublic
-                        ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
-                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                    }`}
+                    onClick={() => setShowPrintView(true)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors bg-slate-100 text-slate-600 hover:bg-slate-200"
+                    title="Print or export as PDF"
                   >
-                    {openMeal.isPublic ? <Globe size={14} /> : <Lock size={14} />}
-                    {openMeal.isPublic ? 'Public' : 'Private'}
+                    <Printer size={14} />
+                    Print
                   </button>
-                )}
+
+                  {/* Public toggle for uploaded recipes */}
+                  {activeTab === 'uploaded' && openMeal.source === 'uploaded' && (
+                    <button
+                      onClick={() => handleTogglePublic(openMeal)}
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                        openMeal.isPublic
+                          ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                      }`}
+                    >
+                      {openMeal.isPublic ? <Globe size={14} /> : <Lock size={14} />}
+                      {openMeal.isPublic ? 'Public' : 'Private'}
+                    </button>
+                  )}
+                </div>
               </div>
 
               <p className="text-slate-600 italic mb-4">{openMeal.description}</p>
@@ -954,7 +1037,24 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({ onBack, onGenerateList, i
                 <RecipeNotesSection
                   mealId={openMeal.id}
                   isPublicRecipe={openMeal.isPublic}
-                  canEdit={activeTab !== 'public' || openMeal.isPublic}
+                  canEdit={true}
+                  onRatingChange={(average, count) => {
+                    // Update the recipe's rating in local state
+                    const updateRecipes = (prev: Meal[]) =>
+                      prev.map(m => m.id === openMeal.id
+                        ? { ...m, averageRating: average, ratingCount: count }
+                        : m
+                      );
+                    if (activeTab === 'generated') setGeneratedRecipes(updateRecipes);
+                    else if (activeTab === 'uploaded') setUploadedRecipes(updateRecipes);
+                    else if (activeTab === 'public') setPublicRecipes(updateRecipes);
+
+                    // Also update openMeal
+                    setOpenMeal(prev => prev
+                      ? { ...prev, averageRating: average, ratingCount: count }
+                      : null
+                    );
+                  }}
                 />
               </div>
 
@@ -995,6 +1095,17 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({ onBack, onGenerateList, i
           loadRecipes();
         }}
       />
+
+      {/* Print View Modal */}
+      {showPrintView && openMeal && (
+        <RecipePrintView
+          meal={{
+            ...openMeal,
+            imageUrl: mealImages[openMeal.name] || openMeal.imageUrl
+          }}
+          onClose={() => setShowPrintView(false)}
+        />
+      )}
     </div>
   );
 };
