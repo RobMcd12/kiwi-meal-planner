@@ -14,6 +14,11 @@ import {
   CheckCircle,
   MessageSquare,
   Send,
+  UserPlus,
+  Key,
+  Mail,
+  Eye,
+  EyeOff,
   Loader2,
   X
 } from 'lucide-react';
@@ -26,7 +31,7 @@ import {
   respondToFeedback,
   updateFeedbackStatus
 } from '../services/feedbackService';
-import { getAllUsers, setUserAdminStatus, isSuperAdmin, type UserProfile } from '../services/adminService';
+import { getAllUsers, setUserAdminStatus, isSuperAdmin, sendPasswordResetEmail, createUser, deleteUser, type UserProfile } from '../services/adminService';
 import type { FeedbackItem, FeedbackStatus } from '../types';
 
 interface AdminDashboardProps {
@@ -60,6 +65,15 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
   const [usersList, setUsersList] = useState<UserProfile[]>([]);
   const [usersLoading, setUsersLoading] = useState(false);
   const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
+  const [showAddUserModal, setShowAddUserModal] = useState(false);
+  const [newUserEmail, setNewUserEmail] = useState('');
+  const [newUserPassword, setNewUserPassword] = useState('');
+  const [newUserDisplayName, setNewUserDisplayName] = useState('');
+  const [newUserMakeAdmin, setNewUserMakeAdmin] = useState(false);
+  const [showNewUserPassword, setShowNewUserPassword] = useState(false);
+  const [creatingUser, setCreatingUser] = useState(false);
+  const [resettingPasswordUserId, setResettingPasswordUserId] = useState<string | null>(null);
+  const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
 
   // Check if current user is super admin (can manage other admins)
   const currentUserIsSuperAdmin = isSuperAdmin(user?.email ?? undefined);
@@ -115,6 +129,80 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
       setMessage({ type: 'error', text: 'Failed to update admin status.' });
     } finally {
       setUpdatingUserId(null);
+    }
+  };
+
+  const handleCreateUser = async () => {
+    if (!newUserEmail.trim() || !newUserPassword.trim() || !newUserDisplayName.trim()) {
+      setMessage({ type: 'error', text: 'Please fill in all fields.' });
+      return;
+    }
+
+    if (newUserPassword.length < 6) {
+      setMessage({ type: 'error', text: 'Password must be at least 6 characters.' });
+      return;
+    }
+
+    setCreatingUser(true);
+    try {
+      const result = await createUser(newUserEmail.trim(), newUserPassword, newUserDisplayName.trim(), newUserMakeAdmin);
+      if (result.success) {
+        setMessage({ type: 'success', text: 'User created successfully!' });
+        setShowAddUserModal(false);
+        setNewUserEmail('');
+        setNewUserPassword('');
+        setNewUserDisplayName('');
+        setNewUserMakeAdmin(false);
+        // Reload users list
+        await loadUsers();
+      } else {
+        setMessage({ type: 'error', text: result.error || 'Failed to create user.' });
+      }
+    } catch (err) {
+      setMessage({ type: 'error', text: 'Failed to create user.' });
+    } finally {
+      setCreatingUser(false);
+    }
+  };
+
+  const handleResetPassword = async (userEmail: string, userId: string) => {
+    if (!confirm(`Send password reset email to ${userEmail}?`)) {
+      return;
+    }
+
+    setResettingPasswordUserId(userId);
+    try {
+      const result = await sendPasswordResetEmail(userEmail);
+      if (result.success) {
+        setMessage({ type: 'success', text: `Password reset email sent to ${userEmail}` });
+      } else {
+        setMessage({ type: 'error', text: result.error || 'Failed to send password reset email.' });
+      }
+    } catch (err) {
+      setMessage({ type: 'error', text: 'Failed to send password reset email.' });
+    } finally {
+      setResettingPasswordUserId(null);
+    }
+  };
+
+  const handleDeleteUser = async (userId: string, userEmail: string) => {
+    if (!confirm(`Are you sure you want to delete user ${userEmail}? This cannot be undone.`)) {
+      return;
+    }
+
+    setDeletingUserId(userId);
+    try {
+      const result = await deleteUser(userId);
+      if (result.success) {
+        setMessage({ type: 'success', text: 'User deleted successfully.' });
+        setUsersList(prev => prev.filter(u => u.id !== userId));
+      } else {
+        setMessage({ type: 'error', text: result.error || 'Failed to delete user.' });
+      }
+    } catch (err) {
+      setMessage({ type: 'error', text: 'Failed to delete user.' });
+    } finally {
+      setDeletingUserId(null);
     }
   };
 
@@ -695,14 +783,25 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
       {/* Users Tab */}
       {activeTab === 'users' && (
         <div className="space-y-6">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-wrap gap-4">
             <h2 className="text-lg font-semibold text-slate-800">User Management</h2>
-            <button
-              onClick={loadUsers}
-              className="text-sm text-emerald-600 hover:text-emerald-700 font-medium"
-            >
-              Refresh
-            </button>
+            <div className="flex items-center gap-3">
+              {currentUserIsSuperAdmin && (
+                <button
+                  onClick={() => setShowAddUserModal(true)}
+                  className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg transition-colors"
+                >
+                  <UserPlus size={16} />
+                  Add User
+                </button>
+              )}
+              <button
+                onClick={loadUsers}
+                className="text-sm text-emerald-600 hover:text-emerald-700 font-medium"
+              >
+                Refresh
+              </button>
+            </div>
           </div>
 
           {!currentUserIsSuperAdmin && (
@@ -731,11 +830,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
                   <tr>
                     <th className="text-left px-4 py-3 text-sm font-medium text-slate-600">User</th>
                     <th className="text-left px-4 py-3 text-sm font-medium text-slate-600">Email</th>
-                    <th className="text-left px-4 py-3 text-sm font-medium text-slate-600">Joined</th>
+                    <th className="text-left px-4 py-3 text-sm font-medium text-slate-600 hidden md:table-cell">Joined</th>
                     <th className="text-center px-4 py-3 text-sm font-medium text-slate-600">Admin</th>
-                    {currentUserIsSuperAdmin && (
-                      <th className="text-center px-4 py-3 text-sm font-medium text-slate-600">Actions</th>
-                    )}
+                    <th className="text-right px-4 py-3 text-sm font-medium text-slate-600">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -769,7 +866,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
                             </span>
                           )}
                         </td>
-                        <td className="px-4 py-3 text-sm text-slate-500">
+                        <td className="px-4 py-3 text-sm text-slate-500 hidden md:table-cell">
                           {new Date(userItem.created_at).toLocaleDateString('en-NZ', {
                             day: 'numeric',
                             month: 'short',
@@ -789,36 +886,200 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
                             </span>
                           )}
                         </td>
-                        {currentUserIsSuperAdmin && (
-                          <td className="px-4 py-3 text-center">
-                            {isUserSuperAdmin ? (
-                              <span className="text-xs text-slate-400">Protected</span>
-                            ) : (
+                        <td className="px-4 py-3">
+                          <div className="flex items-center justify-end gap-2">
+                            {/* Reset Password Button */}
+                            <button
+                              onClick={() => handleResetPassword(userItem.email, userItem.id)}
+                              disabled={resettingPasswordUserId === userItem.id}
+                              className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-50"
+                              title="Send password reset email"
+                            >
+                              {resettingPasswordUserId === userItem.id ? (
+                                <Loader2 size={16} className="animate-spin" />
+                              ) : (
+                                <Key size={16} />
+                              )}
+                            </button>
+
+                            {/* Admin Toggle - Only for super admin */}
+                            {currentUserIsSuperAdmin && !isUserSuperAdmin && (
                               <button
                                 onClick={() => handleToggleAdmin(userItem.id, userItem.is_admin)}
                                 disabled={updatingUserId === userItem.id}
-                                className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+                                className={`p-1.5 rounded-lg transition-colors disabled:opacity-50 ${
                                   userItem.is_admin
-                                    ? 'bg-red-100 text-red-700 hover:bg-red-200'
-                                    : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
-                                } disabled:opacity-50 disabled:cursor-not-allowed`}
+                                    ? 'text-emerald-600 hover:text-red-600 hover:bg-red-50'
+                                    : 'text-slate-400 hover:text-emerald-600 hover:bg-emerald-50'
+                                }`}
+                                title={userItem.is_admin ? 'Revoke admin' : 'Make admin'}
                               >
                                 {updatingUserId === userItem.id ? (
-                                  <Loader2 size={14} className="animate-spin" />
+                                  <Loader2 size={16} className="animate-spin" />
                                 ) : userItem.is_admin ? (
-                                  'Revoke Admin'
+                                  <ShieldCheck size={16} />
                                 ) : (
-                                  'Make Admin'
+                                  <ShieldX size={16} />
                                 )}
                               </button>
                             )}
-                          </td>
-                        )}
+
+                            {/* Delete Button - Only for super admin, not for self or super admin */}
+                            {currentUserIsSuperAdmin && !isUserSuperAdmin && userItem.id !== user?.id && (
+                              <button
+                                onClick={() => handleDeleteUser(userItem.id, userItem.email)}
+                                disabled={deletingUserId === userItem.id}
+                                className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                                title="Delete user"
+                              >
+                                {deletingUserId === userItem.id ? (
+                                  <Loader2 size={16} className="animate-spin" />
+                                ) : (
+                                  <Trash2 size={16} />
+                                )}
+                              </button>
+                            )}
+
+                            {/* Protected label for super admin */}
+                            {isUserSuperAdmin && currentUserIsSuperAdmin && (
+                              <span className="text-xs text-slate-400 px-2">Protected</span>
+                            )}
+                          </div>
+                        </td>
                       </tr>
                     );
                   })}
                 </tbody>
               </table>
+            </div>
+          )}
+
+          {/* Add User Modal */}
+          {showAddUserModal && (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-2xl max-w-md w-full shadow-xl">
+                <div className="flex items-center justify-between p-6 border-b border-slate-200">
+                  <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                    <UserPlus size={20} className="text-emerald-600" />
+                    Add New User
+                  </h3>
+                  <button
+                    onClick={() => {
+                      setShowAddUserModal(false);
+                      setNewUserEmail('');
+                      setNewUserPassword('');
+                      setNewUserDisplayName('');
+                      setNewUserMakeAdmin(false);
+                    }}
+                    className="p-2 hover:bg-slate-100 rounded-full transition-colors"
+                  >
+                    <X size={20} className="text-slate-400" />
+                  </button>
+                </div>
+
+                <div className="p-6 space-y-4">
+                  {/* Display Name */}
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      Display Name
+                    </label>
+                    <input
+                      type="text"
+                      value={newUserDisplayName}
+                      onChange={(e) => setNewUserDisplayName(e.target.value)}
+                      placeholder="John Doe"
+                      className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                    />
+                  </div>
+
+                  {/* Email */}
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      Email Address
+                    </label>
+                    <div className="relative">
+                      <Mail size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                      <input
+                        type="email"
+                        value={newUserEmail}
+                        onChange={(e) => setNewUserEmail(e.target.value)}
+                        placeholder="john@example.com"
+                        className="w-full pl-10 pr-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Password */}
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      Password
+                    </label>
+                    <div className="relative">
+                      <Key size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                      <input
+                        type={showNewUserPassword ? 'text' : 'password'}
+                        value={newUserPassword}
+                        onChange={(e) => setNewUserPassword(e.target.value)}
+                        placeholder="Minimum 6 characters"
+                        className="w-full pl-10 pr-12 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowNewUserPassword(!showNewUserPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                      >
+                        {showNewUserPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Make Admin Checkbox */}
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={newUserMakeAdmin}
+                      onChange={(e) => setNewUserMakeAdmin(e.target.checked)}
+                      className="w-5 h-5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                    />
+                    <div>
+                      <span className="font-medium text-slate-700">Make Admin</span>
+                      <p className="text-xs text-slate-500">Grant admin privileges to this user</p>
+                    </div>
+                  </label>
+                </div>
+
+                <div className="flex justify-end gap-3 p-6 border-t border-slate-200 bg-slate-50 rounded-b-2xl">
+                  <button
+                    onClick={() => {
+                      setShowAddUserModal(false);
+                      setNewUserEmail('');
+                      setNewUserPassword('');
+                      setNewUserDisplayName('');
+                      setNewUserMakeAdmin(false);
+                    }}
+                    className="px-5 py-2.5 text-slate-600 hover:bg-slate-200 rounded-xl font-medium transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleCreateUser}
+                    disabled={creatingUser || !newUserEmail.trim() || !newUserPassword.trim() || !newUserDisplayName.trim()}
+                    className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {creatingUser ? (
+                      <>
+                        <Loader2 size={18} className="animate-spin" />
+                        Creating...
+                      </>
+                    ) : (
+                      <>
+                        <UserPlus size={18} />
+                        Create User
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
             </div>
           )}
         </div>

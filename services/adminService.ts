@@ -102,3 +102,93 @@ export const setUserAdminStatus = async (userId: string, isAdmin: boolean): Prom
 export const isSuperAdmin = (email?: string): boolean => {
   return email === SUPER_ADMIN_EMAIL;
 };
+
+/**
+ * Send password reset email to a user
+ */
+export const sendPasswordResetEmail = async (email: string): Promise<{ success: boolean; error?: string }> => {
+  if (!isSupabaseConfigured()) {
+    return { success: false, error: 'Supabase not configured' };
+  }
+
+  try {
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: `${window.location.origin}/auth/callback?type=recovery`,
+    });
+
+    if (error) {
+      console.error('Error sending password reset:', error);
+      return { success: false, error: error.message };
+    }
+
+    return { success: true };
+  } catch (err) {
+    console.error('Error sending password reset:', err);
+    return { success: false, error: 'Failed to send password reset email' };
+  }
+};
+
+/**
+ * Create a new user via Edge Function (requires admin privileges)
+ */
+export const createUser = async (
+  email: string,
+  password: string,
+  displayName: string,
+  makeAdmin: boolean = false
+): Promise<{ success: boolean; error?: string; userId?: string }> => {
+  if (!isSupabaseConfigured()) {
+    return { success: false, error: 'Supabase not configured' };
+  }
+
+  try {
+    // Call the admin Edge Function to create user
+    const { data, error } = await supabase.functions.invoke('admin-create-user', {
+      body: { email, password, displayName, makeAdmin },
+    });
+
+    if (error) {
+      console.error('Error creating user:', error);
+      return { success: false, error: error.message };
+    }
+
+    if (data?.error) {
+      return { success: false, error: data.error };
+    }
+
+    return { success: true, userId: data?.userId };
+  } catch (err: any) {
+    console.error('Error creating user:', err);
+    return { success: false, error: err.message || 'Failed to create user' };
+  }
+};
+
+/**
+ * Delete a user (requires admin privileges)
+ */
+export const deleteUser = async (userId: string): Promise<{ success: boolean; error?: string }> => {
+  if (!isSupabaseConfigured()) {
+    return { success: false, error: 'Supabase not configured' };
+  }
+
+  try {
+    // Delete from profiles table first
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .delete()
+      .eq('id', userId);
+
+    if (profileError) {
+      console.error('Error deleting profile:', profileError);
+      return { success: false, error: profileError.message };
+    }
+
+    // Note: Deleting from auth.users requires Edge Function with service role
+    // For now, we just delete the profile which effectively disables the user
+
+    return { success: true };
+  } catch (err: any) {
+    console.error('Error deleting user:', err);
+    return { success: false, error: err.message || 'Failed to delete user' };
+  }
+};
