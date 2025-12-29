@@ -131,40 +131,16 @@ export const generateMealPlan = async (
   if (config.includeLunch) requestedMeals.push("Lunch");
   if (config.includeDinner) requestedMeals.push("Dinner");
 
-  const prompt = `
-    Create a ${config.days}-day meal plan for ${config.peopleCount} people.
-    
-    IMPORTANT: You must ONLY generate plans for the following meal types: ${requestedMeals.join(", ")}. 
-    Do not generate meals for types not listed.
-    
-    Preferences:
-    - Diet: ${preferences.dietaryRestrictions || "None"}
-    - Likes: ${preferences.likes || "Anything"}
-    - Dislikes: ${preferences.dislikes || "None"}
-    - Unit System: ${preferences.unitSystem.toUpperCase()}
-    - Temperature Scale: ${preferences.temperatureScale.toUpperCase()}
-    
-    Pantry (Exclude these from shopping list):
-    [${pantryListString}]
-    
-    CRITICAL INSTRUCTION FOR MEALS:
-    - Each "Meal" must be a COMPLETE meal, not just a single dish. 
-    - For example, instead of just "Steak", generate "Grilled Ribeye with Garlic Mashed Potatoes and Asparagus".
-    - Instructions must cover preparing all components of the meal.
-    - Ingredients must cover all components (main + sides).
-    - Use ${preferences.unitSystem} units for ALL ingredient quantities (e.g., ${preferences.unitSystem === 'metric' ? 'grams (g), milliliters (ml)' : 'ounces (oz), pounds (lb), cups'}).
-    - Use ${preferences.temperatureScale} for ALL cooking temperatures in instructions.
-
-    Tasks:
-    1. Generate plan for ${config.days} days.
-    2. Consolidated shopping list sorted by aisle.
-    3. Exclude pantry items from shopping list.
-    4. Quantities adjusted for ${config.peopleCount} people.
-  `;
+  // Concise prompt for faster generation
+  const prompt = `${config.days}-day meal plan, ${config.peopleCount} people. Meals: ${requestedMeals.join(", ")} only.
+Diet: ${preferences.dietaryRestrictions || "None"}. Likes: ${preferences.likes || "Any"}. Dislikes: ${preferences.dislikes || "None"}.
+Units: ${preferences.unitSystem}. Temps: ${preferences.temperatureScale}.
+Pantry (exclude from list): ${pantryListString || "none"}.
+Each meal = complete dish with sides (e.g. "Grilled Salmon with Rice and Vegetables"). Include all ingredients/instructions for full meal. Shopping list by aisle, quantities for ${config.peopleCount}.`;
 
   try {
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      model: "gemini-2.0-flash",
       contents: prompt,
       config: {
         responseMimeType: "application/json",
@@ -228,17 +204,11 @@ export const generateShoppingListFromFavorites = async (
     const mealNames = meals.map(m => m.name).join(", ");
     const pantryListString = pantryItems.map((p) => p.name).join(", ");
 
-    const prompt = `
-      I have a list of favorite meals: [${mealNames}].
-      Generate a consolidated shopping list for these meals for ${peopleCount} people.
-      Pantry (Exclude these): [${pantryListString}].
-      
-      Also return a "weeklyPlan" array that just lists these meals assigned to generic days (Day 1, Day 2, etc) so I can view them.
-    `;
+    const prompt = `Shopping list for meals: ${mealNames}. ${peopleCount} people. Exclude pantry: ${pantryListString || "none"}. Return weeklyPlan with meals on Day 1, Day 2, etc.`;
 
     try {
         const response = await ai.models.generateContent({
-          model: "gemini-3-flash-preview",
+          model: "gemini-2.0-flash",
           contents: prompt,
           config: {
             responseMimeType: "application/json",

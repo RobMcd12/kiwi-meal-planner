@@ -11,8 +11,9 @@ interface PlanDisplayProps {
 
 const PlanDisplay: React.FC<PlanDisplayProps> = ({ data, onReset }) => {
   const [activeTab, setActiveTab] = useState<'plan' | 'shop'>('plan');
-  const [expandedDay, setExpandedDay] = useState<string | null>(data.weeklyPlan[0]?.day || null);
+  const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
   const [expandedMeal, setExpandedMeal] = useState<string | null>(null);
+  const [allExpanded, setAllExpanded] = useState(false);
 
   const [checkedItems, setCheckedItems] = useState<Record<string, boolean>>({});
   const [favorites, setFavorites] = useState<string[]>([]);
@@ -21,6 +22,26 @@ const PlanDisplay: React.FC<PlanDisplayProps> = ({ data, onReset }) => {
   // Image State
   const [mealImages, setMealImages] = useState<Record<string, string>>({});
   const [loadingImages, setLoadingImages] = useState<Record<string, boolean>>({});
+
+  // Check if we have only one meal type per day (single meal mode)
+  const isSingleMealMode = data.weeklyPlan.every(day => {
+    const mealCount = [day.meals?.breakfast, day.meals?.lunch, day.meals?.dinner].filter(Boolean).length;
+    return mealCount <= 1;
+  });
+
+  // Auto-expand all days on load when in single meal mode
+  useEffect(() => {
+    if (isSingleMealMode) {
+      const allDays = new Set(data.weeklyPlan.map(d => d.day));
+      setExpandedDays(allDays);
+      setAllExpanded(true);
+    } else {
+      // Default: expand first day only
+      if (data.weeklyPlan[0]?.day) {
+        setExpandedDays(new Set([data.weeklyPlan[0].day]));
+      }
+    }
+  }, [data.weeklyPlan, isSingleMealMode]);
 
   // Load favorites and checked items on mount
   useEffect(() => {
@@ -42,8 +63,32 @@ const PlanDisplay: React.FC<PlanDisplayProps> = ({ data, onReset }) => {
   }, [checkedItems, data.id]);
 
   const toggleDay = (day: string) => {
-    setExpandedDay(expandedDay === day ? null : day);
+    setExpandedDays(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(day)) {
+        newSet.delete(day);
+      } else {
+        newSet.add(day);
+      }
+      // Update allExpanded state based on whether all days are expanded
+      setAllExpanded(newSet.size === data.weeklyPlan.length);
+      return newSet;
+    });
     setExpandedMeal(null); // Close expanded meals when switching days
+  };
+
+  const toggleAllDays = () => {
+    if (allExpanded) {
+      // Collapse all
+      setExpandedDays(new Set());
+      setAllExpanded(false);
+    } else {
+      // Expand all
+      const allDays = new Set(data.weeklyPlan.map(d => d.day));
+      setExpandedDays(allDays);
+      setAllExpanded(true);
+    }
+    setExpandedMeal(null);
   };
 
   const toggleItem = (category: string, itemIdx: number) => {
@@ -323,9 +368,30 @@ const PlanDisplay: React.FC<PlanDisplayProps> = ({ data, onReset }) => {
       <div className="px-4">
         {activeTab === 'plan' ? (
           <div className="space-y-4">
+            {/* Expand/Collapse All Button */}
+            <div className="flex justify-end">
+              <button
+                onClick={toggleAllDays}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors"
+              >
+                {allExpanded ? (
+                  <>
+                    <ChevronUp size={16} />
+                    Collapse All
+                  </>
+                ) : (
+                  <>
+                    <ChevronDown size={16} />
+                    Expand All
+                  </>
+                )}
+              </button>
+            </div>
+
             {data.weeklyPlan.map((dayPlan) => {
               const hasMeals = dayPlan.meals && (dayPlan.meals.breakfast || dayPlan.meals.lunch || dayPlan.meals.dinner);
               if (!hasMeals) return null;
+              const isExpanded = expandedDays.has(dayPlan.day);
 
               return (
                 <div key={dayPlan.day} className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
@@ -334,10 +400,10 @@ const PlanDisplay: React.FC<PlanDisplayProps> = ({ data, onReset }) => {
                     className="w-full flex items-center justify-between p-4 bg-slate-50 hover:bg-slate-100 transition-colors"
                   >
                     <h3 className="font-bold text-lg text-slate-800">{dayPlan.day}</h3>
-                    {expandedDay === dayPlan.day ? <ChevronUp size={20} className="text-slate-400" /> : <ChevronDown size={20} className="text-slate-400" />}
+                    {isExpanded ? <ChevronUp size={20} className="text-slate-400" /> : <ChevronDown size={20} className="text-slate-400" />}
                   </button>
-                  
-                  {expandedDay === dayPlan.day && (
+
+                  {isExpanded && (
                     <div className="p-4 grid md:grid-cols-2 lg:grid-cols-3 gap-6 animate-fadeIn">
                        {renderMealCard("Breakfast", dayPlan.meals.breakfast)}
                        {renderMealCard("Lunch", dayPlan.meals.lunch)}
