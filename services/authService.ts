@@ -1,9 +1,19 @@
 import { createClient, SupabaseClient, User, Session } from '@supabase/supabase-js';
 import type { AuthProvider } from '../types';
 
-// Initialize Supabase client
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
-const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
+// Initialize Supabase client - check multiple possible env var names
+const supabaseUrl = (
+  import.meta.env.VITE_SUPABASE_URL ||
+  import.meta.env.NEXT_PUBLIC_SUPABASE_URL ||
+  ''
+) as string;
+
+const supabaseAnonKey = (
+  import.meta.env.VITE_SUPABASE_ANON_KEY ||
+  import.meta.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+  import.meta.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY ||
+  ''
+) as string;
 
 // Check if we have valid Supabase configuration
 const hasValidConfig = Boolean(
@@ -15,6 +25,7 @@ const hasValidConfig = Boolean(
 
 if (!hasValidConfig) {
   console.warn('Supabase credentials not configured. Auth features will be disabled. Running in local-only mode.');
+  console.warn('Expected env vars: VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY');
 }
 
 // Only create real client if we have valid config, otherwise create a dummy

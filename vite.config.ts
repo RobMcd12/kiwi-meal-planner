@@ -6,10 +6,16 @@ export default defineConfig(({ mode }) => {
     // Load env from process.env (for Railway) and .env files
     const env = loadEnv(mode, process.cwd(), '');
 
-    // Debug: Log env vars during build (remove after debugging)
+    // Debug: Log env vars during build
     console.log('Build environment check:');
     console.log('- VITE_SUPABASE_URL:', process.env.VITE_SUPABASE_URL ? 'SET' : 'NOT SET');
-    console.log('- VITE_SUPABASE_ANON_KEY:', process.env.VITE_SUPABASE_ANON_KEY ? 'SET' : 'NOT SET');
+    console.log('- NEXT_PUBLIC_SUPABASE_URL:', process.env.NEXT_PUBLIC_SUPABASE_URL ? 'SET' : 'NOT SET');
+
+    // Get Supabase config from either VITE_ or NEXT_PUBLIC_ prefixed vars
+    const supabaseUrl = process.env.VITE_SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+    const supabaseAnonKey = process.env.VITE_SUPABASE_ANON_KEY ||
+                            process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
+                            process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY || '';
 
     return {
       server: {
@@ -18,9 +24,13 @@ export default defineConfig(({ mode }) => {
       },
       plugins: [react()],
       define: {
-        // Keep Gemini key for now during migration (will move to Edge Functions)
+        // Gemini key
         'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY || process.env.GEMINI_API_KEY),
-        'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY || process.env.GEMINI_API_KEY)
+        'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY || process.env.GEMINI_API_KEY),
+        // Expose NEXT_PUBLIC vars to import.meta.env for Vite
+        'import.meta.env.NEXT_PUBLIC_SUPABASE_URL': JSON.stringify(supabaseUrl),
+        'import.meta.env.NEXT_PUBLIC_SUPABASE_ANON_KEY': JSON.stringify(supabaseAnonKey),
+        'import.meta.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY': JSON.stringify(supabaseAnonKey),
       },
       resolve: {
         alias: {
