@@ -31,8 +31,6 @@ import { signOut } from './services/authService';
 import { getNewResponseCount } from './services/feedbackService';
 import { ChefHat, Settings, LogOut, User, Shield, MessageSquare, Bell } from 'lucide-react';
 
-const SUPER_ADMIN_EMAIL = 'rob@unicloud.co.nz';
-
 // --- Default States ---
 const DEFAULT_CONFIG: MealConfig = {
   days: 5,
@@ -51,12 +49,11 @@ const DEFAULT_PREFERENCES: UserPreferences = {
 };
 
 const AppContent: React.FC = () => {
-  const { user, isAuthenticated, loading: authLoading } = useAuth();
+  const { user, isAuthenticated, loading: authLoading, isAdmin } = useAuth();
   const { toasts, dismissToast, success, error: showError } = useToast();
 
   // Start on landing page, move to welcome after auth
   const [step, setStep] = useState<AppStep>(AppStep.LANDING);
-  const isAdmin = user?.email === SUPER_ADMIN_EMAIL;
 
   // Redirect to welcome once authenticated
   useEffect(() => {
@@ -119,9 +116,9 @@ const AppContent: React.FC = () => {
     }
   }, [pantryItems, dataLoaded]);
 
-  // Poll for user's new feedback responses (non-admins only)
+  // Poll for user's new feedback responses (all authenticated users)
   useEffect(() => {
-    if (!isAuthenticated || !user || isAdmin) {
+    if (!isAuthenticated || !user) {
       setFeedbackResponseCount(0);
       return;
     }
@@ -138,7 +135,7 @@ const AppContent: React.FC = () => {
     fetchCount();
     const interval = setInterval(fetchCount, 30000); // Poll every 30s
     return () => clearInterval(interval);
-  }, [isAuthenticated, user, isAdmin]);
+  }, [isAuthenticated, user]);
 
   // Handlers
   const handleGenerate = async () => {
@@ -361,8 +358,8 @@ const AppContent: React.FC = () => {
               </div>
             )}
 
-            {/* Feedback button */}
-            {isAuthenticated && !isAdmin && (
+            {/* Feedback button - shown for all authenticated users */}
+            {isAuthenticated && (
               <button
                 onClick={() => setShowFeedbackDialog(true)}
                 className="text-slate-400 hover:text-slate-700 transition-colors p-1"
@@ -373,7 +370,7 @@ const AppContent: React.FC = () => {
             )}
 
             {/* My Feedback with badge (for users with responses) */}
-            {isAuthenticated && !isAdmin && feedbackResponseCount > 0 && (
+            {isAuthenticated && feedbackResponseCount > 0 && (
               <button
                 onClick={() => setStep(AppStep.MY_FEEDBACK)}
                 className="relative text-slate-400 hover:text-slate-700 transition-colors p-1"

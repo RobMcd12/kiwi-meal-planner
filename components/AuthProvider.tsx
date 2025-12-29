@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase, onAuthStateChange, isSupabaseConfigured } from '../services/authService';
+import { checkIsAdmin, isSuperAdmin } from '../services/adminService';
 
 interface AuthContextType {
   user: User | null;
@@ -8,6 +9,8 @@ interface AuthContextType {
   loading: boolean;
   isAuthenticated: boolean;
   isConfigured: boolean;
+  isAdmin: boolean;
+  refreshAdminStatus: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -16,6 +19,8 @@ const AuthContext = createContext<AuthContextType>({
   loading: true,
   isAuthenticated: false,
   isConfigured: false,
+  isAdmin: false,
+  refreshAdminStatus: async () => {},
 });
 
 interface AuthProviderProps {
@@ -26,7 +31,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
   const isConfigured = isSupabaseConfigured();
+
+  // Function to check and update admin status
+  const refreshAdminStatus = async () => {
+    if (user) {
+      const adminStatus = await checkIsAdmin(user.id, user.email ?? undefined);
+      setIsAdmin(adminStatus);
+    } else {
+      setIsAdmin(false);
+    }
+  };
 
   useEffect(() => {
     if (!isConfigured) {
@@ -40,6 +56,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         const { data: { session } } = await supabase.auth.getSession();
         setSession(session);
         setUser(session?.user ?? null);
+
+        // Check admin status for the user
+        if (session?.user) {
+          const adminStatus = await checkIsAdmin(session.user.id, session.user.email ?? undefined);
+          setIsAdmin(adminStatus);
+        }
       } catch (error) {
         console.error('Error getting session:', error);
       } finally {
@@ -50,9 +72,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     initAuth();
 
     // Subscribe to auth changes
-    const unsubscribe = onAuthStateChange((newSession) => {
+    const unsubscribe = onAuthStateChange(async (newSession) => {
       setSession(newSession);
       setUser(newSession?.user ?? null);
+
+      // Check admin status when auth changes
+      if (newSession?.user) {
+        const adminStatus = await checkIsAdmin(newSession.user.id, newSession.user.email ?? undefined);
+        setIsAdmin(adminStatus);
+      } else {
+        setIsAdmin(false);
+      }
     });
 
     return () => {
@@ -66,6 +96,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     loading,
     isAuthenticated: !!user,
     isConfigured,
+    isAdmin,
+    refreshAdminStatus,
   };
 
   return (

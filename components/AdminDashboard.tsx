@@ -4,6 +4,8 @@ import {
   Users,
   Database,
   Shield,
+  ShieldCheck,
+  ShieldX,
   Activity,
   Trash2,
   Download,
@@ -24,6 +26,7 @@ import {
   respondToFeedback,
   updateFeedbackStatus
 } from '../services/feedbackService';
+import { getAllUsers, setUserAdminStatus, isSuperAdmin, type UserProfile } from '../services/adminService';
 import type { FeedbackItem, FeedbackStatus } from '../types';
 
 interface AdminDashboardProps {
@@ -36,10 +39,8 @@ interface Stats {
   totalFavorites: number;
 }
 
-const SUPER_ADMIN_EMAIL = 'rob@unicloud.co.nz';
-
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
-  const { user } = useAuth();
+  const { user, isAdmin, refreshAdminStatus } = useAuth();
   const [stats, setStats] = useState<Stats>({ totalUsers: 0, totalMealPlans: 0, totalFavorites: 0 });
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'overview' | 'feedback' | 'data' | 'users'>('overview');
@@ -55,7 +56,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
   const [responseStatus, setResponseStatus] = useState<FeedbackStatus>('reviewed');
   const [isResponding, setIsResponding] = useState(false);
 
-  const isAdmin = user?.email === SUPER_ADMIN_EMAIL;
+  // Users state
+  const [usersList, setUsersList] = useState<UserProfile[]>([]);
+  const [usersLoading, setUsersLoading] = useState(false);
+  const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
+
+  // Check if current user is super admin (can manage other admins)
+  const currentUserIsSuperAdmin = isSuperAdmin(user?.email ?? undefined);
 
   useEffect(() => {
     loadStats();
@@ -65,8 +72,51 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
   useEffect(() => {
     if (activeTab === 'feedback') {
       loadFeedback();
+    } else if (activeTab === 'users') {
+      loadUsers();
     }
   }, [activeTab]);
+
+  const loadUsers = async () => {
+    setUsersLoading(true);
+    try {
+      const users = await getAllUsers();
+      setUsersList(users);
+    } catch (err) {
+      console.error('Failed to load users:', err);
+      setMessage({ type: 'error', text: 'Failed to load users.' });
+    } finally {
+      setUsersLoading(false);
+    }
+  };
+
+  const handleToggleAdmin = async (userId: string, currentIsAdmin: boolean) => {
+    if (!currentUserIsSuperAdmin) {
+      setMessage({ type: 'error', text: 'Only the super admin can change admin status.' });
+      return;
+    }
+
+    setUpdatingUserId(userId);
+    try {
+      const success = await setUserAdminStatus(userId, !currentIsAdmin);
+      if (success) {
+        setUsersList(prev =>
+          prev.map(u => u.id === userId ? { ...u, is_admin: !currentIsAdmin } : u)
+        );
+        setMessage({ type: 'success', text: `Admin status ${!currentIsAdmin ? 'granted' : 'revoked'} successfully.` });
+        // Refresh the admin status in case the user changed their own status
+        if (userId === user?.id) {
+          await refreshAdminStatus();
+        }
+      } else {
+        setMessage({ type: 'error', text: 'Failed to update admin status.' });
+      }
+    } catch (err) {
+      setMessage({ type: 'error', text: 'Failed to update admin status.' });
+    } finally {
+      setUpdatingUserId(null);
+    }
+  };
 
   const loadFeedbackCount = async () => {
     try {
@@ -644,16 +694,133 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
 
       {/* Users Tab */}
       {activeTab === 'users' && (
-        <div className="bg-white rounded-xl border border-slate-200 p-6">
-          <h3 className="font-semibold text-slate-800 mb-4">User Management</h3>
-          <p className="text-slate-500 text-sm mb-6">
-            User management features coming soon. This will include the ability to view all users,
-            manage roles, and moderate content.
-          </p>
-          <div className="bg-slate-50 rounded-lg p-8 text-center">
-            <Users className="mx-auto text-slate-300 mb-4" size={48} />
-            <p className="text-slate-400">User list will appear here</p>
+        <div className="space-y-6">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-slate-800">User Management</h2>
+            <button
+              onClick={loadUsers}
+              className="text-sm text-emerald-600 hover:text-emerald-700 font-medium"
+            >
+              Refresh
+            </button>
           </div>
+
+          {!currentUserIsSuperAdmin && (
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
+              <AlertTriangle className="text-amber-600 flex-shrink-0 mt-0.5" size={20} />
+              <div>
+                <p className="text-amber-800 font-medium">Limited Access</p>
+                <p className="text-amber-700 text-sm">Only the super admin can grant or revoke admin privileges.</p>
+              </div>
+            </div>
+          )}
+
+          {usersLoading ? (
+            <div className="flex items-center justify-center py-16">
+              <Loader2 size={32} className="animate-spin text-emerald-600" />
+            </div>
+          ) : usersList.length === 0 ? (
+            <div className="bg-white rounded-xl border border-slate-200 p-8 text-center">
+              <Users className="mx-auto text-slate-300 mb-4" size={48} />
+              <p className="text-slate-500">No users found.</p>
+            </div>
+          ) : (
+            <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+              <table className="w-full">
+                <thead className="bg-slate-50 border-b border-slate-200">
+                  <tr>
+                    <th className="text-left px-4 py-3 text-sm font-medium text-slate-600">User</th>
+                    <th className="text-left px-4 py-3 text-sm font-medium text-slate-600">Email</th>
+                    <th className="text-left px-4 py-3 text-sm font-medium text-slate-600">Joined</th>
+                    <th className="text-center px-4 py-3 text-sm font-medium text-slate-600">Admin</th>
+                    {currentUserIsSuperAdmin && (
+                      <th className="text-center px-4 py-3 text-sm font-medium text-slate-600">Actions</th>
+                    )}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {usersList.map((userItem) => {
+                    const isUserSuperAdmin = isSuperAdmin(userItem.email);
+                    return (
+                      <tr key={userItem.id} className="hover:bg-slate-50">
+                        <td className="px-4 py-3">
+                          <div className="flex items-center gap-3">
+                            {userItem.avatar_url ? (
+                              <img
+                                src={userItem.avatar_url}
+                                alt=""
+                                className="w-8 h-8 rounded-full"
+                              />
+                            ) : (
+                              <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center">
+                                <Users size={16} className="text-slate-500" />
+                              </div>
+                            )}
+                            <span className="font-medium text-slate-800">
+                              {userItem.display_name || 'Unknown'}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-sm text-slate-600">
+                          {userItem.email}
+                          {isUserSuperAdmin && (
+                            <span className="ml-2 px-1.5 py-0.5 bg-purple-100 text-purple-700 text-xs font-medium rounded">
+                              Super Admin
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-sm text-slate-500">
+                          {new Date(userItem.created_at).toLocaleDateString('en-NZ', {
+                            day: 'numeric',
+                            month: 'short',
+                            year: 'numeric',
+                          })}
+                        </td>
+                        <td className="px-4 py-3 text-center">
+                          {userItem.is_admin || isUserSuperAdmin ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-1 bg-emerald-100 text-emerald-700 text-xs font-medium rounded-full">
+                              <ShieldCheck size={14} />
+                              Admin
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2 py-1 bg-slate-100 text-slate-500 text-xs font-medium rounded-full">
+                              <ShieldX size={14} />
+                              User
+                            </span>
+                          )}
+                        </td>
+                        {currentUserIsSuperAdmin && (
+                          <td className="px-4 py-3 text-center">
+                            {isUserSuperAdmin ? (
+                              <span className="text-xs text-slate-400">Protected</span>
+                            ) : (
+                              <button
+                                onClick={() => handleToggleAdmin(userItem.id, userItem.is_admin)}
+                                disabled={updatingUserId === userItem.id}
+                                className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+                                  userItem.is_admin
+                                    ? 'bg-red-100 text-red-700 hover:bg-red-200'
+                                    : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
+                                } disabled:opacity-50 disabled:cursor-not-allowed`}
+                              >
+                                {updatingUserId === userItem.id ? (
+                                  <Loader2 size={14} className="animate-spin" />
+                                ) : userItem.is_admin ? (
+                                  'Revoke Admin'
+                                ) : (
+                                  'Make Admin'
+                                )}
+                              </button>
+                            )}
+                          </td>
+                        )}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
     </div>
