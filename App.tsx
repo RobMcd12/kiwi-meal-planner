@@ -191,7 +191,6 @@ const AppContent: React.FC = () => {
       case AppStep.AUTH:
         return (
           <AuthScreen
-            onSkip={() => setStep(AppStep.WELCOME)}
             onBack={() => setStep(AppStep.LANDING)}
           />
         );

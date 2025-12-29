@@ -4,13 +4,12 @@ import { signInWithProvider, supabase, isSupabaseConfigured } from '../services/
 import type { AuthProvider } from '../types';
 
 interface AuthScreenProps {
-  onSkip?: () => void;
   onBack?: () => void;
 }
 
 type AuthMode = 'login' | 'register';
 
-const AuthScreen: React.FC<AuthScreenProps> = ({ onSkip, onBack }) => {
+const AuthScreen: React.FC<AuthScreenProps> = ({ onBack }) => {
   const [mode, setMode] = useState<AuthMode>('login');
   const [loading, setLoading] = useState<AuthProvider | 'email' | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -283,20 +282,6 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onSkip, onBack }) => {
             </button>
           </div>
 
-          {/* Skip */}
-          {onSkip && (
-            <div className="mt-6 pt-6 border-t border-slate-100 text-center">
-              <button
-                onClick={onSkip}
-                className="text-slate-500 text-sm hover:text-slate-700 transition-colors"
-              >
-                Continue without signing in
-              </button>
-              <p className="text-xs text-slate-400 mt-2">
-                Your data will only be saved locally on this device
-              </p>
-            </div>
-          )}
         </div>
 
         {/* Terms */}
