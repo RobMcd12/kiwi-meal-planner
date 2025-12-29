@@ -12,6 +12,7 @@ import LandingPage from './components/LandingPage';
 import AdminDashboard from './components/AdminDashboard';
 import MyFeedback from './components/MyFeedback';
 import SavedPlansView from './components/SavedPlansView';
+import SingleRecipeGenerator from './components/SingleRecipeGenerator';
 import FeedbackDialog from './components/FeedbackDialog';
 import ErrorBoundary from './components/ErrorBoundary';
 import InstallPrompt from './components/InstallPrompt';
@@ -231,6 +232,7 @@ const AppContent: React.FC = () => {
             onViewFavorites={() => setStep(AppStep.FAVORITES)}
             onOpenSettings={() => setStep(AppStep.SETTINGS)}
             onViewSavedPlans={() => setStep(AppStep.SAVED_PLANS)}
+            onGenerateSingleRecipe={() => setStep(AppStep.SINGLE_RECIPE)}
           />
         );
 
@@ -293,6 +295,7 @@ const AppContent: React.FC = () => {
             onGenerateList={handleGenerateFromFavorites}
             isLoading={loading}
             isAdmin={isAdmin}
+            onGenerateSingleRecipe={() => setStep(AppStep.SINGLE_RECIPE)}
           />
         );
 
@@ -315,6 +318,16 @@ const AppContent: React.FC = () => {
         return (
           <SavedPlansView
             onBack={() => setStep(AppStep.WELCOME)}
+          />
+        );
+
+      case AppStep.SINGLE_RECIPE:
+        return (
+          <SingleRecipeGenerator
+            onBack={() => setStep(AppStep.WELCOME)}
+            preferences={preferences}
+            pantryItems={pantryItems}
+            peopleCount={config.peopleCount}
           />
         );
 

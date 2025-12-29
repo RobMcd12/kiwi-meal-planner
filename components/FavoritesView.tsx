@@ -27,11 +27,12 @@ interface FavoritesViewProps {
   onGenerateList: (meals: Meal[]) => void;
   isLoading: boolean;
   isAdmin?: boolean;
+  onGenerateSingleRecipe?: () => void;
 }
 
 type ViewMode = 'cards' | 'list';
 
-const FavoritesView: React.FC<FavoritesViewProps> = ({ onBack, onGenerateList, isLoading, isAdmin = false }) => {
+const FavoritesView: React.FC<FavoritesViewProps> = ({ onBack, onGenerateList, isLoading, isAdmin = false, onGenerateSingleRecipe }) => {
   // Tab and view state
   const [activeTab, setActiveTab] = useState<CookbookTab>('generated');
   const [viewMode, setViewMode] = useState<ViewMode>('cards');
@@ -356,6 +357,18 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({ onBack, onGenerateList, i
 
           {/* Action Buttons in Header */}
           <div className="flex items-center gap-2">
+            {/* Generate Recipe Button */}
+            {onGenerateSingleRecipe && (
+              <button
+                onClick={onGenerateSingleRecipe}
+                className="flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+                title="Generate a Recipe"
+              >
+                <Sparkles size={18} />
+                <span className="hidden sm:inline">Generate</span>
+              </button>
+            )}
+
             {/* Upload Button */}
             <button
               onClick={() => setShowUploadModal(true)}

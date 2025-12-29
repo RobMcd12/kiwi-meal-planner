@@ -1,18 +1,20 @@
 import React from 'react';
-import { BookHeart, CalendarPlus, Settings, Sparkles, FolderHeart, ArrowRight } from 'lucide-react';
+import { BookHeart, CalendarPlus, Settings, Sparkles, FolderHeart, ArrowRight, ChefHat } from 'lucide-react';
 
 interface WelcomeScreenProps {
   onStartNew: () => void;
   onViewFavorites: () => void;
   onOpenSettings: () => void;
   onViewSavedPlans?: () => void;
+  onGenerateSingleRecipe?: () => void;
 }
 
 const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
   onStartNew,
   onViewFavorites,
   onOpenSettings,
-  onViewSavedPlans
+  onViewSavedPlans,
+  onGenerateSingleRecipe
 }) => {
   const foodImages = [
     'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=300&fit=crop',
@@ -70,55 +72,72 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
       </div>
 
       {/* Action Cards */}
-      <div className="grid md:grid-cols-3 gap-6 mb-8">
+      <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         {/* Create New Plan */}
         <button
           onClick={onStartNew}
-          className="group bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md hover:border-emerald-200 transition-all text-left"
+          className="group bg-white p-5 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md hover:border-emerald-200 transition-all text-left"
         >
-          <div className="bg-emerald-100 w-12 h-12 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-            <CalendarPlus className="text-emerald-600" size={24} />
+          <div className="bg-emerald-100 w-11 h-11 rounded-xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+            <CalendarPlus className="text-emerald-600" size={22} />
           </div>
-          <h3 className="text-lg font-bold text-slate-800 mb-2">Create New Plan</h3>
-          <p className="text-sm text-slate-500 mb-4">
-            Generate a personalized weekly meal plan based on your preferences.
+          <h3 className="text-base font-bold text-slate-800 mb-1">Create Meal Plan</h3>
+          <p className="text-sm text-slate-500 mb-3">
+            Generate a weekly meal plan with shopping list.
           </p>
           <span className="inline-flex items-center gap-1 text-sm font-medium text-emerald-600 group-hover:gap-2 transition-all">
-            Get started <ArrowRight size={16} />
+            Get started <ArrowRight size={14} />
+          </span>
+        </button>
+
+        {/* Generate Single Recipe */}
+        <button
+          onClick={onGenerateSingleRecipe}
+          className="group bg-white p-5 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md hover:border-amber-200 transition-all text-left"
+        >
+          <div className="bg-amber-100 w-11 h-11 rounded-xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+            <ChefHat className="text-amber-600" size={22} />
+          </div>
+          <h3 className="text-base font-bold text-slate-800 mb-1">Single Recipe</h3>
+          <p className="text-sm text-slate-500 mb-3">
+            Generate one recipe based on what you're craving.
+          </p>
+          <span className="inline-flex items-center gap-1 text-sm font-medium text-amber-600 group-hover:gap-2 transition-all">
+            Create recipe <ArrowRight size={14} />
           </span>
         </button>
 
         {/* My Cookbook */}
         <button
           onClick={onViewFavorites}
-          className="group bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md hover:border-rose-200 transition-all text-left"
+          className="group bg-white p-5 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md hover:border-rose-200 transition-all text-left"
         >
-          <div className="bg-rose-100 w-12 h-12 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-            <BookHeart className="text-rose-600" size={24} />
+          <div className="bg-rose-100 w-11 h-11 rounded-xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+            <BookHeart className="text-rose-600" size={22} />
           </div>
-          <h3 className="text-lg font-bold text-slate-800 mb-2">My Cookbook</h3>
-          <p className="text-sm text-slate-500 mb-4">
-            Browse saved recipes, upload your own, and discover new favorites.
+          <h3 className="text-base font-bold text-slate-800 mb-1">My Cookbook</h3>
+          <p className="text-sm text-slate-500 mb-3">
+            Browse saved recipes and discover favorites.
           </p>
           <span className="inline-flex items-center gap-1 text-sm font-medium text-rose-600 group-hover:gap-2 transition-all">
-            View recipes <ArrowRight size={16} />
+            View recipes <ArrowRight size={14} />
           </span>
         </button>
 
         {/* Saved Plans */}
         <button
           onClick={onViewSavedPlans || onViewFavorites}
-          className="group bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md hover:border-indigo-200 transition-all text-left"
+          className="group bg-white p-5 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md hover:border-indigo-200 transition-all text-left"
         >
-          <div className="bg-indigo-100 w-12 h-12 rounded-xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-            <FolderHeart className="text-indigo-600" size={24} />
+          <div className="bg-indigo-100 w-11 h-11 rounded-xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+            <FolderHeart className="text-indigo-600" size={22} />
           </div>
-          <h3 className="text-lg font-bold text-slate-800 mb-2">Saved Plans</h3>
-          <p className="text-sm text-slate-500 mb-4">
-            Access your saved meal plans with shopping lists ready to go.
+          <h3 className="text-base font-bold text-slate-800 mb-1">Saved Plans</h3>
+          <p className="text-sm text-slate-500 mb-3">
+            Access meal plans with shopping lists.
           </p>
           <span className="inline-flex items-center gap-1 text-sm font-medium text-indigo-600 group-hover:gap-2 transition-all">
-            View plans <ArrowRight size={16} />
+            View plans <ArrowRight size={14} />
           </span>
         </button>
       </div>

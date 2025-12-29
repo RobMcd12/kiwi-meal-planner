@@ -626,3 +626,94 @@ Extract and return:
     throw new Error("Failed to extract recipe from URL");
   }
 };
+
+// Schema for single recipe generation
+const singleRecipeSchema: Schema = {
+  type: Type.OBJECT,
+  properties: {
+    name: { type: Type.STRING, description: "Full name of the dish" },
+    description: { type: Type.STRING, description: "Appetizing description of the dish" },
+    ingredients: {
+      type: Type.ARRAY,
+      items: { type: Type.STRING },
+      description: "List of ingredients with quantities"
+    },
+    instructions: { type: Type.STRING, description: "Step-by-step cooking instructions" },
+    tags: {
+      type: Type.ARRAY,
+      items: { type: Type.STRING },
+      description: "Relevant tags for this recipe"
+    }
+  },
+  required: ["name", "description", "ingredients", "instructions"]
+};
+
+/**
+ * Generate a single recipe based on user description
+ * Uses pantry items and preferences like the meal planner
+ */
+export const generateSingleRecipe = async (
+  recipeDescription: string,
+  preferences: UserPreferences,
+  pantryItems: PantryItem[],
+  peopleCount: number = 2
+): Promise<Meal> => {
+  const apiKey = process.env.API_KEY;
+  if (!apiKey) throw new Error("API Key is missing.");
+
+  const ai = new GoogleGenAI({ apiKey });
+
+  const pantryListString = pantryItems.map((p) => p.name).join(", ");
+
+  const prompt = `Create a detailed recipe based on this request: "${recipeDescription}"
+
+For ${peopleCount} people.
+Dietary requirements: ${preferences.dietaryRestrictions || "None"}
+Likes: ${preferences.likes || "Any"}
+Dislikes: ${preferences.dislikes || "None"}
+Units: ${preferences.unitSystem}
+Temperature: ${preferences.temperatureScale}
+
+Available pantry items to use: ${pantryListString || "none specified"}
+
+Create a complete, delicious recipe with:
+- A descriptive name
+- An appetizing description
+- Full ingredients list with exact quantities for ${peopleCount} people
+- Clear step-by-step cooking instructions
+
+Also assign 3-5 relevant tags from: ${ALL_TAGS.join(", ")}`;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-2.0-flash",
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: singleRecipeSchema,
+      },
+    });
+
+    if (!response.text) {
+      throw new Error('Empty response from AI model');
+    }
+
+    const parsed = JSON.parse(response.text);
+
+    // Create a Meal object with unique ID
+    const meal: Meal = {
+      id: `single-${Date.now()}`,
+      name: parsed.name,
+      description: parsed.description,
+      ingredients: parsed.ingredients,
+      instructions: parsed.instructions,
+      tags: parsed.tags || [],
+      source: 'generated',
+    };
+
+    return meal;
+  } catch (error) {
+    console.error("Single recipe generation error:", error);
+    throw new Error("Failed to generate recipe");
+  }
+};
