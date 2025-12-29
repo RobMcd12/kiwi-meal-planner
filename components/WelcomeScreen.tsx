@@ -25,8 +25,8 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({ onStartNew, onViewFavorit
         Kiwi Meal Planner
       </h1>
       <p className="text-xl text-slate-500 text-center max-w-2xl mb-12">
-        Your smart assistant for weekly meal planning in New Zealand. 
-        Save money, reduce waste, and shop smarter at New World.
+        Your smart assistant for weekly meal planning in New Zealand.
+        Create shopping lists, save money, and reduce waste.
       </p>
 
       <div className="grid md:grid-cols-2 gap-6 w-full max-w-3xl">

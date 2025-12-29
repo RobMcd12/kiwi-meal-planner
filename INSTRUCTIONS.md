@@ -1,9 +1,10 @@
+# VywM4uSJie6EvvYS
 # Kiwi Meal Planner - Reconstruction Instructions
 
 This document outlines the steps to recreate the **Kiwi Meal Planner** application using VS Code and an AI assistant (like Claude).
 
 ## 1. Project Overview
-**Kiwi Meal Planner** is a React-based web application that uses the Google Gemini API to generate weekly meal plans and shopping lists tailored for New Zealand shoppers. It features local persistence (acting as a local database), pantry management, and export functionality to iOS Reminders and New World Online.
+**Kiwi Meal Planner** is a React-based web application that uses the Google Gemini API to generate weekly meal plans and shopping lists tailored for New Zealand shoppers. It features local persistence (acting as a local database), pantry management, and export functionality to iOS Reminders and online shopping.
 
 ## 2. Prerequisites
 *   **Node.js** (v18 or higher)

@@ -159,18 +159,17 @@ const PlanDisplay: React.FC<PlanDisplayProps> = ({ data, onReset }) => {
         setIsNewWorldLoading(false);
         navigator.clipboard.writeText(listText).then(() => {
             const proceed = window.confirm(
-                `${itemsToBuy.length} items ready for New World!\n\n` +
-                "We've copied your shopping list to the clipboard.\n\n" +
-                "1. Click OK to open New World Online.\n" +
-                "2. Paste the list into their search bar or list creator to quickly populate your cart."
+                `${itemsToBuy.length} items copied to clipboard!\n\n` +
+                "Your shopping list is ready.\n\n" +
+                "Click OK to open your preferred online store and paste the list to quickly add items to your cart."
             );
-            
+
             if (proceed) {
-                window.open("https://www.newworld.co.nz/shop", "_blank");
+                window.open("https://www.countdown.co.nz", "_blank");
             }
         }).catch(err => {
             console.error('Failed to copy', err);
-            window.open("https://www.newworld.co.nz/shop", "_blank");
+            window.open("https://www.countdown.co.nz", "_blank");
         });
     }, 1000);
   };
@@ -410,7 +409,7 @@ const PlanDisplay: React.FC<PlanDisplayProps> = ({ data, onReset }) => {
                 ) : (
                     <>
                         <ExternalLink size={18} />
-                        Fill New World Cart
+                        Shop Online
                     </>
                 )}
               </button>
