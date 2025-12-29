@@ -3,7 +3,7 @@ import {
   X, ChefHat, Calendar, ShoppingCart, Heart, Upload, Search,
   Tag, Globe, Lock, Settings, Image, Link, FileText, FileType,
   Sparkles, Bell, MessageSquare, User, ChevronRight, ChevronDown,
-  Star, ImagePlus, Edit2
+  Star, ImagePlus, Edit2, Camera, Apple, Utensils
 } from 'lucide-react';
 
 interface HelpModalProps {
@@ -100,6 +100,63 @@ const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
             </ul>
             <p className="mt-3">
               <strong>Tip:</strong> Be specific in your preferences! Instead of "healthy food", try "high protein, low carb meals with vegetables".
+            </p>
+          </HelpSection>
+
+          {/* Single Recipe Generator */}
+          <HelpSection title="Single Recipe Generator" icon={<Utensils size={20} />}>
+            <p>Generate individual recipes on demand without creating a full meal plan:</p>
+            <ol className="list-decimal list-inside space-y-2 ml-2 mt-2">
+              <li>From the <strong>Home screen</strong>, click "Generate a Recipe"</li>
+              <li>Or from <strong>My Cookbook</strong>, click "Generate" in the header</li>
+              <li><strong>Describe what you want</strong> - e.g., "A quick weeknight pasta dish"</li>
+              <li>Adjust servings and click <strong>Generate Recipe</strong></li>
+            </ol>
+            <p className="mt-3">
+              The AI uses your saved preferences and pantry items automatically. You can save the result to your cookbook, generate an image, or view nutrition info.
+            </p>
+          </HelpSection>
+
+          {/* AI Pantry Scanner */}
+          <HelpSection title="AI Pantry Scanner" icon={<Camera size={20} />}>
+            <p>Quickly add ingredients by photographing your fridge, freezer, or pantry:</p>
+            <ol className="list-decimal list-inside space-y-2 ml-2 mt-2">
+              <li>Go to <strong>Pantry Settings</strong></li>
+              <li>Click the purple <strong>"Scan Pantry with AI"</strong> button</li>
+              <li>Take photos or upload images of your pantry/fridge</li>
+              <li>Click <strong>Analyze Images</strong></li>
+              <li>Review detected items and select which to add</li>
+            </ol>
+            <p className="mt-3 text-slate-500">
+              <strong>Tips:</strong> Take clear, well-lit photos. Multiple images help detect more items. The AI recognizes both packaged products and fresh ingredients.
+            </p>
+          </HelpSection>
+
+          {/* Nutritional Information */}
+          <HelpSection title="Nutritional Information" icon={<Apple size={20} />}>
+            <p>View AI-calculated nutrition for any recipe:</p>
+            <div className="space-y-3 mt-2">
+              <div className="flex items-start gap-2">
+                <Sparkles size={16} className="text-emerald-600 mt-0.5" />
+                <div>
+                  <strong>Access</strong> - Click the green "Nutrition" button on any recipe
+                </div>
+              </div>
+              <div className="flex items-start gap-2">
+                <Apple size={16} className="text-green-600 mt-0.5" />
+                <div>
+                  <strong>Per Serving</strong> - Calories, protein, carbs, fat, fiber, and sugar
+                </div>
+              </div>
+              <div className="flex items-start gap-2">
+                <ChefHat size={16} className="text-slate-600 mt-0.5" />
+                <div>
+                  <strong>Health Notes</strong> - AI insights about the nutritional profile
+                </div>
+              </div>
+            </div>
+            <p className="mt-3 text-slate-500">
+              Nutrition is AI-estimated based on typical ingredient values. Use as a guide, not medical advice.
             </p>
           </HelpSection>
 
@@ -295,7 +352,7 @@ const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
 
           {/* Version Info */}
           <div className="text-center text-xs text-slate-400 pt-4 border-t border-slate-100">
-            <p>Kiwi Meal Planner v1.0.6</p>
+            <p>Kiwi Meal Planner v1.0.7</p>
             <p className="mt-1">Powered by Google Gemini AI</p>
           </div>
         </div>

@@ -717,3 +717,232 @@ Also assign 3-5 relevant tags from: ${ALL_TAGS.join(", ")}`;
     throw new Error("Failed to generate recipe");
   }
 };
+
+// ============================================
+// PANTRY SCANNING FROM IMAGES
+// ============================================
+
+// Schema for pantry item extraction from images
+const pantryItemsSchema: Schema = {
+  type: Type.OBJECT,
+  properties: {
+    items: {
+      type: Type.ARRAY,
+      items: { type: Type.STRING },
+      description: "List of identified food items and ingredients"
+    },
+    categories: {
+      type: Type.OBJECT,
+      properties: {
+        produce: { type: Type.ARRAY, items: { type: Type.STRING } },
+        dairy: { type: Type.ARRAY, items: { type: Type.STRING } },
+        meat: { type: Type.ARRAY, items: { type: Type.STRING } },
+        pantryStaples: { type: Type.ARRAY, items: { type: Type.STRING } },
+        frozen: { type: Type.ARRAY, items: { type: Type.STRING } },
+        beverages: { type: Type.ARRAY, items: { type: Type.STRING } },
+        condiments: { type: Type.ARRAY, items: { type: Type.STRING } },
+        other: { type: Type.ARRAY, items: { type: Type.STRING } }
+      }
+    }
+  },
+  required: ["items"]
+};
+
+export interface ScannedPantryResult {
+  items: string[];
+  categories?: {
+    produce?: string[];
+    dairy?: string[];
+    meat?: string[];
+    pantryStaples?: string[];
+    frozen?: string[];
+    beverages?: string[];
+    condiments?: string[];
+    other?: string[];
+  };
+}
+
+/**
+ * Analyze images of pantry/fridge/freezer to identify available ingredients
+ * Accepts multiple images for comprehensive scanning
+ */
+export const scanPantryFromImages = async (
+  images: { base64: string; mimeType: string }[]
+): Promise<ScannedPantryResult> => {
+  const apiKey = process.env.API_KEY;
+  if (!apiKey) throw new Error("API Key is missing.");
+
+  const ai = new GoogleGenAI({ apiKey });
+
+  // Build content array with all images
+  const contents: any[] = images.map(img => ({
+    inlineData: {
+      mimeType: img.mimeType,
+      data: img.base64,
+    },
+  }));
+
+  // Add the prompt at the end
+  contents.push({
+    text: `Analyze these images of a pantry, refrigerator, freezer, or kitchen counter with ingredients.
+
+Identify ALL visible food items, ingredients, and cooking supplies. Be thorough and specific.
+
+For each item:
+- Use common names (e.g., "eggs" not "chicken eggs")
+- Include quantities if clearly visible (e.g., "milk (1 gallon)")
+- Note if items appear fresh, frozen, or packaged
+
+Group items into categories:
+- Produce (fruits, vegetables)
+- Dairy (milk, cheese, yogurt, butter)
+- Meat & Seafood (fresh or frozen)
+- Pantry Staples (flour, sugar, rice, pasta, canned goods, spices)
+- Frozen items
+- Beverages
+- Condiments & Sauces
+- Other
+
+Return all identified items as a flat list in "items" and categorized in "categories".`
+  });
+
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-2.0-flash",
+      contents: contents,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: pantryItemsSchema,
+      },
+    });
+
+    if (!response.text) {
+      throw new Error('Empty response from AI model');
+    }
+
+    return JSON.parse(response.text) as ScannedPantryResult;
+  } catch (error) {
+    console.error("Pantry scanning error:", error);
+    throw new Error("Failed to analyze pantry images");
+  }
+};
+
+// ============================================
+// NUTRITIONAL INFORMATION
+// ============================================
+
+// Schema for nutritional information
+const nutritionSchema: Schema = {
+  type: Type.OBJECT,
+  properties: {
+    servingSize: { type: Type.STRING, description: "Serving size description" },
+    servingsPerRecipe: { type: Type.NUMBER, description: "Number of servings the recipe makes" },
+    calories: { type: Type.NUMBER, description: "Calories per serving" },
+    macros: {
+      type: Type.OBJECT,
+      properties: {
+        protein: { type: Type.NUMBER, description: "Protein in grams" },
+        carbohydrates: { type: Type.NUMBER, description: "Carbohydrates in grams" },
+        fat: { type: Type.NUMBER, description: "Total fat in grams" },
+        fiber: { type: Type.NUMBER, description: "Fiber in grams" },
+        sugar: { type: Type.NUMBER, description: "Sugar in grams" },
+        saturatedFat: { type: Type.NUMBER, description: "Saturated fat in grams" }
+      },
+      required: ["protein", "carbohydrates", "fat"]
+    },
+    micros: {
+      type: Type.OBJECT,
+      properties: {
+        sodium: { type: Type.NUMBER, description: "Sodium in mg" },
+        cholesterol: { type: Type.NUMBER, description: "Cholesterol in mg" },
+        potassium: { type: Type.NUMBER, description: "Potassium in mg" },
+        vitaminA: { type: Type.NUMBER, description: "Vitamin A as % daily value" },
+        vitaminC: { type: Type.NUMBER, description: "Vitamin C as % daily value" },
+        calcium: { type: Type.NUMBER, description: "Calcium as % daily value" },
+        iron: { type: Type.NUMBER, description: "Iron as % daily value" }
+      }
+    },
+    healthNotes: {
+      type: Type.ARRAY,
+      items: { type: Type.STRING },
+      description: "Brief health notes about the dish"
+    }
+  },
+  required: ["calories", "macros", "servingSize", "servingsPerRecipe"]
+};
+
+export interface NutritionInfo {
+  servingSize: string;
+  servingsPerRecipe: number;
+  calories: number;
+  macros: {
+    protein: number;
+    carbohydrates: number;
+    fat: number;
+    fiber?: number;
+    sugar?: number;
+    saturatedFat?: number;
+  };
+  micros?: {
+    sodium?: number;
+    cholesterol?: number;
+    potassium?: number;
+    vitaminA?: number;
+    vitaminC?: number;
+    calcium?: number;
+    iron?: number;
+  };
+  healthNotes?: string[];
+}
+
+/**
+ * Calculate nutritional information for a recipe
+ * Analyzes ingredients to estimate macros and other nutritional data
+ */
+export const calculateNutrition = async (
+  recipeName: string,
+  ingredients: string[],
+  servings: number = 1
+): Promise<NutritionInfo> => {
+  const apiKey = process.env.API_KEY;
+  if (!apiKey) throw new Error("API Key is missing.");
+
+  const ai = new GoogleGenAI({ apiKey });
+
+  const prompt = `Calculate the nutritional information for this recipe:
+
+Recipe: ${recipeName}
+Servings: ${servings}
+
+Ingredients:
+${ingredients.map(i => `- ${i}`).join('\n')}
+
+Provide accurate nutritional estimates PER SERVING based on the ingredients listed.
+Include:
+- Calories
+- Macronutrients (protein, carbs, fat, fiber, sugar, saturated fat)
+- Key micronutrients (sodium, cholesterol, potassium, vitamins A & C, calcium, iron)
+- 2-3 brief health notes about this dish
+
+Use standard nutritional databases as reference. Be as accurate as possible based on typical ingredient quantities.`;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-2.0-flash",
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: nutritionSchema,
+      },
+    });
+
+    if (!response.text) {
+      throw new Error('Empty response from AI model');
+    }
+
+    return JSON.parse(response.text) as NutritionInfo;
+  } catch (error) {
+    console.error("Nutrition calculation error:", error);
+    throw new Error("Failed to calculate nutritional information");
+  }
+};

@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Sparkles, ChefHat, Loader2, Heart, Printer, Users, Check } from 'lucide-react';
+import { ArrowLeft, Sparkles, ChefHat, Loader2, Heart, Printer, Users, Check, Apple } from 'lucide-react';
 import type { Meal, UserPreferences, PantryItem } from '../types';
 import { generateSingleRecipe, generateDishImage } from '../services/geminiService';
 import { saveFavoriteMeal } from '../services/storageService';
 import RecipePrintView from './RecipePrintView';
+import NutritionInfo from './NutritionInfo';
 
 interface SingleRecipeGeneratorProps {
   onBack: () => void;
@@ -27,6 +28,7 @@ const SingleRecipeGenerator: React.FC<SingleRecipeGeneratorProps> = ({
   const [isSaved, setIsSaved] = useState(false);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
   const [showPrintView, setShowPrintView] = useState(false);
+  const [showNutrition, setShowNutrition] = useState(false);
 
   const examplePrompts = [
     "A quick weeknight pasta dish",
@@ -343,6 +345,14 @@ const SingleRecipeGenerator: React.FC<SingleRecipeGeneratorProps> = ({
               </button>
 
               <button
+                onClick={() => setShowNutrition(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-green-500 hover:bg-green-600 text-white rounded-lg font-medium transition-colors"
+              >
+                <Apple size={18} />
+                Nutrition
+              </button>
+
+              <button
                 onClick={handleNewRecipe}
                 className="flex items-center gap-2 px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg font-medium transition-colors ml-auto"
               >
@@ -359,6 +369,15 @@ const SingleRecipeGenerator: React.FC<SingleRecipeGeneratorProps> = ({
         <RecipePrintView
           meal={generatedRecipe}
           onClose={() => setShowPrintView(false)}
+        />
+      )}
+
+      {/* Nutrition Info Modal */}
+      {showNutrition && generatedRecipe && (
+        <NutritionInfo
+          meal={generatedRecipe}
+          servings={servings}
+          onClose={() => setShowNutrition(false)}
         />
       )}
     </div>

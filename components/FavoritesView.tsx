@@ -15,11 +15,12 @@ import { useUpload } from '../contexts/UploadContext';
 import RecipeUploadModal from './RecipeUploadModal';
 import RecipeNotesSection from './RecipeNotesSection';
 import RecipePrintView from './RecipePrintView';
+import NutritionInfo from './NutritionInfo';
 import TagEditor from './TagEditor';
 import {
   Trash2, Heart, ShoppingCart, ArrowLeft, X, ChefHat, Clock,
   Image as ImageIcon, Loader2, Search, Grid, List, Plus, Upload,
-  Globe, Lock, Tag, User, Sparkles, FileText, Pencil, RefreshCw, Star, Printer
+  Globe, Lock, Tag, User, Sparkles, FileText, Pencil, RefreshCw, Star, Printer, Apple
 } from 'lucide-react';
 
 interface FavoritesViewProps {
@@ -55,6 +56,7 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({ onBack, onGenerateList, i
   const [showImageEditor, setShowImageEditor] = useState(false);
   const [imageEditPrompt, setImageEditPrompt] = useState('');
   const [showPrintView, setShowPrintView] = useState(false);
+  const [showNutrition, setShowNutrition] = useState(false);
 
   // Images
   const [mealImages, setMealImages] = useState<Record<string, string>>({});
@@ -949,6 +951,16 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({ onBack, onGenerateList, i
                     Print
                   </button>
 
+                  {/* Nutrition button */}
+                  <button
+                    onClick={() => setShowNutrition(true)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors bg-green-100 text-green-700 hover:bg-green-200"
+                    title="View nutritional information"
+                  >
+                    <Apple size={14} />
+                    Nutrition
+                  </button>
+
                   {/* Public toggle for uploaded recipes */}
                   {activeTab === 'uploaded' && openMeal.source === 'uploaded' && (
                     <button
@@ -1117,6 +1129,14 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({ onBack, onGenerateList, i
             imageUrl: mealImages[openMeal.name] || openMeal.imageUrl
           }}
           onClose={() => setShowPrintView(false)}
+        />
+      )}
+
+      {/* Nutrition Info Modal */}
+      {showNutrition && openMeal && (
+        <NutritionInfo
+          meal={openMeal}
+          onClose={() => setShowNutrition(false)}
         />
       )}
     </div>

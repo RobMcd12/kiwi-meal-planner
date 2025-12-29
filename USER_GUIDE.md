@@ -8,16 +8,19 @@
 
 1. [Getting Started](#getting-started)
 2. [Creating a Meal Plan](#creating-a-meal-plan)
-3. [My Cookbook](#my-cookbook)
-4. [Uploading Recipes](#uploading-recipes)
-5. [Recipe Images](#recipe-images)
-6. [Tags & Search](#tags--search)
-7. [Sharing Recipes](#sharing-recipes)
-8. [Notes & Comments](#notes--comments)
-9. [Shopping Lists](#shopping-lists)
-10. [Settings & Preferences](#settings--preferences)
-11. [Feedback & Support](#feedback--support)
-12. [Installing as an App](#installing-as-an-app)
+3. [Single Recipe Generator](#single-recipe-generator)
+4. [AI Pantry Scanner](#ai-pantry-scanner)
+5. [Nutritional Information](#nutritional-information)
+6. [My Cookbook](#my-cookbook)
+7. [Uploading Recipes](#uploading-recipes)
+8. [Recipe Images](#recipe-images)
+9. [Tags & Search](#tags--search)
+10. [Sharing Recipes](#sharing-recipes)
+11. [Notes & Comments](#notes--comments)
+12. [Shopping Lists](#shopping-lists)
+13. [Settings & Preferences](#settings--preferences)
+14. [Feedback & Support](#feedback--support)
+15. [Installing as an App](#installing-as-an-app)
 
 ---
 
@@ -80,6 +83,121 @@ Click "Generate Meal Plan" and the AI will create:
 After viewing a meal plan, rate each meal:
 - **4-5 stars** - Recipe is saved to your "AI Generated" cookbook
 - Lower ratings help the AI learn your preferences
+
+---
+
+## Single Recipe Generator
+
+Don't need a full meal plan? Generate individual recipes on demand.
+
+### How to Use
+
+1. From the **Home screen**, click "Generate a Recipe"
+2. Or from **My Cookbook**, click "Generate" in the header
+3. **Describe what you want** - e.g., "A quick weeknight pasta dish" or "Something healthy with chicken"
+4. **Adjust servings** using the +/- buttons
+5. Click **Generate Recipe**
+
+### What You Get
+
+- A complete recipe tailored to your description
+- Ingredients adjusted for your serving size
+- Step-by-step instructions
+- Option to generate an AI image
+- Nutrition information (click the Nutrition button)
+- Save to your cookbook for later
+
+### Tips for Better Results
+
+- Be specific: "A creamy Italian pasta with mushrooms" works better than "pasta"
+- Mention cooking style: "one-pot", "air fryer", "slow cooker"
+- Include dietary needs: "vegan", "low-carb", "high-protein"
+- The AI uses your saved preferences and pantry items automatically
+
+---
+
+## AI Pantry Scanner
+
+Quickly add ingredients to your pantry by taking photos of your fridge, freezer, or pantry shelves.
+
+### How to Use
+
+1. Go to **Pantry Settings** (during meal plan setup or in Settings)
+2. Click the purple **"Scan Pantry with AI"** button
+3. **Take photos or upload images** of your:
+   - Refrigerator shelves
+   - Freezer contents
+   - Pantry/cupboard shelves
+   - Grocery bags
+4. Add multiple images for thorough scanning
+5. Click **Analyze Images**
+
+### Review & Select
+
+After AI analysis:
+- Items are organized by category (Produce, Dairy, Meat, Frozen, etc.)
+- **Check or uncheck** items to include
+- Use **Select All** or **Clear All** for quick selection
+- Click **Add Selected Items** to add to your pantry
+
+### Tips
+
+- Take clear, well-lit photos
+- Capture labels when possible for better identification
+- Multiple angles help identify more items
+- The AI recognizes both packaged products and fresh ingredients
+
+### Why Use It?
+
+- **Faster setup** - No manual typing of each ingredient
+- **Better meal plans** - AI knows exactly what you have
+- **Reduced waste** - Plans use ingredients before they expire
+- **Smaller shopping lists** - Excludes items you already own
+
+---
+
+## Nutritional Information
+
+View detailed nutritional information for any recipe with AI-calculated macros.
+
+### Accessing Nutrition Info
+
+1. **From a generated recipe**: Click the green **"Nutrition"** button
+2. **From the cookbook**: Open any recipe and click **"Nutrition"**
+3. **From single recipe generator**: Click **"Nutrition"** after generating
+
+### What's Included
+
+#### Per Serving Breakdown
+
+| Nutrient | Information |
+|----------|-------------|
+| **Calories** | Total energy per serving |
+| **Protein** | Grams with visual bar |
+| **Carbohydrates** | Grams with visual bar |
+| **Fat** | Grams with visual bar |
+| **Fiber** | Grams (when available) |
+| **Sugar** | Grams (when available) |
+
+#### Additional Details
+
+- **Serving size** - How much one serving is
+- **Servings per recipe** - Total portions
+- **Micronutrients** - Sodium, cholesterol, vitamins (when applicable)
+- **Health notes** - AI insights about the nutritional profile
+
+### Understanding the Display
+
+- **Visual bars** show macro proportions relative to recommended daily values
+- **Color coding**: Protein (blue), Carbs (orange), Fat (purple)
+- Values are **per serving**, not for the entire recipe
+
+### Accuracy Notes
+
+- Nutrition is AI-estimated based on typical ingredient values
+- Actual values may vary based on specific brands and preparation
+- Use as a guide, not medical advice
+- For precise tracking, verify with actual product labels
 
 ---
 
@@ -402,7 +520,13 @@ Note: Generating new meal plans requires an internet connection.
 
 ## Version History
 
-### v1.0.6 (Current)
+### v1.0.7 (Current)
+- Single recipe generator - create individual recipes on demand
+- AI Pantry Scanner - photograph your fridge/pantry to add ingredients
+- Nutritional information - view macros and nutrition for any recipe
+- Multi-image pantry scanning with categorized results
+
+### v1.0.6
 - Automatic AI image generation for all recipes
 - AI-powered image editing with custom instructions
 - Image regeneration option

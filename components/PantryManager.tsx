@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { PantryItem } from '../types';
-import { Plus, Trash2, Archive } from 'lucide-react';
+import { Plus, Trash2, Archive, Camera, Sparkles } from 'lucide-react';
+import PantryScanner from './PantryScanner';
 
 interface PantryManagerProps {
   items: PantryItem[];
@@ -15,6 +16,7 @@ const COMMON_PANTRY_ITEMS = [
 
 const PantryManager: React.FC<PantryManagerProps> = ({ items, setItems, onNext, isSettingsMode = false }) => {
   const [newItem, setNewItem] = useState('');
+  const [showScanner, setShowScanner] = useState(false);
 
   const addItem = () => {
     if (newItem.trim()) {
@@ -39,6 +41,17 @@ const PantryManager: React.FC<PantryManagerProps> = ({ items, setItems, onNext, 
     }
   };
 
+  const handleScannedItems = (scannedItems: PantryItem[]) => {
+    // Filter out items that already exist in pantry
+    const newItems = scannedItems.filter(
+      scanned => !items.some(existing =>
+        existing.name.toLowerCase() === scanned.name.toLowerCase()
+      )
+    );
+    setItems([...items, ...newItems]);
+    setShowScanner(false);
+  };
+
   return (
     <div className={`max-w-2xl mx-auto p-6 bg-white rounded-xl ${!isSettingsMode ? 'shadow-lg border border-slate-100' : ''}`}>
       {!isSettingsMode && (
@@ -54,6 +67,16 @@ const PantryManager: React.FC<PantryManagerProps> = ({ items, setItems, onNext, 
       )}
 
       <div className="mb-6">
+        {/* Scan Pantry Button */}
+        <button
+          onClick={() => setShowScanner(true)}
+          className="w-full mb-4 py-3 bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white rounded-xl font-semibold flex items-center justify-center gap-2 transition-all shadow-md hover:shadow-lg"
+        >
+          <Camera size={20} />
+          <span>Scan Pantry with AI</span>
+          <Sparkles size={16} />
+        </button>
+
         <div className="flex gap-2">
           <input
             type="text"
@@ -123,6 +146,14 @@ const PantryManager: React.FC<PantryManagerProps> = ({ items, setItems, onNext, 
         >
           Continue to Preferences
         </button>
+      )}
+
+      {/* Pantry Scanner Modal */}
+      {showScanner && (
+        <PantryScanner
+          onItemsScanned={handleScannedItems}
+          onClose={() => setShowScanner(false)}
+        />
       )}
     </div>
   );
