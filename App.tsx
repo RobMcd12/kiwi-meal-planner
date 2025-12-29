@@ -30,7 +30,8 @@ import {
 } from './services/storageService';
 import { signOut } from './services/authService';
 import { getNewResponseCount } from './services/feedbackService';
-import { ChefHat, Settings, LogOut, User, Shield, MessageSquare, Bell } from 'lucide-react';
+import { ChefHat, Settings, LogOut, User, Shield, MessageSquare, Bell, HelpCircle } from 'lucide-react';
+import HelpModal from './components/HelpModal';
 
 // --- Default States ---
 const DEFAULT_CONFIG: MealConfig = {
@@ -72,6 +73,7 @@ const AppContent: React.FC = () => {
   // Feedback state
   const [showFeedbackDialog, setShowFeedbackDialog] = useState(false);
   const [feedbackResponseCount, setFeedbackResponseCount] = useState(0);
+  const [showHelpModal, setShowHelpModal] = useState(false);
 
   // Load data from storage on mount and when auth changes
   useEffect(() => {
@@ -360,6 +362,15 @@ const AppContent: React.FC = () => {
               </div>
             )}
 
+            {/* Help button */}
+            <button
+              onClick={() => setShowHelpModal(true)}
+              className="text-slate-400 hover:text-slate-700 transition-colors p-1"
+              title="Help & User Guide"
+            >
+              <HelpCircle size={20} />
+            </button>
+
             {/* Feedback button - shown for all authenticated users */}
             {isAuthenticated && (
               <button
@@ -460,6 +471,12 @@ const AppContent: React.FC = () => {
           name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
           email: user.email,
         } : undefined}
+      />
+
+      {/* Help Modal */}
+      <HelpModal
+        isOpen={showHelpModal}
+        onClose={() => setShowHelpModal(false)}
       />
     </div>
   );

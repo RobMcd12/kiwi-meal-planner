@@ -1,5 +1,5 @@
 import { supabase, isSupabaseConfigured } from './authService';
-import { Meal, RecipeTag, RecipeNote, ExtractedRecipe } from '../types';
+import { Meal, RecipeTag, RecipeNote, RecipeComment, ExtractedRecipe } from '../types';
 import { autoTagRecipe } from './geminiService';
 
 // ============================================
@@ -150,6 +150,7 @@ export const getRecipeNotes = async (mealId: string): Promise<RecipeNote[]> => {
 
 /**
  * Save or update a note for a recipe
+ * Now supports separate private and public notes per user
  */
 export const saveRecipeNote = async (
   mealId: string,
@@ -162,17 +163,45 @@ export const saveRecipeNote = async (
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
 
-    const { data, error } = await supabase
+    // Check if a note of this type already exists
+    const { data: existing } = await supabase
       .from('recipe_notes')
-      .upsert({
-        meal_id: mealId,
-        user_id: user.id,
-        note_text: noteText,
-        is_public: isPublic,
-        updated_at: new Date().toISOString()
-      }, { onConflict: 'meal_id,user_id' })
-      .select()
+      .select('id')
+      .eq('meal_id', mealId)
+      .eq('user_id', user.id)
+      .eq('is_public', isPublic)
       .single();
+
+    let data, error;
+
+    if (existing) {
+      // Update existing note
+      const result = await supabase
+        .from('recipe_notes')
+        .update({
+          note_text: noteText,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', existing.id)
+        .select()
+        .single();
+      data = result.data;
+      error = result.error;
+    } else {
+      // Insert new note
+      const result = await supabase
+        .from('recipe_notes')
+        .insert({
+          meal_id: mealId,
+          user_id: user.id,
+          note_text: noteText,
+          is_public: isPublic
+        })
+        .select()
+        .single();
+      data = result.data;
+      error = result.error;
+    }
 
     if (error) throw error;
 
@@ -569,5 +598,163 @@ export const autoTagAndSave = async (recipeId: string, recipe: { name: string; d
   } catch (err) {
     console.error('Error auto-tagging:', err);
     return [];
+  }
+};
+
+// ============================================
+// COMMENT FUNCTIONS
+// ============================================
+
+/**
+ * Get comments for a recipe
+ */
+export const getRecipeComments = async (mealId: string): Promise<RecipeComment[]> => {
+  if (!isSupabaseConfigured()) return [];
+
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+
+    const { data, error } = await supabase
+      .from('recipe_comments')
+      .select('*, profiles(display_name, avatar_url)')
+      .eq('meal_id', mealId)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    return (data || []).map((comment: any) => ({
+      id: comment.id,
+      mealId: comment.meal_id,
+      userId: comment.user_id,
+      commentText: comment.comment_text,
+      rating: comment.rating,
+      createdAt: comment.created_at,
+      updatedAt: comment.updated_at,
+      userName: comment.profiles?.display_name || 'Anonymous',
+      userAvatar: comment.profiles?.avatar_url,
+      isOwn: comment.user_id === user?.id
+    }));
+  } catch (err) {
+    console.error('Error fetching comments:', err);
+    return [];
+  }
+};
+
+/**
+ * Save a comment with optional rating
+ */
+export const saveRecipeComment = async (
+  mealId: string,
+  commentText: string,
+  rating: number | null = null
+): Promise<RecipeComment | null> => {
+  if (!isSupabaseConfigured()) return null;
+
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+
+    const { data, error } = await supabase
+      .from('recipe_comments')
+      .insert({
+        meal_id: mealId,
+        user_id: user.id,
+        comment_text: commentText,
+        rating: rating
+      })
+      .select('*, profiles(display_name, avatar_url)')
+      .single();
+
+    if (error) throw error;
+
+    return {
+      id: data.id,
+      mealId: data.meal_id,
+      userId: data.user_id,
+      commentText: data.comment_text,
+      rating: data.rating,
+      createdAt: data.created_at,
+      updatedAt: data.updated_at,
+      userName: data.profiles?.display_name || 'Anonymous',
+      userAvatar: data.profiles?.avatar_url,
+      isOwn: true
+    };
+  } catch (err) {
+    console.error('Error saving comment:', err);
+    return null;
+  }
+};
+
+/**
+ * Update a comment
+ */
+export const updateRecipeComment = async (
+  commentId: string,
+  commentText: string,
+  rating: number | null = null
+): Promise<boolean> => {
+  if (!isSupabaseConfigured()) return false;
+
+  try {
+    const { error } = await supabase
+      .from('recipe_comments')
+      .update({
+        comment_text: commentText,
+        rating: rating,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', commentId);
+
+    if (error) throw error;
+    return true;
+  } catch (err) {
+    console.error('Error updating comment:', err);
+    return false;
+  }
+};
+
+/**
+ * Delete a comment
+ */
+export const deleteRecipeComment = async (commentId: string): Promise<boolean> => {
+  if (!isSupabaseConfigured()) return false;
+
+  try {
+    const { error } = await supabase
+      .from('recipe_comments')
+      .delete()
+      .eq('id', commentId);
+
+    if (error) throw error;
+    return true;
+  } catch (err) {
+    console.error('Error deleting comment:', err);
+    return false;
+  }
+};
+
+/**
+ * Get average rating for a recipe
+ */
+export const getRecipeAverageRating = async (mealId: string): Promise<{ average: number; count: number }> => {
+  if (!isSupabaseConfigured()) return { average: 0, count: 0 };
+
+  try {
+    const { data, error } = await supabase
+      .from('recipe_comments')
+      .select('rating')
+      .eq('meal_id', mealId)
+      .not('rating', 'is', null);
+
+    if (error) throw error;
+
+    const ratings = data?.map(d => d.rating).filter(Boolean) || [];
+    const count = ratings.length;
+    const average = count > 0 ? ratings.reduce((a, b) => a + b, 0) / count : 0;
+
+    return { average: Math.round(average * 10) / 10, count };
+  } catch (err) {
+    console.error('Error getting average rating:', err);
+    return { average: 0, count: 0 };
   }
 };

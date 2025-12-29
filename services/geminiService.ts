@@ -275,6 +275,49 @@ export const generateDishImage = async (mealName: string, description: string): 
   }
 };
 
+/**
+ * Edit/regenerate a dish image with custom instructions
+ * Allows users to specify changes like "make it more colorful" or "show it plated on a white dish"
+ */
+export const editDishImage = async (
+  mealName: string,
+  description: string,
+  editInstructions: string
+): Promise<string | null> => {
+  const apiKey = process.env.API_KEY;
+  if (!apiKey) throw new Error("API Key is missing.");
+  const ai = new GoogleGenAI({ apiKey });
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash-image',
+      contents: {
+        parts: [{
+          text: `A high-end food magazine photo of: ${mealName}.
+Description: ${description}
+
+Special instructions for this image: ${editInstructions}
+
+Create an appetizing, professional food photograph following these instructions.`
+        }],
+      },
+      config: {
+        imageConfig: { aspectRatio: "16:9" }
+      }
+    });
+
+    for (const part of response.candidates?.[0]?.content?.parts || []) {
+      if (part.inlineData) {
+        return `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
+      }
+    }
+    return null;
+  } catch (e) {
+    console.error("Failed to edit image", e);
+    return null;
+  }
+};
+
 // ============================================
 // RECIPE EXTRACTION & TAGGING FUNCTIONS
 // ============================================

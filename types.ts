@@ -172,6 +172,19 @@ export interface RecipeNote {
   isOwn?: boolean; // Whether this note belongs to the current user
 }
 
+export interface RecipeComment {
+  id: string;
+  mealId: string;
+  userId: string;
+  commentText: string;
+  rating: number | null; // 1-5 stars
+  createdAt: string;
+  updatedAt?: string;
+  userName?: string;
+  userAvatar?: string;
+  isOwn?: boolean;
+}
+
 export interface ExtractedRecipe {
   name: string;
   description: string;

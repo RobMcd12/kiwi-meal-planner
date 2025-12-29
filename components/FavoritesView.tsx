@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Meal, CookbookTab } from '../types';
 import { getFavoriteMeals, removeFavoriteMeal, getCachedImage, cacheImage } from '../services/storageService';
-import { generateDishImage, TAG_CATEGORIES } from '../services/geminiService';
+import { generateDishImage, editDishImage, TAG_CATEGORIES } from '../services/geminiService';
 import {
   getUserUploadedRecipes,
   getUserGeneratedRecipes,
@@ -17,7 +17,7 @@ import TagEditor from './TagEditor';
 import {
   Trash2, Heart, ShoppingCart, ArrowLeft, X, ChefHat, Clock,
   Image as ImageIcon, Loader2, Search, Grid, List, Plus, Upload,
-  Globe, Lock, Tag, User, Sparkles, FileText
+  Globe, Lock, Tag, User, Sparkles, FileText, Pencil, RefreshCw
 } from 'lucide-react';
 
 interface FavoritesViewProps {
@@ -48,6 +48,8 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({ onBack, onGenerateList, i
   const [openMeal, setOpenMeal] = useState<Meal | null>(null);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [showTagEditor, setShowTagEditor] = useState(false);
+  const [showImageEditor, setShowImageEditor] = useState(false);
+  const [imageEditPrompt, setImageEditPrompt] = useState('');
 
   // Images
   const [mealImages, setMealImages] = useState<Record<string, string>>({});
@@ -83,36 +85,79 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({ onBack, onGenerateList, i
   const loadRecipes = async () => {
     setIsLoadingRecipes(true);
     try {
+      let loadedRecipes: Meal[] = [];
+
       if (activeTab === 'generated') {
         const recipes = await getUserGeneratedRecipes();
         // Fallback to local storage if no Supabase data
         if (recipes.length === 0) {
           const localFavorites = await getFavoriteMeals();
-          setGeneratedRecipes(localFavorites.filter(m => m.source !== 'uploaded'));
+          loadedRecipes = localFavorites.filter(m => m.source !== 'uploaded');
         } else {
-          setGeneratedRecipes(recipes);
+          loadedRecipes = recipes;
         }
+        setGeneratedRecipes(loadedRecipes);
       } else if (activeTab === 'uploaded') {
-        const recipes = await getUserUploadedRecipes();
-        setUploadedRecipes(recipes);
+        loadedRecipes = await getUserUploadedRecipes();
+        setUploadedRecipes(loadedRecipes);
       } else if (activeTab === 'public') {
-        const recipes = await getPublicRecipes();
-        setPublicRecipes(recipes);
+        loadedRecipes = await getPublicRecipes();
+        setPublicRecipes(loadedRecipes);
       }
 
-      // Load cached images
-      const recipes = activeTab === 'generated' ? generatedRecipes :
-                      activeTab === 'uploaded' ? uploadedRecipes : publicRecipes;
-      for (const meal of recipes) {
-        const cached = await getCachedImage(meal.name);
-        if (cached) {
-          setMealImages(prev => ({ ...prev, [meal.name]: cached }));
+      // Load cached images and auto-generate for recipes without images
+      const recipesNeedingImages: Meal[] = [];
+
+      for (const meal of loadedRecipes) {
+        // Check if recipe already has an image URL from DB
+        if (meal.imageUrl) {
+          setMealImages(prev => ({ ...prev, [meal.name]: meal.imageUrl! }));
+        } else {
+          // Try to load from local cache
+          const cached = await getCachedImage(meal.name);
+          if (cached) {
+            setMealImages(prev => ({ ...prev, [meal.name]: cached }));
+          } else {
+            // No image - queue for auto-generation
+            recipesNeedingImages.push(meal);
+          }
         }
+      }
+
+      // Auto-generate images for recipes without them (in background)
+      if (recipesNeedingImages.length > 0) {
+        autoGenerateImages(recipesNeedingImages);
       }
     } catch (err) {
       console.error('Error loading recipes:', err);
     } finally {
       setIsLoadingRecipes(false);
+    }
+  };
+
+  // Auto-generate images for recipes in background
+  const autoGenerateImages = async (recipes: Meal[]) => {
+    // Process up to 3 at a time to avoid rate limits
+    const batchSize = 3;
+    for (let i = 0; i < recipes.length; i += batchSize) {
+      const batch = recipes.slice(i, i + batchSize);
+      await Promise.all(batch.map(async (meal) => {
+        // Skip if already loading or already has image
+        if (loadingImages[meal.name] || mealImages[meal.name]) return;
+
+        setLoadingImages(prev => ({ ...prev, [meal.name]: true }));
+        try {
+          const imageData = await generateDishImage(meal.name, meal.description);
+          if (imageData) {
+            setMealImages(prev => ({ ...prev, [meal.name]: imageData }));
+            await cacheImage(meal.name, meal.description, imageData);
+          }
+        } catch (error) {
+          console.error(`Failed to auto-generate image for ${meal.name}:`, error);
+        } finally {
+          setLoadingImages(prev => ({ ...prev, [meal.name]: false }));
+        }
+      }));
     }
   };
 
@@ -159,11 +204,15 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({ onBack, onGenerateList, i
   const handleOpenMeal = (meal: Meal) => {
     setOpenMeal(meal);
     setShowTagEditor(false);
+    setShowImageEditor(false);
+    setImageEditPrompt('');
   };
 
   const handleCloseMeal = () => {
     setOpenMeal(null);
     setShowTagEditor(false);
+    setShowImageEditor(false);
+    setImageEditPrompt('');
   };
 
   const handleGenerateImage = async (meal: Meal) => {
@@ -178,6 +227,25 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({ onBack, onGenerateList, i
       }
     } catch (error) {
       console.error('Failed to generate image:', error);
+    } finally {
+      setLoadingImages(prev => ({ ...prev, [meal.name]: false }));
+    }
+  };
+
+  const handleEditImage = async (meal: Meal, instructions: string) => {
+    if (loadingImages[meal.name] || !instructions.trim()) return;
+
+    setLoadingImages(prev => ({ ...prev, [meal.name]: true }));
+    try {
+      const imageData = await editDishImage(meal.name, meal.description, instructions);
+      if (imageData) {
+        setMealImages(prev => ({ ...prev, [meal.name]: imageData }));
+        await cacheImage(meal.name, meal.description, imageData);
+        setShowImageEditor(false);
+        setImageEditPrompt('');
+      }
+    } catch (error) {
+      console.error('Failed to edit image:', error);
     } finally {
       setLoadingImages(prev => ({ ...prev, [meal.name]: false }));
     }
@@ -662,12 +730,42 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({ onBack, onGenerateList, i
             {/* Image Section */}
             <div className="relative">
               {(mealImages[openMeal.name] || openMeal.imageUrl) ? (
-                <div className="h-48 md:h-64 overflow-hidden rounded-t-2xl">
+                <div className="h-48 md:h-64 overflow-hidden rounded-t-2xl relative group">
                   <img
                     src={mealImages[openMeal.name] || openMeal.imageUrl}
                     alt={openMeal.name}
                     className="w-full h-full object-cover"
                   />
+                  {/* Loading overlay */}
+                  {loadingImages[openMeal.name] && (
+                    <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                      <div className="flex items-center gap-2 text-white">
+                        <Loader2 size={24} className="animate-spin" />
+                        <span>Generating...</span>
+                      </div>
+                    </div>
+                  )}
+                  {/* Image edit buttons - show on hover */}
+                  {!loadingImages[openMeal.name] && (
+                    <div className="absolute bottom-3 right-3 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={() => setShowImageEditor(!showImageEditor)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-white/90 hover:bg-white rounded-lg shadow-md text-slate-700 text-sm font-medium transition-colors"
+                        title="Edit image with AI"
+                      >
+                        <Pencil size={14} />
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleGenerateImage(openMeal)}
+                        className="flex items-center gap-1.5 px-3 py-1.5 bg-white/90 hover:bg-white rounded-lg shadow-md text-slate-700 text-sm font-medium transition-colors"
+                        title="Regenerate image"
+                      >
+                        <RefreshCw size={14} />
+                        Regenerate
+                      </button>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div className="h-48 md:h-64 bg-gradient-to-br from-emerald-100 to-orange-100 rounded-t-2xl flex items-center justify-center">
@@ -688,6 +786,45 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({ onBack, onGenerateList, i
                       </>
                     )}
                   </button>
+                </div>
+              )}
+
+              {/* Image Edit Panel */}
+              {showImageEditor && (mealImages[openMeal.name] || openMeal.imageUrl) && (
+                <div className="absolute bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm p-4 border-t border-slate-200">
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Describe how you want to change the image:
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={imageEditPrompt}
+                      onChange={(e) => setImageEditPrompt(e.target.value)}
+                      placeholder="e.g., Make it more colorful, add garnish, show on a white plate..."
+                      className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && imageEditPrompt.trim()) {
+                          handleEditImage(openMeal, imageEditPrompt);
+                        }
+                      }}
+                    />
+                    <button
+                      onClick={() => handleEditImage(openMeal, imageEditPrompt)}
+                      disabled={!imageEditPrompt.trim() || loadingImages[openMeal.name]}
+                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                    >
+                      Apply
+                    </button>
+                    <button
+                      onClick={() => { setShowImageEditor(false); setImageEditPrompt(''); }}
+                      className="px-3 py-2 text-slate-500 hover:text-slate-700 transition-colors"
+                    >
+                      <X size={18} />
+                    </button>
+                  </div>
+                  <p className="text-xs text-slate-400 mt-2">
+                    Tip: Be specific about colors, plating, lighting, or presentation style.
+                  </p>
                 </div>
               )}
 
