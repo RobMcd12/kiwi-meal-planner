@@ -1,24 +1,34 @@
-import { createClient, User, Session } from '@supabase/supabase-js';
+import { createClient, SupabaseClient, User, Session } from '@supabase/supabase-js';
 import type { AuthProvider } from '../types';
 
 // Initialize Supabase client
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL as string;
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY as string;
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  console.warn('Supabase credentials not configured. Auth features will be disabled.');
+// Check if we have valid Supabase configuration
+const hasValidConfig = Boolean(
+  supabaseUrl &&
+  supabaseAnonKey &&
+  supabaseUrl.startsWith('https://') &&
+  supabaseUrl.includes('.supabase.co')
+);
+
+if (!hasValidConfig) {
+  console.warn('Supabase credentials not configured. Auth features will be disabled. Running in local-only mode.');
 }
 
-export const supabase = createClient(
-  supabaseUrl || 'https://placeholder.supabase.co',
-  supabaseAnonKey || 'placeholder-key'
-);
+// Only create real client if we have valid config, otherwise create a dummy
+export const supabase: SupabaseClient = hasValidConfig
+  ? createClient(supabaseUrl, supabaseAnonKey)
+  : createClient('https://placeholder.supabase.co', 'placeholder-key', {
+      auth: { persistSession: false, autoRefreshToken: false }
+    });
 
 /**
  * Check if Supabase is properly configured
  */
 export const isSupabaseConfigured = (): boolean => {
-  return Boolean(supabaseUrl && supabaseAnonKey);
+  return hasValidConfig;
 };
 
 /**
