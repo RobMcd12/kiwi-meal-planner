@@ -362,10 +362,11 @@ const AppContent: React.FC = () => {
             {isAuthenticated && (
               <button
                 onClick={() => setShowFeedbackDialog(true)}
-                className="text-slate-400 hover:text-slate-700 transition-colors p-1"
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors"
                 title="Send Feedback"
               >
-                <MessageSquare size={20} />
+                <MessageSquare size={16} />
+                Feedback
               </button>
             )}
 
