@@ -1,6 +1,8 @@
 import { supabase, isSupabaseConfigured } from './authService';
 import type { Meal, MealPlanResponse, MealConfig, UserPreferences, PantryItem } from '../types';
 import { CONSTANTS } from '../types';
+import { autoTagRecipe } from './geminiService';
+import { assignTagsToRecipe, getRecipeTags } from './recipeService';
 
 // ============================================
 // LOCAL STORAGE KEYS (for fallback/migration)
@@ -122,7 +124,7 @@ export const savePantry = async (items: PantryItem[]): Promise<void> => {
 // FAVORITES - Supabase with LocalStorage fallback
 // ============================================
 
-export const saveFavoriteMeal = async (meal: Meal): Promise<boolean> => {
+export const saveFavoriteMeal = async (meal: Meal, autoTag: boolean = true): Promise<boolean> => {
   if (!isSupabaseConfigured()) {
     return saveFavoriteMealLocal(meal);
   }
@@ -130,7 +132,7 @@ export const saveFavoriteMeal = async (meal: Meal): Promise<boolean> => {
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return saveFavoriteMealLocal(meal);
 
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from('favorite_meals')
     .insert({
       user_id: user.id,
@@ -139,12 +141,36 @@ export const saveFavoriteMeal = async (meal: Meal): Promise<boolean> => {
       ingredients: meal.ingredients,
       instructions: meal.instructions,
       image_url: meal.imageUrl,
-    });
+      source: meal.source || 'generated',
+      is_public: meal.isPublic || false,
+      upload_status: 'complete',
+    })
+    .select('id')
+    .single();
 
   if (error) {
     console.error('Error saving favorite:', error);
     return false;
   }
+
+  // Auto-tag the recipe if requested and we have a valid ID
+  if (autoTag && data?.id) {
+    try {
+      const tagResult = await autoTagRecipe({
+        name: meal.name,
+        description: meal.description,
+        ingredients: meal.ingredients,
+      });
+
+      if (tagResult.tags.length > 0) {
+        await assignTagsToRecipe(data.id, tagResult.tags);
+      }
+    } catch (tagError) {
+      console.error('Error auto-tagging recipe:', tagError);
+      // Don't fail the save if tagging fails
+    }
+  }
+
   return true;
 };
 
@@ -167,15 +193,30 @@ export const getFavoriteMeals = async (): Promise<Meal[]> => {
     return getFavoriteMealsLocal();
   }
 
-  return (data || []).map(row => ({
-    id: row.id,
-    name: row.name,
-    description: row.description,
-    ingredients: row.ingredients,
-    instructions: row.instructions,
-    isFavorite: true,
-    imageUrl: row.image_url,
-  }));
+  // Fetch tags for each recipe
+  const mealsWithTags = await Promise.all(
+    (data || []).map(async (row) => {
+      const tags = await getRecipeTags(row.id);
+      return {
+        id: row.id,
+        name: row.name,
+        description: row.description,
+        ingredients: row.ingredients,
+        instructions: row.instructions,
+        isFavorite: true,
+        imageUrl: row.image_url,
+        source: row.source as 'generated' | 'uploaded' | undefined,
+        isPublic: row.is_public,
+        uploadStatus: row.upload_status,
+        userId: row.user_id,
+        ownerName: row.owner_name,
+        createdAt: row.created_at,
+        tags,
+      };
+    })
+  );
+
+  return mealsWithTags;
 };
 
 export const removeFavoriteMeal = async (id: string): Promise<void> => {

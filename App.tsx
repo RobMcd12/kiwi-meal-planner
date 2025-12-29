@@ -15,6 +15,7 @@ import FeedbackDialog from './components/FeedbackDialog';
 import ErrorBoundary from './components/ErrorBoundary';
 import InstallPrompt from './components/InstallPrompt';
 import { AuthProvider, useAuth } from './components/AuthProvider';
+import { UploadProvider } from './contexts/UploadContext';
 import { ToastContainer } from './components/Toast';
 import { useToast } from './hooks/useToast';
 import { generateMealPlan, generateShoppingListFromFavorites } from './services/geminiService';
@@ -287,6 +288,7 @@ const AppContent: React.FC = () => {
             onBack={() => setStep(AppStep.WELCOME)}
             onGenerateList={handleGenerateFromFavorites}
             isLoading={loading}
+            isAdmin={isAdmin}
           />
         );
 
@@ -467,7 +469,9 @@ const App: React.FC = () => {
   return (
     <ErrorBoundary>
       <AuthProvider>
-        <AppContent />
+        <UploadProvider>
+          <AppContent />
+        </UploadProvider>
       </AuthProvider>
     </ErrorBoundary>
   );

@@ -51,6 +51,14 @@ export interface Meal {
   isFavorite?: boolean;
   rating?: 'like' | 'dislike' | null;
   imageUrl?: string;
+  // Cookbook enhancement fields
+  source?: 'generated' | 'uploaded';
+  isPublic?: boolean;
+  uploadStatus?: 'pending' | 'processing' | 'complete' | 'failed';
+  tags?: string[];
+  userId?: string;
+  ownerName?: string;
+  createdAt?: string;
 }
 
 export interface DayPlan {
@@ -141,3 +149,45 @@ export interface FeedbackItem {
   created_at: string;
   updated_at: string;
 }
+
+// ============================================
+// RECIPE/COOKBOOK TYPES
+// ============================================
+
+export interface RecipeTag {
+  id: string;
+  name: string;
+  category: 'cuisine' | 'dietary' | 'meal_type' | 'other';
+}
+
+export interface RecipeNote {
+  id: string;
+  mealId: string;
+  userId: string;
+  noteText: string;
+  isPublic: boolean;
+  createdAt: string;
+  updatedAt?: string;
+  userName?: string; // For displaying public notes
+  isOwn?: boolean; // Whether this note belongs to the current user
+}
+
+export interface ExtractedRecipe {
+  name: string;
+  description: string;
+  ingredients: string[];
+  instructions: string;
+  suggestedTags?: string[];
+}
+
+export interface UploadTask {
+  id: string;
+  fileName: string;
+  status: 'pending' | 'processing' | 'complete' | 'failed';
+  result?: Meal;
+  error?: string;
+  progress?: number;
+}
+
+export type RecipeSource = 'generated' | 'uploaded';
+export type CookbookTab = 'generated' | 'uploaded' | 'public';
