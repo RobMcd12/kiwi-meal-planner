@@ -164,7 +164,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onBack }) => {
                   Full Name
                 </label>
                 <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={18} aria-hidden="true" />
                   <input
                     type="text"
                     value={name}
@@ -182,7 +182,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onBack }) => {
                 Email
               </label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={18} aria-hidden="true" />
                 <input
                   type="email"
                   value={email}
@@ -199,7 +199,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onBack }) => {
                 Password
               </label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={18} aria-hidden="true" />
                 <input
                   type={showPassword ? 'text' : 'password'}
                   value={password}
@@ -212,9 +212,11 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onBack }) => {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
+                  tabIndex={-1}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  aria-label={showPassword ? 'Hide password' : 'Show password'}
                 >
-                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  {showPassword ? <EyeOff size={18} aria-hidden="true" /> : <Eye size={18} aria-hidden="true" />}
                 </button>
               </div>
             </div>
@@ -225,7 +227,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onBack }) => {
                   Confirm Password
                 </label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" size={18} aria-hidden="true" />
                   <input
                     type="password"
                     value={confirmPassword}
