@@ -245,57 +245,95 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({ onBack, onGenerateList, i
   };
 
   return (
-    <div className="max-w-5xl mx-auto px-4 pb-20 animate-fadeIn">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-4">
-          <button
-            onClick={onBack}
-            className="p-2 hover:bg-slate-100 rounded-full transition-colors"
-          >
-            <ArrowLeft size={24} className="text-slate-600" />
-          </button>
-          <h2 className="text-2xl font-bold text-slate-800">My Cookbook</h2>
+    <div className="max-w-5xl mx-auto animate-fadeIn">
+      {/* Sticky Header */}
+      <div className="sticky top-0 z-10 bg-gradient-to-br from-emerald-50 via-white to-orange-50 pb-4 -mx-4 px-4 pt-4">
+        {/* Title Row with Actions */}
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-4">
+            <button
+              onClick={onBack}
+              className="p-2 hover:bg-slate-100 rounded-full transition-colors"
+            >
+              <ArrowLeft size={24} className="text-slate-600" />
+            </button>
+            <h2 className="text-2xl font-bold text-slate-800">My Cookbook</h2>
+          </div>
+
+          {/* Action Buttons in Header */}
+          <div className="flex items-center gap-2">
+            {/* Upload Button */}
+            <button
+              onClick={() => setShowUploadModal(true)}
+              className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+              title="Upload Recipe"
+            >
+              <Plus size={18} />
+              <span className="hidden sm:inline">Upload</span>
+            </button>
+
+            {/* Generate Shopping List Button */}
+            {selectedMeals.length > 0 && (
+              <button
+                onClick={handleGenerate}
+                disabled={isLoading}
+                className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 size={18} className="animate-spin" />
+                    <span className="hidden sm:inline">Generating...</span>
+                  </>
+                ) : (
+                  <>
+                    <ShoppingCart size={18} />
+                    <span className="hidden sm:inline">Create List</span>
+                    <span className="bg-white/20 px-1.5 py-0.5 rounded text-sm">{selectedMeals.length}</span>
+                  </>
+                )}
+              </button>
+            )}
+
+            {/* View Toggle */}
+            <div className="flex items-center bg-slate-100 rounded-lg p-1">
+              <button
+                onClick={() => setViewMode('cards')}
+                className={`p-2 rounded-md transition-colors ${
+                  viewMode === 'cards' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500 hover:text-slate-700'
+                }`}
+                title="Card view"
+              >
+                <Grid size={18} />
+              </button>
+              <button
+                onClick={() => setViewMode('list')}
+                className={`p-2 rounded-md transition-colors ${
+                  viewMode === 'list' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500 hover:text-slate-700'
+                }`}
+                title="List view"
+              >
+                <List size={18} />
+              </button>
+            </div>
+          </div>
         </div>
 
-        {/* View Toggle */}
-        <div className="flex items-center gap-2 bg-slate-100 rounded-lg p-1">
-          <button
-            onClick={() => setViewMode('cards')}
-            className={`p-2 rounded-md transition-colors ${
-              viewMode === 'cards' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500 hover:text-slate-700'
-            }`}
-            title="Card view"
-          >
-            <Grid size={18} />
-          </button>
-          <button
-            onClick={() => setViewMode('list')}
-            className={`p-2 rounded-md transition-colors ${
-              viewMode === 'list' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500 hover:text-slate-700'
-            }`}
-            title="List view"
-          >
-            <List size={18} />
-          </button>
+        {/* Search Bar */}
+        <div className="relative">
+          <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+          <input
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search recipes..."
+            className="w-full pl-11 pr-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none bg-white"
+          />
+          {searchQuery && searchQuery.length < 3 && (
+            <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-slate-400">
+              Type {3 - searchQuery.length} more...
+            </span>
+          )}
         </div>
-      </div>
-
-      {/* Search Bar */}
-      <div className="relative mb-4">
-        <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-        <input
-          type="text"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          placeholder="Search recipes..."
-          className="w-full pl-11 pr-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
-        />
-        {searchQuery && searchQuery.length < 3 && (
-          <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-slate-400">
-            Type {3 - searchQuery.length} more...
-          </span>
-        )}
       </div>
 
       {/* Tabs */}
@@ -427,7 +465,7 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({ onBack, onGenerateList, i
         </div>
       ) : viewMode === 'cards' ? (
         /* Cards View */
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 mb-24">
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 pb-4">
           {currentRecipes.map((meal) => {
             const hasImage = !!mealImages[meal.name] || !!meal.imageUrl;
             const imageUrl = mealImages[meal.name] || meal.imageUrl;
@@ -519,7 +557,7 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({ onBack, onGenerateList, i
         </div>
       ) : (
         /* List View */
-        <div className="space-y-2 mb-24">
+        <div className="space-y-2 pb-4">
           {currentRecipes.map((meal) => {
             const hasImage = !!mealImages[meal.name] || !!meal.imageUrl;
             const imageUrl = mealImages[meal.name] || meal.imageUrl;
@@ -820,39 +858,6 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({ onBack, onGenerateList, i
           loadRecipes();
         }}
       />
-
-      {/* Floating Action Buttons */}
-      <div className="fixed bottom-6 left-0 right-0 flex justify-center gap-4 px-4 z-20">
-        {/* Upload Button */}
-        <button
-          onClick={() => setShowUploadModal(true)}
-          className="bg-purple-600 hover:bg-purple-700 text-white p-4 rounded-full shadow-xl transition-transform active:scale-95"
-          title="Upload Recipe"
-        >
-          <Plus size={24} />
-        </button>
-
-        {/* Generate Shopping List Button */}
-        {(generatedRecipes.length > 0 || uploadedRecipes.length > 0) && (
-          <button
-            onClick={handleGenerate}
-            disabled={selectedMeals.length === 0 || isLoading}
-            className="bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white px-6 py-4 rounded-full shadow-xl font-bold flex items-center gap-3 transition-transform active:scale-95"
-          >
-            {isLoading ? (
-              <>
-                <Loader2 size={20} className="animate-spin" />
-                Generating...
-              </>
-            ) : (
-              <>
-                <ShoppingCart size={20} />
-                Create List ({selectedMeals.length})
-              </>
-            )}
-          </button>
-        )}
-      </div>
     </div>
   );
 };

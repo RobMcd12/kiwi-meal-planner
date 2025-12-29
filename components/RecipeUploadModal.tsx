@@ -1,5 +1,5 @@
 import React, { useState, useRef, useCallback } from 'react';
-import { X, Upload, FileText, Image as ImageIcon, FileType, Loader2, CheckCircle, AlertCircle } from 'lucide-react';
+import { X, Upload, FileText, Image as ImageIcon, FileType, Loader2, CheckCircle, AlertCircle, Link } from 'lucide-react';
 import { useUpload } from '../contexts/UploadContext';
 import TagEditor from './TagEditor';
 
@@ -9,7 +9,7 @@ interface RecipeUploadModalProps {
   onUploadComplete?: () => void;
 }
 
-type UploadMode = 'image' | 'text' | 'pdf';
+type UploadMode = 'image' | 'text' | 'pdf' | 'url';
 
 const RecipeUploadModal: React.FC<RecipeUploadModalProps> = ({
   isOpen,
@@ -19,10 +19,12 @@ const RecipeUploadModal: React.FC<RecipeUploadModalProps> = ({
   const { startUpload, uploads } = useUpload();
   const [mode, setMode] = useState<UploadMode>('image');
   const [textContent, setTextContent] = useState('');
+  const [urlContent, setUrlContent] = useState('');
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadStarted, setUploadStarted] = useState(false);
+  const [urlError, setUrlError] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Get recent uploads to show status
@@ -63,27 +65,50 @@ const RecipeUploadModal: React.FC<RecipeUploadModalProps> = ({
     setIsDragging(false);
   }, []);
 
+  const validateUrl = (url: string): boolean => {
+    try {
+      const parsed = new URL(url);
+      return parsed.protocol === 'http:' || parsed.protocol === 'https:';
+    } catch {
+      return false;
+    }
+  };
+
   const handleUpload = async () => {
     setIsUploading(true);
     setUploadStarted(true);
+    setUrlError('');
 
     try {
-      if (mode === 'text') {
+      if (mode === 'url') {
+        if (!urlContent.trim()) {
+          setUrlError('Please enter a URL.');
+          setIsUploading(false);
+          return;
+        }
+        if (!validateUrl(urlContent.trim())) {
+          setUrlError('Please enter a valid URL (starting with http:// or https://).');
+          setIsUploading(false);
+          return;
+        }
+        await startUpload(urlContent.trim(), 'url');
+        setUrlContent('');
+      } else if (mode === 'text') {
         if (!textContent.trim()) {
           alert('Please enter some recipe text.');
+          setIsUploading(false);
           return;
         }
         await startUpload(textContent, 'text');
+        setTextContent('');
       } else if (selectedFile) {
         await startUpload(selectedFile, mode);
+        setSelectedFile(null);
       } else {
         alert('Please select a file.');
+        setIsUploading(false);
         return;
       }
-
-      // Reset form but keep modal open to show status
-      setTextContent('');
-      setSelectedFile(null);
 
       // Notify parent after short delay
       setTimeout(() => {
@@ -99,8 +124,10 @@ const RecipeUploadModal: React.FC<RecipeUploadModalProps> = ({
 
   const handleClose = () => {
     setTextContent('');
+    setUrlContent('');
     setSelectedFile(null);
     setUploadStarted(false);
+    setUrlError('');
     onClose();
   };
 
@@ -120,7 +147,7 @@ const RecipeUploadModal: React.FC<RecipeUploadModalProps> = ({
           <div>
             <h2 className="text-xl font-bold text-slate-800">Upload Recipe</h2>
             <p className="text-sm text-slate-500 mt-1">
-              Add a recipe from an image, PDF, or text
+              Add a recipe from a URL, image, PDF, or text
             </p>
           </div>
           <button
@@ -133,10 +160,19 @@ const RecipeUploadModal: React.FC<RecipeUploadModalProps> = ({
 
         {/* Mode Selector */}
         <div className="px-6 pt-4">
-          <div className="flex gap-2 p-1 bg-slate-100 rounded-xl">
+          <div className="flex gap-1 p-1 bg-slate-100 rounded-xl">
             <button
-              onClick={() => { setMode('image'); setSelectedFile(null); }}
-              className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium text-sm transition-colors ${
+              onClick={() => { setMode('url'); setSelectedFile(null); setUrlError(''); }}
+              className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg font-medium text-sm transition-colors ${
+                mode === 'url' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              <Link size={16} />
+              URL
+            </button>
+            <button
+              onClick={() => { setMode('image'); setSelectedFile(null); setUrlError(''); }}
+              className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg font-medium text-sm transition-colors ${
                 mode === 'image' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
               }`}
             >
@@ -144,8 +180,8 @@ const RecipeUploadModal: React.FC<RecipeUploadModalProps> = ({
               Image
             </button>
             <button
-              onClick={() => { setMode('pdf'); setSelectedFile(null); }}
-              className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium text-sm transition-colors ${
+              onClick={() => { setMode('pdf'); setSelectedFile(null); setUrlError(''); }}
+              className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg font-medium text-sm transition-colors ${
                 mode === 'pdf' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
               }`}
             >
@@ -153,8 +189,8 @@ const RecipeUploadModal: React.FC<RecipeUploadModalProps> = ({
               PDF
             </button>
             <button
-              onClick={() => { setMode('text'); setSelectedFile(null); }}
-              className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium text-sm transition-colors ${
+              onClick={() => { setMode('text'); setSelectedFile(null); setUrlError(''); }}
+              className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg font-medium text-sm transition-colors ${
                 mode === 'text' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
               }`}
             >
@@ -166,6 +202,38 @@ const RecipeUploadModal: React.FC<RecipeUploadModalProps> = ({
 
         {/* Content */}
         <div className="p-6 space-y-4">
+          {/* URL Input */}
+          {mode === 'url' && (
+            <div className="space-y-2">
+              <label className="block text-sm font-medium text-slate-700">
+                Recipe URL
+              </label>
+              <div className="relative">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                  <Link size={18} className="text-slate-400" />
+                </div>
+                <input
+                  type="url"
+                  value={urlContent}
+                  onChange={(e) => { setUrlContent(e.target.value); setUrlError(''); }}
+                  placeholder="https://www.example.com/recipe"
+                  className={`w-full pl-10 pr-4 py-3 border rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none ${
+                    urlError ? 'border-red-300 bg-red-50' : 'border-slate-200'
+                  }`}
+                />
+              </div>
+              {urlError && (
+                <p className="text-sm text-red-600 flex items-center gap-1">
+                  <AlertCircle size={14} />
+                  {urlError}
+                </p>
+              )}
+              <p className="text-xs text-slate-400">
+                Paste a URL to any recipe page. AI will extract the recipe and ignore ads, navigation, and other content.
+              </p>
+            </div>
+          )}
+
           {/* Image/PDF Upload */}
           {(mode === 'image' || mode === 'pdf') && (
             <div
@@ -315,7 +383,7 @@ const RecipeUploadModal: React.FC<RecipeUploadModalProps> = ({
           </button>
           <button
             onClick={handleUpload}
-            disabled={isUploading || (mode === 'text' ? !textContent.trim() : !selectedFile)}
+            disabled={isUploading || (mode === 'url' ? !urlContent.trim() : mode === 'text' ? !textContent.trim() : !selectedFile)}
             className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {isUploading ? (

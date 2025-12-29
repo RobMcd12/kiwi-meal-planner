@@ -1,12 +1,12 @@
 import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
 import { UploadTask, Meal, ExtractedRecipe } from '../types';
-import { extractRecipeFromImage, extractRecipeFromText, extractRecipeFromPDF, autoTagRecipe } from '../services/geminiService';
+import { extractRecipeFromImage, extractRecipeFromText, extractRecipeFromPDF, extractRecipeFromURL, autoTagRecipe } from '../services/geminiService';
 import { createPlaceholderRecipe, updateRecipeFromExtraction, updateRecipeStatus } from '../services/recipeService';
 import { useToast } from '../hooks/useToast';
 
 interface UploadContextType {
   uploads: UploadTask[];
-  startUpload: (file: File | string, type: 'image' | 'text' | 'pdf') => Promise<string | null>;
+  startUpload: (file: File | string, type: 'image' | 'text' | 'pdf' | 'url') => Promise<string | null>;
   getUploadStatus: (id: string) => UploadTask | undefined;
   clearCompletedUploads: () => void;
   hasActiveUploads: boolean;
@@ -67,7 +67,7 @@ export const UploadProvider: React.FC<UploadProviderProps> = ({ children }) => {
   const processUploadAsync = useCallback(async (
     taskId: string,
     content: File | string,
-    type: 'image' | 'text' | 'pdf',
+    type: 'image' | 'text' | 'pdf' | 'url',
     placeholderId: string
   ) => {
     updateUploadTaskStatus(taskId, 'processing');
@@ -76,7 +76,10 @@ export const UploadProvider: React.FC<UploadProviderProps> = ({ children }) => {
     try {
       let extracted: ExtractedRecipe;
 
-      if (type === 'text') {
+      if (type === 'url') {
+        // URL passed directly - fetch and extract recipe from webpage
+        extracted = await extractRecipeFromURL(content as string);
+      } else if (type === 'text') {
         // Text content passed directly
         extracted = await extractRecipeFromText(content as string);
       } else if (type === 'pdf') {
@@ -145,12 +148,14 @@ export const UploadProvider: React.FC<UploadProviderProps> = ({ children }) => {
    */
   const startUpload = useCallback(async (
     content: File | string,
-    type: 'image' | 'text' | 'pdf'
+    type: 'image' | 'text' | 'pdf' | 'url'
   ): Promise<string | null> => {
     const taskId = crypto.randomUUID();
     const fileName = type === 'text'
       ? 'Pasted Text'
-      : (content as File).name;
+      : type === 'url'
+        ? `Recipe from ${new URL(content as string).hostname}`
+        : (content as File).name;
 
     // Add to uploads state immediately
     setUploads(prev => [...prev, {

@@ -500,3 +500,86 @@ Return as JSON with fields: name, description, ingredients (array of strings), i
     throw new Error("Failed to extract recipe from PDF");
   }
 };
+
+/**
+ * Fetch webpage content and extract recipe using AI
+ * Uses a CORS proxy or server-side fetch to get the HTML content
+ */
+export const extractRecipeFromURL = async (url: string): Promise<ExtractedRecipe> => {
+  const apiKey = process.env.API_KEY;
+  if (!apiKey) throw new Error("API Key is missing.");
+
+  const ai = new GoogleGenAI({ apiKey });
+
+  // Validate URL
+  try {
+    new URL(url);
+  } catch {
+    throw new Error("Invalid URL provided");
+  }
+
+  // Fetch the webpage content using a CORS proxy
+  // Using allorigins.win as a public CORS proxy
+  const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+
+  let htmlContent: string;
+  try {
+    const response = await fetch(proxyUrl);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch URL: ${response.status}`);
+    }
+    htmlContent = await response.text();
+  } catch (fetchError) {
+    console.error("URL fetch error:", fetchError);
+    throw new Error("Failed to fetch the webpage. The site may be blocking access.");
+  }
+
+  // Use AI to extract the recipe from the HTML content
+  const prompt = `Extract the recipe from the following webpage HTML content.
+Ignore all navigation, ads, comments, related recipes, and other non-recipe content.
+Focus ONLY on the main recipe on the page.
+
+If there is no recipe found, return an error message in the name field.
+
+HTML Content:
+${htmlContent.substring(0, 50000)}
+
+Extract and return:
+- name: The recipe title
+- description: A brief description of the dish
+- ingredients: Array of ingredients with quantities (e.g., "2 cups flour", "1 tsp salt")
+- instructions: Step-by-step cooking instructions as a single string
+- suggestedTags: Relevant tags from this list: ${ALL_TAGS.join(", ")}`;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-2.0-flash",
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: extractedRecipeSchema,
+      },
+    });
+
+    if (!response.text) {
+      throw new Error('Empty response from AI model');
+    }
+
+    const extracted = JSON.parse(response.text) as ExtractedRecipe;
+
+    // Check if extraction failed
+    if (extracted.name.toLowerCase().includes('error') ||
+        extracted.name.toLowerCase().includes('no recipe') ||
+        extracted.ingredients.length === 0) {
+      throw new Error("No recipe found on this page");
+    }
+
+    return extracted;
+  } catch (error) {
+    console.error("URL recipe extraction error:", error);
+    if (error instanceof Error && error.message.includes("No recipe")) {
+      throw error;
+    }
+    throw new Error("Failed to extract recipe from URL");
+  }
+};
