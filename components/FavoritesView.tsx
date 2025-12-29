@@ -1057,6 +1057,15 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({ onBack, onGenerateList, i
                 </div>
               </div>
 
+              {/* AI Disclaimer for AI-generated or uploaded recipes */}
+              {(openMeal.source === 'generated' || activeTab === 'generated') && (
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mt-4">
+                  <p className="text-xs text-amber-700">
+                    <strong>AI-Generated Recipe:</strong> This recipe was created by AI and may contain errors. Verify ingredients, cooking times, and temperatures. Check allergen information independently.
+                  </p>
+                </div>
+              )}
+
               {/* Notes Section */}
               <div className="mt-6 pt-6 border-t border-slate-100">
                 <RecipeNotesSection

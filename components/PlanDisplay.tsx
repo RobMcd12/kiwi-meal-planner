@@ -431,6 +431,12 @@ const PlanDisplay: React.FC<PlanDisplayProps> = ({ data, onReset }) => {
       <div className="px-4">
         {activeTab === 'plan' ? (
           <div className="space-y-4">
+            {/* AI Disclaimer */}
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
+              <p className="text-xs text-amber-700 text-center">
+                <strong>AI-Generated Recipes:</strong> These recipes were created by AI and may contain errors. Always verify ingredients, quantities, cooking times, and temperatures. Check allergen information independently.
+              </p>
+            </div>
             {/* View Toggle for single meal mode */}
             {isSingleMealMode && (
               <div className="flex justify-between items-center">

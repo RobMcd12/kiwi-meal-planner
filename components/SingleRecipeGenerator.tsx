@@ -313,6 +313,13 @@ const SingleRecipeGenerator: React.FC<SingleRecipeGeneratorProps> = ({
                   {generatedRecipe.instructions}
                 </div>
               </div>
+
+              {/* AI Disclaimer */}
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mt-4">
+                <p className="text-xs text-amber-700">
+                  <strong>AI-Generated Recipe:</strong> This recipe was created by AI and may contain errors in ingredients, quantities, or instructions. Always use your judgment when cooking, especially regarding food safety, cooking times, and temperatures. Verify allergen information independently.
+                </p>
+              </div>
             </div>
 
             {/* Action Buttons */}

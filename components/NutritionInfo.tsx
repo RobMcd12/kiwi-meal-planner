@@ -249,11 +249,12 @@ const NutritionInfo: React.FC<NutritionInfoProps> = ({ meal, servings = 1, onClo
                 </div>
               )}
 
-              {/* Disclaimer */}
-              <p className="text-xs text-slate-400 text-center">
-                * Nutritional values are AI-estimated based on typical ingredients and may vary.
-                Consult a nutritionist for precise dietary information.
-              </p>
+              {/* AI Disclaimer */}
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
+                <p className="text-xs text-amber-700 text-center">
+                  <strong>AI-Generated Estimate:</strong> Nutritional values are calculated by AI based on typical ingredient data and may contain errors. Actual values vary based on specific brands, preparation methods, and portion sizes. For medical or dietary needs, consult a qualified nutritionist.
+                </p>
+              </div>
             </div>
           ) : null}
         </div>
