@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { MealPlanResponse, Meal } from '../types';
-import { Calendar, ShoppingCart, ChevronDown, ChevronUp, ExternalLink, Check, RefreshCw, Heart, Loader2, Clock, ChefHat, Image as ImageIcon, Share } from 'lucide-react';
+import { Calendar, ShoppingCart, ChevronDown, ChevronUp, ExternalLink, Check, RefreshCw, Heart, Loader2, Clock, ChefHat, Image as ImageIcon, Share, LayoutGrid, List } from 'lucide-react';
 import { saveFavoriteMeal, removeFavoriteMeal, getFavoriteMeals, saveCheckedItems, loadCheckedItems, getCachedImage, cacheImage } from '../services/storageService';
 import { generateDishImage } from '../services/geminiService';
 
@@ -14,6 +14,7 @@ const PlanDisplay: React.FC<PlanDisplayProps> = ({ data, onReset }) => {
   const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
   const [expandedMeal, setExpandedMeal] = useState<string | null>(null);
   const [allExpanded, setAllExpanded] = useState(false);
+  const [viewMode, setViewMode] = useState<'cards' | 'list'>('cards');
 
   const [checkedItems, setCheckedItems] = useState<Record<string, boolean>>({});
   const [favorites, setFavorites] = useState<string[]>([]);
@@ -42,6 +43,17 @@ const PlanDisplay: React.FC<PlanDisplayProps> = ({ data, onReset }) => {
       }
     }
   }, [data.weeklyPlan, isSingleMealMode]);
+
+  // Get all meals flattened for card view in single meal mode
+  const getAllMeals = () => {
+    const meals: { day: string; type: string; meal: Meal }[] = [];
+    data.weeklyPlan.forEach(dayPlan => {
+      if (dayPlan.meals?.breakfast) meals.push({ day: dayPlan.day, type: 'Breakfast', meal: dayPlan.meals.breakfast });
+      if (dayPlan.meals?.lunch) meals.push({ day: dayPlan.day, type: 'Lunch', meal: dayPlan.meals.lunch });
+      if (dayPlan.meals?.dinner) meals.push({ day: dayPlan.day, type: 'Dinner', meal: dayPlan.meals.dinner });
+    });
+    return meals;
+  };
 
   // Load favorites and checked items on mount
   useEffect(() => {
@@ -219,33 +231,37 @@ const PlanDisplay: React.FC<PlanDisplayProps> = ({ data, onReset }) => {
     }, 1000);
   };
 
-  const renderMealCard = (type: string, meal?: Meal) => {
+  const renderMealCard = (type: string, meal?: Meal, dayLabel?: string) => {
     if (!meal) return null;
     const isFav = favorites.includes(meal.name);
-    
+
     // Determine color scheme based on meal type
     let colors = { bg: 'bg-slate-50', border: 'border-slate-100', text: 'text-slate-600', icon: 'text-slate-400' };
     if (type.toLowerCase() === 'breakfast') colors = { bg: 'bg-orange-50', border: 'border-orange-100', text: 'text-orange-600', icon: 'text-orange-400' };
     if (type.toLowerCase() === 'lunch') colors = { bg: 'bg-blue-50', border: 'border-blue-100', text: 'text-blue-600', icon: 'text-blue-400' };
     if (type.toLowerCase() === 'dinner') colors = { bg: 'bg-indigo-50', border: 'border-indigo-100', text: 'text-indigo-600', icon: 'text-indigo-400' };
 
-    const uniqueKey = `${type}-${meal.name}`;
+    const uniqueKey = `${dayLabel || ''}-${type}-${meal.name}`;
     const isExpanded = expandedMeal === uniqueKey;
     const imageUrl = mealImages[meal.name];
     const isLoading = loadingImages[meal.name];
 
     return (
-        <div 
+        <div
+          key={uniqueKey}
           className={`
             ${colors.bg} ${colors.border} rounded-xl border relative transition-all duration-300 overflow-hidden
             ${isExpanded ? 'col-span-1 md:col-span-2 lg:col-span-3 shadow-lg ring-1 ring-black/5' : 'hover:shadow-md cursor-pointer'}
           `}
-          onClick={() => !isExpanded && toggleMealDetails(meal, type)}
+          onClick={() => !isExpanded && toggleMealDetails(meal, `${dayLabel || ''}-${type}`)}
         >
             {/* Card Header (Always Visible) */}
             <div className="p-5">
               <div className="flex justify-between items-start">
-                  <span className={`text-xs font-bold uppercase tracking-wide opacity-80 ${colors.text}`}>{type}</span>
+                  <div className="flex flex-col">
+                    {dayLabel && <span className="text-xs font-semibold text-slate-500 mb-0.5">{dayLabel}</span>}
+                    <span className={`text-xs font-bold uppercase tracking-wide opacity-80 ${colors.text}`}>{type}</span>
+                  </div>
                   <div className="flex gap-2">
                     {isExpanded && (
                       <button 
@@ -368,51 +384,164 @@ const PlanDisplay: React.FC<PlanDisplayProps> = ({ data, onReset }) => {
       <div className="px-4">
         {activeTab === 'plan' ? (
           <div className="space-y-4">
-            {/* Expand/Collapse All Button */}
-            <div className="flex justify-end">
-              <button
-                onClick={toggleAllDays}
-                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors"
-              >
-                {allExpanded ? (
-                  <>
-                    <ChevronUp size={16} />
-                    Collapse All
-                  </>
-                ) : (
-                  <>
-                    <ChevronDown size={16} />
-                    Expand All
-                  </>
-                )}
-              </button>
-            </div>
-
-            {data.weeklyPlan.map((dayPlan) => {
-              const hasMeals = dayPlan.meals && (dayPlan.meals.breakfast || dayPlan.meals.lunch || dayPlan.meals.dinner);
-              if (!hasMeals) return null;
-              const isExpanded = expandedDays.has(dayPlan.day);
-
-              return (
-                <div key={dayPlan.day} className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+            {/* View Toggle for single meal mode */}
+            {isSingleMealMode && (
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-slate-500">{getAllMeals().length} meals</span>
+                <div className="flex items-center gap-1 bg-slate-100 rounded-lg p-1">
                   <button
-                    onClick={() => toggleDay(dayPlan.day)}
-                    className="w-full flex items-center justify-between p-4 bg-slate-50 hover:bg-slate-100 transition-colors"
+                    onClick={() => setViewMode('cards')}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                      viewMode === 'cards' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                    }`}
                   >
-                    <h3 className="font-bold text-lg text-slate-800">{dayPlan.day}</h3>
-                    {isExpanded ? <ChevronUp size={20} className="text-slate-400" /> : <ChevronDown size={20} className="text-slate-400" />}
+                    <LayoutGrid size={16} />
+                    Cards
                   </button>
-
-                  {isExpanded && (
-                    <div className="p-4 grid md:grid-cols-2 lg:grid-cols-3 gap-6 animate-fadeIn">
-                       {renderMealCard("Breakfast", dayPlan.meals.breakfast)}
-                       {renderMealCard("Lunch", dayPlan.meals.lunch)}
-                       {renderMealCard("Dinner", dayPlan.meals.dinner)}
-                    </div>
-                  )}
+                  <button
+                    onClick={() => setViewMode('list')}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                      viewMode === 'list' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                    }`}
+                  >
+                    <List size={16} />
+                    List
+                  </button>
                 </div>
-              );
-            })}
+              </div>
+            )}
+
+            {/* Single Meal Mode - Card Grid or List View */}
+            {isSingleMealMode ? (
+              viewMode === 'cards' ? (
+                <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {getAllMeals().map(({ day, type, meal }) => (
+                    renderMealCard(type, meal, day)
+                  ))}
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {getAllMeals().map(({ day, type, meal }) => {
+                    const isFav = favorites.includes(meal.name);
+                    let colors = { bg: 'bg-slate-50', text: 'text-slate-600' };
+                    if (type.toLowerCase() === 'breakfast') colors = { bg: 'bg-orange-50', text: 'text-orange-600' };
+                    if (type.toLowerCase() === 'lunch') colors = { bg: 'bg-blue-50', text: 'text-blue-600' };
+                    if (type.toLowerCase() === 'dinner') colors = { bg: 'bg-indigo-50', text: 'text-indigo-600' };
+
+                    const uniqueKey = `${day}-${type}-${meal.name}`;
+                    const isExpanded = expandedMeal === uniqueKey;
+
+                    return (
+                      <div
+                        key={uniqueKey}
+                        className={`bg-white rounded-xl border border-slate-200 overflow-hidden transition-all ${isExpanded ? 'ring-1 ring-black/5 shadow-lg' : ''}`}
+                      >
+                        <div
+                          className="flex items-center gap-4 p-4 cursor-pointer hover:bg-slate-50 transition-colors"
+                          onClick={() => toggleMealDetails(meal, `${day}-${type}`)}
+                        >
+                          <div className={`w-16 text-center py-1 px-2 rounded-lg ${colors.bg}`}>
+                            <div className="text-xs font-semibold text-slate-500">{day}</div>
+                            <div className={`text-xs font-bold uppercase ${colors.text}`}>{type}</div>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h4 className="font-semibold text-slate-800 truncate">{meal.name}</h4>
+                            <p className="text-sm text-slate-500 truncate">{meal.description}</p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={(e) => { e.stopPropagation(); toggleFavorite(meal); }}
+                              className={`p-1.5 rounded-full transition-colors ${isFav ? 'text-rose-500' : 'text-slate-300 hover:text-rose-400'}`}
+                            >
+                              <Heart size={18} fill={isFav ? "currentColor" : "none"} />
+                            </button>
+                            {isExpanded ? <ChevronUp size={20} className="text-slate-400" /> : <ChevronDown size={20} className="text-slate-400" />}
+                          </div>
+                        </div>
+
+                        {isExpanded && (
+                          <div className="border-t border-slate-200 p-4 bg-slate-50 animate-fadeIn">
+                            <p className="text-sm text-slate-600 italic mb-4">{meal.description}</p>
+                            <div className="grid md:grid-cols-2 gap-6">
+                              <div>
+                                <div className="flex items-center gap-2 mb-3 text-emerald-700 font-bold border-b border-emerald-100 pb-2">
+                                  <ChefHat size={18} />
+                                  <h3 className="text-sm">Ingredients</h3>
+                                </div>
+                                <ul className="space-y-2">
+                                  {meal.ingredients.map((ing, idx) => (
+                                    <li key={idx} className="flex items-start gap-3 text-sm text-slate-700">
+                                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 mt-1.5 flex-shrink-0" />
+                                      <span>{ing}</span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
+                              <div>
+                                <div className="flex items-center gap-2 mb-3 text-indigo-700 font-bold border-b border-indigo-100 pb-2">
+                                  <Clock size={18} />
+                                  <h3 className="text-sm">Instructions</h3>
+                                </div>
+                                <div className="text-sm text-slate-700 whitespace-pre-wrap">{meal.instructions}</div>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )
+            ) : (
+              /* Multi-meal mode - Original day-based accordion view */
+              <>
+                {/* Expand/Collapse All Button */}
+                <div className="flex justify-end">
+                  <button
+                    onClick={toggleAllDays}
+                    className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors"
+                  >
+                    {allExpanded ? (
+                      <>
+                        <ChevronUp size={16} />
+                        Collapse All
+                      </>
+                    ) : (
+                      <>
+                        <ChevronDown size={16} />
+                        Expand All
+                      </>
+                    )}
+                  </button>
+                </div>
+
+                {data.weeklyPlan.map((dayPlan) => {
+                  const hasMeals = dayPlan.meals && (dayPlan.meals.breakfast || dayPlan.meals.lunch || dayPlan.meals.dinner);
+                  if (!hasMeals) return null;
+                  const isExpanded = expandedDays.has(dayPlan.day);
+
+                  return (
+                    <div key={dayPlan.day} className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                      <button
+                        onClick={() => toggleDay(dayPlan.day)}
+                        className="w-full flex items-center justify-between p-4 bg-slate-50 hover:bg-slate-100 transition-colors"
+                      >
+                        <h3 className="font-bold text-lg text-slate-800">{dayPlan.day}</h3>
+                        {isExpanded ? <ChevronUp size={20} className="text-slate-400" /> : <ChevronDown size={20} className="text-slate-400" />}
+                      </button>
+
+                      {isExpanded && (
+                        <div className="p-4 grid md:grid-cols-2 lg:grid-cols-3 gap-6 animate-fadeIn">
+                          {renderMealCard("Breakfast", dayPlan.meals.breakfast)}
+                          {renderMealCard("Lunch", dayPlan.meals.lunch)}
+                          {renderMealCard("Dinner", dayPlan.meals.dinner)}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </>
+            )}
           </div>
         ) : (
           <div className="max-w-2xl mx-auto">
