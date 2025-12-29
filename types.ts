@@ -113,6 +113,7 @@ export enum AppStep {
   SETTINGS = 'SETTINGS',
   ADMIN = 'ADMIN',
   MY_FEEDBACK = 'MY_FEEDBACK',
+  SAVED_PLANS = 'SAVED_PLANS',
 }
 
 // ============================================

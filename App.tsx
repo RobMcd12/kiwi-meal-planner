@@ -11,6 +11,7 @@ import AuthScreen from './components/AuthScreen';
 import LandingPage from './components/LandingPage';
 import AdminDashboard from './components/AdminDashboard';
 import MyFeedback from './components/MyFeedback';
+import SavedPlansView from './components/SavedPlansView';
 import FeedbackDialog from './components/FeedbackDialog';
 import ErrorBoundary from './components/ErrorBoundary';
 import InstallPrompt from './components/InstallPrompt';
@@ -229,6 +230,7 @@ const AppContent: React.FC = () => {
             onStartNew={() => setStep(AppStep.CONFIG)}
             onViewFavorites={() => setStep(AppStep.FAVORITES)}
             onOpenSettings={() => setStep(AppStep.SETTINGS)}
+            onViewSavedPlans={() => setStep(AppStep.SAVED_PLANS)}
           />
         );
 
@@ -308,6 +310,13 @@ const AppContent: React.FC = () => {
             onBack={() => setStep(AppStep.WELCOME)}
           />
         ) : null;
+
+      case AppStep.SAVED_PLANS:
+        return (
+          <SavedPlansView
+            onBack={() => setStep(AppStep.WELCOME)}
+          />
+        );
 
       default:
         return null;
