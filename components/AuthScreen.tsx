@@ -63,7 +63,7 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onBack }) => {
 
     try {
       if (mode === 'register') {
-        const { error: signUpError } = await supabase.auth.signUp({
+        const { data, error: signUpError } = await supabase.auth.signUp({
           email,
           password,
           options: {
@@ -75,8 +75,17 @@ const AuthScreen: React.FC<AuthScreenProps> = ({ onBack }) => {
 
         if (signUpError) throw signUpError;
 
-        setSuccess('Account created! Check your email to verify your account.');
-        setMode('login');
+        // If user was created and session exists, they're auto-signed in
+        if (data.session) {
+          // Auth state change will handle the redirect
+          return;
+        }
+
+        // If no session but user exists, email confirmation may be required
+        if (data.user && !data.session) {
+          setSuccess('Account created! You can now sign in.');
+          setMode('login');
+        }
       } else {
         const { error: signInError } = await supabase.auth.signInWithPassword({
           email,

@@ -7,7 +7,12 @@ const SUPABASE_URL = 'https://wmpvawlyyaposeathxww.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6IndtcHZhd2x5eWFwb3NlYXRoeHd3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjY5OTc5OTAsImV4cCI6MjA4MjU3Mzk5MH0.iEBUxX8a77rvYH6wyCuEHYrCzHC7PLkWY1amahzpC4U';
 
 // Create Supabase client directly with hardcoded credentials
-export const supabase: SupabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+export const supabase: SupabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  auth: {
+    autoRefreshToken: true,
+    persistSession: true,
+  },
+});
 
 /**
  * Check if Supabase is properly configured
