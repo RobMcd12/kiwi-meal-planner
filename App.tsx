@@ -10,6 +10,8 @@ import SettingsView from './components/SettingsView';
 import AuthScreen from './components/AuthScreen';
 import LandingPage from './components/LandingPage';
 import AdminDashboard from './components/AdminDashboard';
+import MyFeedback from './components/MyFeedback';
+import FeedbackDialog from './components/FeedbackDialog';
 import ErrorBoundary from './components/ErrorBoundary';
 import InstallPrompt from './components/InstallPrompt';
 import { AuthProvider, useAuth } from './components/AuthProvider';
@@ -26,7 +28,8 @@ import {
   savePlanToHistory
 } from './services/storageService';
 import { signOut } from './services/authService';
-import { ChefHat, Settings, LogOut, User, Shield } from 'lucide-react';
+import { getNewResponseCount } from './services/feedbackService';
+import { ChefHat, Settings, LogOut, User, Shield, MessageSquare, Bell } from 'lucide-react';
 
 const SUPER_ADMIN_EMAIL = 'rob@unicloud.co.nz';
 
@@ -67,6 +70,10 @@ const AppContent: React.FC = () => {
   const [planData, setPlanData] = useState<MealPlanResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [dataLoaded, setDataLoaded] = useState(false);
+
+  // Feedback state
+  const [showFeedbackDialog, setShowFeedbackDialog] = useState(false);
+  const [feedbackResponseCount, setFeedbackResponseCount] = useState(0);
 
   // Load data from storage on mount and when auth changes
   useEffect(() => {
@@ -111,6 +118,27 @@ const AppContent: React.FC = () => {
       savePantry(pantryItems);
     }
   }, [pantryItems, dataLoaded]);
+
+  // Poll for user's new feedback responses (non-admins only)
+  useEffect(() => {
+    if (!isAuthenticated || !user || isAdmin) {
+      setFeedbackResponseCount(0);
+      return;
+    }
+
+    const fetchCount = async () => {
+      try {
+        const count = await getNewResponseCount(user.id);
+        setFeedbackResponseCount(count);
+      } catch (error) {
+        console.error('Failed to fetch feedback response count:', error);
+      }
+    };
+
+    fetchCount();
+    const interval = setInterval(fetchCount, 30000); // Poll every 30s
+    return () => clearInterval(interval);
+  }, [isAuthenticated, user, isAdmin]);
 
   // Handlers
   const handleGenerate = async () => {
@@ -272,6 +300,14 @@ const AppContent: React.FC = () => {
           />
         );
 
+      case AppStep.MY_FEEDBACK:
+        return user ? (
+          <MyFeedback
+            currentUserId={user.id}
+            onBack={() => setStep(AppStep.WELCOME)}
+          />
+        ) : null;
+
       default:
         return null;
     }
@@ -325,6 +361,31 @@ const AppContent: React.FC = () => {
               </div>
             )}
 
+            {/* Feedback button */}
+            {isAuthenticated && !isAdmin && (
+              <button
+                onClick={() => setShowFeedbackDialog(true)}
+                className="text-slate-400 hover:text-slate-700 transition-colors p-1"
+                title="Send Feedback"
+              >
+                <MessageSquare size={20} />
+              </button>
+            )}
+
+            {/* My Feedback with badge (for users with responses) */}
+            {isAuthenticated && !isAdmin && feedbackResponseCount > 0 && (
+              <button
+                onClick={() => setStep(AppStep.MY_FEEDBACK)}
+                className="relative text-slate-400 hover:text-slate-700 transition-colors p-1"
+                title="View My Feedback"
+              >
+                <Bell size={20} />
+                <span className="absolute -top-1 -right-1 px-1.5 py-0.5 bg-red-500 text-white text-xs font-medium rounded-full min-w-[18px] text-center">
+                  {feedbackResponseCount}
+                </span>
+              </button>
+            )}
+
             {/* Admin button - only for super admin */}
             {isAdmin && step !== AppStep.ADMIN && (
               <button
@@ -337,7 +398,7 @@ const AppContent: React.FC = () => {
             )}
 
             {/* Settings Icon */}
-            {step !== AppStep.WELCOME && step !== AppStep.SETTINGS && step !== AppStep.ADMIN && (
+            {step !== AppStep.WELCOME && step !== AppStep.SETTINGS && step !== AppStep.ADMIN && step !== AppStep.MY_FEEDBACK && (
               <button
                 onClick={() => setStep(AppStep.SETTINGS)}
                 className="text-slate-400 hover:text-slate-700 transition-colors p-1"
@@ -389,6 +450,17 @@ const AppContent: React.FC = () => {
 
       {/* PWA Install Prompt */}
       <InstallPrompt />
+
+      {/* Feedback Dialog */}
+      <FeedbackDialog
+        isOpen={showFeedbackDialog}
+        onClose={() => setShowFeedbackDialog(false)}
+        currentUser={user ? {
+          id: user.id,
+          name: user.user_metadata?.full_name || user.email?.split('@')[0] || 'User',
+          email: user.email,
+        } : undefined}
+      />
     </div>
   );
 };

@@ -101,6 +101,7 @@ export enum AppStep {
   FAVORITES = 'FAVORITES',
   SETTINGS = 'SETTINGS',
   ADMIN = 'ADMIN',
+  MY_FEEDBACK = 'MY_FEEDBACK',
 }
 
 // ============================================
@@ -114,4 +115,29 @@ export interface Toast {
   message: string;
   type: ToastType;
   duration?: number;
+}
+
+// ============================================
+// FEEDBACK TYPES
+// ============================================
+
+export type FeedbackType = 'bug' | 'feature' | 'question' | 'other';
+export type FeedbackStatus = 'new' | 'reviewed' | 'in-progress' | 'resolved';
+
+export interface FeedbackItem {
+  id: string;
+  user_id: string;
+  user_name: string;
+  user_email?: string;
+  type: FeedbackType;
+  subject: string;
+  message: string;
+  status: FeedbackStatus;
+  admin_response?: string;
+  admin_responded_at?: string;
+  admin_responded_by?: string;
+  admin_name?: string;
+  user_viewed_response: boolean;
+  created_at: string;
+  updated_at: string;
 }
