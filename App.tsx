@@ -8,6 +8,8 @@ import ConfigForm from './components/ConfigForm';
 import FavoritesView from './components/FavoritesView';
 import SettingsView from './components/SettingsView';
 import AuthScreen from './components/AuthScreen';
+import LandingPage from './components/LandingPage';
+import AdminDashboard from './components/AdminDashboard';
 import ErrorBoundary from './components/ErrorBoundary';
 import InstallPrompt from './components/InstallPrompt';
 import { AuthProvider, useAuth } from './components/AuthProvider';
@@ -24,7 +26,9 @@ import {
   savePlanToHistory
 } from './services/storageService';
 import { signOut } from './services/authService';
-import { ChefHat, Settings, LogOut, User } from 'lucide-react';
+import { ChefHat, Settings, LogOut, User, Shield } from 'lucide-react';
+
+const SUPER_ADMIN_EMAIL = 'rob@unicloud.co.nz';
 
 // --- Default States ---
 const DEFAULT_CONFIG: MealConfig = {
@@ -47,7 +51,16 @@ const AppContent: React.FC = () => {
   const { user, isAuthenticated, loading: authLoading } = useAuth();
   const { toasts, dismissToast, success, error: showError } = useToast();
 
-  const [step, setStep] = useState<AppStep>(AppStep.WELCOME);
+  // Start on landing page, move to welcome after auth
+  const [step, setStep] = useState<AppStep>(AppStep.LANDING);
+  const isAdmin = user?.email === SUPER_ADMIN_EMAIL;
+
+  // Redirect to welcome once authenticated
+  useEffect(() => {
+    if (isAuthenticated && step === AppStep.LANDING) {
+      setStep(AppStep.WELCOME);
+    }
+  }, [isAuthenticated, step]);
   const [pantryItems, setPantryItems] = useState<PantryItem[]>([]);
   const [config, setConfig] = useState<MealConfig>(DEFAULT_CONFIG);
   const [preferences, setPreferences] = useState<UserPreferences>(DEFAULT_PREFERENCES);
@@ -167,12 +180,11 @@ const AppContent: React.FC = () => {
   // Render logic helper
   const renderStep = () => {
     switch (step) {
-      case AppStep.WELCOME:
+      case AppStep.LANDING:
         return (
-          <WelcomeScreen
-            onStartNew={() => setStep(AppStep.CONFIG)}
-            onViewFavorites={() => setStep(AppStep.FAVORITES)}
-            onOpenSettings={() => setStep(AppStep.SETTINGS)}
+          <LandingPage
+            onGetStarted={() => setStep(AppStep.AUTH)}
+            onLogin={() => setStep(AppStep.AUTH)}
           />
         );
 
@@ -180,6 +192,16 @@ const AppContent: React.FC = () => {
         return (
           <AuthScreen
             onSkip={() => setStep(AppStep.WELCOME)}
+            onBack={() => setStep(AppStep.LANDING)}
+          />
+        );
+
+      case AppStep.WELCOME:
+        return (
+          <WelcomeScreen
+            onStartNew={() => setStep(AppStep.CONFIG)}
+            onViewFavorites={() => setStep(AppStep.FAVORITES)}
+            onOpenSettings={() => setStep(AppStep.SETTINGS)}
           />
         );
 
@@ -244,10 +266,28 @@ const AppContent: React.FC = () => {
           />
         );
 
+      case AppStep.ADMIN:
+        return (
+          <AdminDashboard
+            onBack={() => setStep(AppStep.WELCOME)}
+          />
+        );
+
       default:
         return null;
     }
   };
+
+  // Landing and Auth pages have their own layout
+  if (step === AppStep.LANDING || step === AppStep.AUTH) {
+    return (
+      <div className="min-h-screen">
+        {renderStep()}
+        <ToastContainer toasts={toasts} onDismiss={dismissToast} />
+        <InstallPrompt />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col">
@@ -286,8 +326,19 @@ const AppContent: React.FC = () => {
               </div>
             )}
 
+            {/* Admin button - only for super admin */}
+            {isAdmin && step !== AppStep.ADMIN && (
+              <button
+                onClick={() => setStep(AppStep.ADMIN)}
+                className="text-emerald-600 hover:text-emerald-700 transition-colors p-1"
+                title="Admin Dashboard"
+              >
+                <Shield size={20} />
+              </button>
+            )}
+
             {/* Settings Icon */}
-            {step !== AppStep.WELCOME && step !== AppStep.SETTINGS && step !== AppStep.AUTH && (
+            {step !== AppStep.WELCOME && step !== AppStep.SETTINGS && step !== AppStep.ADMIN && (
               <button
                 onClick={() => setStep(AppStep.SETTINGS)}
                 className="text-slate-400 hover:text-slate-700 transition-colors p-1"

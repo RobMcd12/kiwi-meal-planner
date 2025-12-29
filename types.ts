@@ -91,14 +91,16 @@ export type AuthProvider = 'google' | 'apple' | 'github';
 // ============================================
 
 export enum AppStep {
-  WELCOME = 'WELCOME',
+  LANDING = 'LANDING',
   AUTH = 'AUTH',
+  WELCOME = 'WELCOME',
   CONFIG = 'CONFIG',
   PANTRY = 'PANTRY',
   PREFERENCES = 'PREFERENCES',
   RESULTS = 'RESULTS',
   FAVORITES = 'FAVORITES',
   SETTINGS = 'SETTINGS',
+  ADMIN = 'ADMIN',
 }
 
 // ============================================

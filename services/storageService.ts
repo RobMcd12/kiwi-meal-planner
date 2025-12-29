@@ -528,3 +528,22 @@ export const clearLocalStorage = (): void => {
 export const hasLocalData = (): boolean => {
   return Object.values(STORAGE_KEYS).some(key => localStorage.getItem(key) !== null);
 };
+
+// ============================================
+// ADMIN DATA FUNCTIONS
+// ============================================
+
+export const exportAllData = async () => {
+  return getAllUserData();
+};
+
+export const importData = async (data: any): Promise<void> => {
+  if (!data || typeof data !== 'object') {
+    throw new Error('Invalid data format');
+  }
+  restoreUserData(JSON.stringify(data));
+};
+
+export const clearAllData = async (): Promise<void> => {
+  clearLocalStorage();
+};
