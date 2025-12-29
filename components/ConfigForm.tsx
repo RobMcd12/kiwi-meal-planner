@@ -1,0 +1,134 @@
+import React from 'react';
+import { MealConfig } from '../types';
+import { Users, Calendar, Coffee, Sun, Moon } from 'lucide-react';
+
+interface ConfigFormProps {
+  config: MealConfig;
+  setConfig: React.Dispatch<React.SetStateAction<MealConfig>>;
+  onNext?: () => void;
+  isSettingsMode?: boolean;
+}
+
+const ConfigForm: React.FC<ConfigFormProps> = ({ config, setConfig, onNext, isSettingsMode = false }) => {
+  const updateConfig = (key: keyof MealConfig, value: any) => {
+    setConfig(prev => ({ ...prev, [key]: value }));
+  };
+
+  return (
+    <div className={`max-w-2xl mx-auto p-6 bg-white rounded-xl ${!isSettingsMode ? 'shadow-lg border border-slate-100' : ''} animate-fadeIn`}>
+      {!isSettingsMode && (
+        <div className="text-center mb-8">
+          <h2 className="text-2xl font-bold text-slate-800">Plan Settings</h2>
+          <p className="text-slate-500 mt-2">Customize your week.</p>
+        </div>
+      )}
+
+      <div className="space-y-8 mb-8">
+        {/* Days Slider */}
+        <div>
+          <label className="flex items-center gap-2 text-sm font-semibold text-slate-700 mb-4">
+            <Calendar size={18} className="text-indigo-500" />
+            How many days to plan?
+          </label>
+          <div className="px-2">
+            <input
+              type="range"
+              min="1"
+              max="7"
+              value={config.days}
+              onChange={(e) => updateConfig('days', parseInt(e.target.value))}
+              className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600"
+            />
+            <div className="flex justify-between mt-2 text-xs text-slate-400 font-medium">
+              <span>1 Day</span>
+              <span>7 Days</span>
+            </div>
+            <div className="text-center mt-2 font-bold text-indigo-600 text-lg">
+              {config.days} Days
+            </div>
+          </div>
+        </div>
+
+        {/* People Slider */}
+        <div>
+          <label className="flex items-center gap-2 text-sm font-semibold text-slate-700 mb-4">
+            <Users size={18} className="text-indigo-500" />
+            Number of People
+          </label>
+          <div className="flex items-center gap-4">
+             <input
+              type="range"
+              min="1"
+              max="12"
+              value={config.peopleCount}
+              onChange={(e) => updateConfig('peopleCount', parseInt(e.target.value))}
+              className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-600 flex-1"
+            />
+            <div className="w-12 h-12 flex items-center justify-center bg-indigo-50 rounded-lg border border-indigo-100 text-indigo-700 font-bold text-xl">
+              {config.peopleCount}
+            </div>
+          </div>
+        </div>
+
+        {/* Meals Selection */}
+        <div>
+          <label className="block text-sm font-semibold text-slate-700 mb-4">
+            Which meals to include?
+          </label>
+          <div className="grid grid-cols-3 gap-4">
+            <button
+              onClick={() => updateConfig('includeBreakfast', !config.includeBreakfast)}
+              className={`p-4 rounded-xl border-2 flex flex-col items-center gap-2 transition-all ${
+                config.includeBreakfast 
+                  ? 'border-orange-500 bg-orange-50 text-orange-700' 
+                  : 'border-slate-200 hover:border-slate-300 text-slate-500'
+              }`}
+            >
+              <Coffee size={24} />
+              <span className="font-medium text-sm">Breakfast</span>
+            </button>
+            
+            <button
+              onClick={() => updateConfig('includeLunch', !config.includeLunch)}
+              className={`p-4 rounded-xl border-2 flex flex-col items-center gap-2 transition-all ${
+                config.includeLunch 
+                  ? 'border-blue-500 bg-blue-50 text-blue-700' 
+                  : 'border-slate-200 hover:border-slate-300 text-slate-500'
+              }`}
+            >
+              <Sun size={24} />
+              <span className="font-medium text-sm">Lunch</span>
+            </button>
+
+            <button
+              onClick={() => updateConfig('includeDinner', !config.includeDinner)}
+              className={`p-4 rounded-xl border-2 flex flex-col items-center gap-2 transition-all ${
+                config.includeDinner 
+                  ? 'border-indigo-500 bg-indigo-50 text-indigo-700' 
+                  : 'border-slate-200 hover:border-slate-300 text-slate-500'
+              }`}
+            >
+              <Moon size={24} />
+              <span className="font-medium text-sm">Dinner</span>
+            </button>
+          </div>
+          {!config.includeBreakfast && !config.includeLunch && !config.includeDinner && (
+             <p className="text-red-500 text-xs mt-2 text-center">Please select at least one meal.</p>
+          )}
+        </div>
+      </div>
+
+      {!isSettingsMode && onNext && (
+        <button
+          onClick={onNext}
+          disabled={!config.includeBreakfast && !config.includeLunch && !config.includeDinner}
+          className="w-full bg-slate-900 hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed text-white py-4 rounded-xl font-bold text-lg transition-transform active:scale-[0.99]"
+        >
+          Continue
+        </button>
+      )}
+    </div>
+  );
+};
+
+export default ConfigForm;
