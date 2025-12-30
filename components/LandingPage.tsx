@@ -40,11 +40,6 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin }) => {
       <section className="px-6 py-16 md:py-24">
         <div className="max-w-6xl mx-auto grid md:grid-cols-2 gap-12 items-center">
           <div className="space-y-8">
-            <div className="inline-flex items-center gap-2 bg-emerald-100 text-emerald-700 px-4 py-2 rounded-full text-sm font-medium">
-              <Sparkles size={16} />
-              AI-Powered Meal Planning
-            </div>
-
             <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-slate-800 leading-tight">
               Plan Your Meals,
               <span className="text-emerald-600"> Simplify Your Life</span>
@@ -69,22 +64,6 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin }) => {
               >
                 I have an account
               </button>
-            </div>
-
-            {/* Stats */}
-            <div className="flex gap-8 pt-4">
-              <div>
-                <div className="text-2xl font-bold text-slate-800">500+</div>
-                <div className="text-sm text-slate-500">Recipes Generated</div>
-              </div>
-              <div>
-                <div className="text-2xl font-bold text-slate-800">100%</div>
-                <div className="text-sm text-slate-500">NZ Focused</div>
-              </div>
-              <div>
-                <div className="text-2xl font-bold text-slate-800">Free</div>
-                <div className="text-sm text-slate-500">To Get Started</div>
-              </div>
             </div>
           </div>
 
