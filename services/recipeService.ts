@@ -126,7 +126,7 @@ export const getRecipeNotes = async (mealId: string): Promise<RecipeNote[]> => {
     // Get user's own note + public notes from others
     const { data, error } = await supabase
       .from('recipe_notes')
-      .select('*, profiles(display_name)')
+      .select('*, profiles(full_name)')
       .eq('meal_id', mealId);
 
     if (error) throw error;
@@ -139,7 +139,7 @@ export const getRecipeNotes = async (mealId: string): Promise<RecipeNote[]> => {
       isPublic: note.is_public,
       createdAt: note.created_at,
       updatedAt: note.updated_at,
-      userName: note.profiles?.display_name || 'Anonymous',
+      userName: note.profiles?.full_name || 'Anonymous',
       isOwn: note.user_id === user?.id
     }));
   } catch (err) {
@@ -257,7 +257,7 @@ export const toggleRecipePublic = async (mealId: string, isPublic: boolean): Pro
     // Get user's display name for owner_name
     const { data: profile } = await supabase
       .from('profiles')
-      .select('display_name')
+      .select('full_name')
       .eq('id', user.id)
       .single();
 
@@ -265,7 +265,7 @@ export const toggleRecipePublic = async (mealId: string, isPublic: boolean): Pro
       .from('favorite_meals')
       .update({
         is_public: isPublic,
-        owner_name: isPublic ? (profile?.display_name || 'Anonymous') : null
+        owner_name: isPublic ? (profile?.full_name || 'Anonymous') : null
       })
       .eq('id', mealId)
       .eq('user_id', user.id);
@@ -621,7 +621,7 @@ export const getRecipeComments = async (mealId: string): Promise<RecipeComment[]
 
     const { data, error } = await supabase
       .from('recipe_comments')
-      .select('*, profiles(display_name, avatar_url)')
+      .select('*, profiles(full_name, avatar_url)')
       .eq('meal_id', mealId)
       .order('created_at', { ascending: false });
 
@@ -635,7 +635,7 @@ export const getRecipeComments = async (mealId: string): Promise<RecipeComment[]
       rating: comment.rating,
       createdAt: comment.created_at,
       updatedAt: comment.updated_at,
-      userName: comment.profiles?.display_name || 'Anonymous',
+      userName: comment.profiles?.full_name || 'Anonymous',
       userAvatar: comment.profiles?.avatar_url,
       isOwn: comment.user_id === user?.id
     }));
@@ -667,7 +667,7 @@ export const saveRecipeComment = async (
         comment_text: commentText,
         rating: rating
       })
-      .select('*, profiles(display_name, avatar_url)')
+      .select('*, profiles(full_name, avatar_url)')
       .single();
 
     if (error) throw error;
@@ -680,7 +680,7 @@ export const saveRecipeComment = async (
       rating: data.rating,
       createdAt: data.created_at,
       updatedAt: data.updated_at,
-      userName: data.profiles?.display_name || 'Anonymous',
+      userName: data.profiles?.full_name || 'Anonymous',
       userAvatar: data.profiles?.avatar_url,
       isOwn: true
     };

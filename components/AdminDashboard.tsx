@@ -854,7 +854,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
                               </div>
                             )}
                             <span className="font-medium text-slate-800">
-                              {userItem.display_name || 'Unknown'}
+                              {userItem.full_name || 'Unknown'}
                             </span>
                           </div>
                         </td>

@@ -98,7 +98,7 @@ export const getUserProfile = async (userId: string) => {
  */
 export const updateUserProfile = async (
   userId: string,
-  updates: { display_name?: string; avatar_url?: string }
+  updates: { full_name?: string; avatar_url?: string }
 ) => {
   const { data, error } = await supabase
     .from('profiles')

@@ -6,7 +6,7 @@ const SUPER_ADMIN_EMAIL = 'rob@unicloud.co.nz';
 export interface UserProfile {
   id: string;
   email: string;
-  display_name: string | null;
+  full_name: string | null;
   avatar_url: string | null;
   is_admin: boolean;
   created_at: string;
@@ -55,7 +55,7 @@ export const getAllUsers = async (): Promise<UserProfile[]> => {
   try {
     const { data, error } = await supabase
       .from('profiles')
-      .select('id, email, display_name, avatar_url, is_admin, created_at')
+      .select('id, email, full_name, avatar_url, is_admin, created_at')
       .order('created_at', { ascending: false });
 
     if (error) {
