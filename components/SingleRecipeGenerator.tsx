@@ -55,6 +55,20 @@ const SingleRecipeGenerator: React.FC<SingleRecipeGeneratorProps> = ({
         servings
       );
       setGeneratedRecipe(recipe);
+
+      // Automatically generate image in the background
+      setIsGeneratingImage(true);
+      try {
+        const imageUrl = await generateDishImage(recipe.name, recipe.description);
+        if (imageUrl) {
+          setGeneratedRecipe(prev => prev ? { ...prev, imageUrl } : null);
+        }
+      } catch (imgErr) {
+        console.error('Image generation error:', imgErr);
+        // Don't show error - image generation is optional
+      } finally {
+        setIsGeneratingImage(false);
+      }
     } catch (err) {
       console.error('Recipe generation error:', err);
       setError('Failed to generate recipe. Please try again.');
@@ -219,7 +233,7 @@ const SingleRecipeGenerator: React.FC<SingleRecipeGeneratorProps> = ({
             {isGenerating ? (
               <>
                 <Loader2 size={20} className="animate-spin" />
-                Creating your recipe...
+                Creating your recipe & image...
               </>
             ) : (
               <>
@@ -243,23 +257,20 @@ const SingleRecipeGenerator: React.FC<SingleRecipeGeneratorProps> = ({
               />
             ) : (
               <div className="w-full h-48 bg-gradient-to-br from-amber-100 to-orange-100 flex items-center justify-center">
-                <button
-                  onClick={handleGenerateImage}
-                  disabled={isGeneratingImage}
-                  className="flex items-center gap-2 px-4 py-2 bg-white/80 hover:bg-white rounded-lg text-slate-700 font-medium transition-colors"
-                >
-                  {isGeneratingImage ? (
-                    <>
-                      <Loader2 size={18} className="animate-spin" />
-                      Generating image...
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles size={18} />
-                      Generate Image
-                    </>
-                  )}
-                </button>
+                {isGeneratingImage ? (
+                  <div className="flex items-center gap-2 px-4 py-2 bg-white/80 rounded-lg text-slate-700 font-medium">
+                    <Loader2 size={18} className="animate-spin" />
+                    Generating image...
+                  </div>
+                ) : (
+                  <button
+                    onClick={handleGenerateImage}
+                    className="flex items-center gap-2 px-4 py-2 bg-white/80 hover:bg-white rounded-lg text-slate-700 font-medium transition-colors"
+                  >
+                    <Sparkles size={18} />
+                    Regenerate Image
+                  </button>
+                )}
               </div>
             )}
 
