@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { X, Users, Beef, Target, Sparkles, Loader2, ChevronDown, ChevronUp, AlertCircle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { X, Users, Beef, Target, Sparkles, Loader2, ChevronDown, ChevronUp, AlertCircle, Save, Pencil } from 'lucide-react';
 import type { Meal, UserPreferences } from '../types';
 import { adjustRecipe, AdjustedRecipe, RecipeAdjustmentType } from '../services/geminiService';
 
@@ -7,7 +7,9 @@ interface RecipeAdjusterProps {
   meal: Meal;
   preferences?: UserPreferences;
   onClose: () => void;
-  onApply: (adjustedMeal: Meal) => void;
+  onApply: (adjustedMeal: Meal, saveAsNew: boolean) => void;
+  userName?: string;
+  isPublicRecipe?: boolean;
 }
 
 type AdjustmentMode = 'servings' | 'protein' | 'macros' | 'custom';
@@ -17,12 +19,35 @@ const RecipeAdjuster: React.FC<RecipeAdjusterProps> = ({
   preferences,
   onClose,
   onApply,
+  userName,
+  isPublicRecipe = false,
 }) => {
   const [mode, setMode] = useState<AdjustmentMode>('servings');
   const [isAdjusting, setIsAdjusting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [preview, setPreview] = useState<AdjustedRecipe | null>(null);
   const [showPreview, setShowPreview] = useState(false);
+
+  // Name editing state
+  const [recipeName, setRecipeName] = useState('');
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [hasEditedName, setHasEditedName] = useState(false);
+
+  // Generate default name prefix based on context
+  const getDefaultNamePrefix = () => {
+    if (isPublicRecipe && userName) {
+      return `${userName}'s`;
+    }
+    return 'My';
+  };
+
+  // Set default name when preview is generated
+  useEffect(() => {
+    if (preview && !hasEditedName) {
+      // Use original name - prefix will be added on save if not edited
+      setRecipeName(preview.name || meal.name);
+    }
+  }, [preview, meal.name, hasEditedName]);
 
   // Servings adjustment
   const [targetServings, setTargetServings] = useState(meal.servings || 4);
@@ -92,16 +117,31 @@ const RecipeAdjuster: React.FC<RecipeAdjusterProps> = ({
   const handleApplyChanges = () => {
     if (!preview) return;
 
+    // Determine the final name
+    let finalName = recipeName.trim();
+
+    // If user didn't edit the name, add prefix
+    if (!hasEditedName) {
+      const prefix = getDefaultNamePrefix();
+      // Check if name already starts with the prefix to avoid duplication
+      if (!finalName.toLowerCase().startsWith(prefix.toLowerCase())) {
+        finalName = `${prefix} ${finalName}`;
+      }
+    }
+
+    // Create the adjusted meal as a new recipe (no ID = new)
     const adjustedMeal: Meal = {
-      ...meal,
-      name: preview.name,
+      id: '', // Empty ID means it's a new recipe
+      name: finalName,
       description: preview.description,
       ingredients: preview.ingredients,
       instructions: preview.instructions,
       servings: preview.servings,
+      source: 'generated', // Adjusted recipes are treated as generated
+      // Don't copy imageUrl - it will be generated fresh for the new recipe
     };
 
-    onApply(adjustedMeal);
+    onApply(adjustedMeal, true); // true = save as new recipe
     onClose();
   };
 
@@ -326,6 +366,52 @@ const RecipeAdjuster: React.FC<RecipeAdjusterProps> = ({
                 <strong>Changes:</strong> {preview.adjustmentNotes}
               </div>
 
+              {/* Recipe Name Editor */}
+              <div className="bg-white rounded-lg p-3 border border-green-200">
+                <label className="block text-xs font-medium text-slate-500 mb-1">
+                  Save as new recipe named:
+                </label>
+                {isEditingName ? (
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={recipeName}
+                      onChange={(e) => {
+                        setRecipeName(e.target.value);
+                        setHasEditedName(true);
+                      }}
+                      className="flex-1 px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-green-500 focus:border-green-500 outline-none text-sm font-medium"
+                      placeholder="Enter recipe name..."
+                      autoFocus
+                    />
+                    <button
+                      onClick={() => setIsEditingName(false)}
+                      className="px-3 py-2 bg-green-100 text-green-700 rounded-lg text-sm font-medium hover:bg-green-200 transition-colors"
+                    >
+                      Done
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium text-slate-800">
+                      {hasEditedName ? recipeName : `${getDefaultNamePrefix()} ${recipeName}`}
+                    </span>
+                    <button
+                      onClick={() => setIsEditingName(true)}
+                      className="flex items-center gap-1 text-xs text-green-600 hover:text-green-800"
+                    >
+                      <Pencil size={12} />
+                      Edit name
+                    </button>
+                  </div>
+                )}
+                <p className="text-xs text-slate-400 mt-1">
+                  {hasEditedName
+                    ? 'Your custom name will be used'
+                    : `"${getDefaultNamePrefix()}" prefix will be added automatically`}
+                </p>
+              </div>
+
               <div className="space-y-2 text-sm">
                 <div className="flex items-center gap-2">
                   <Users size={14} className="text-green-600" />
@@ -357,6 +443,8 @@ const RecipeAdjuster: React.FC<RecipeAdjusterProps> = ({
                 onClick={() => {
                   setPreview(null);
                   setShowPreview(false);
+                  setHasEditedName(false);
+                  setIsEditingName(false);
                 }}
                 className="flex-1 py-3 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl font-semibold transition-colors"
               >
@@ -366,8 +454,8 @@ const RecipeAdjuster: React.FC<RecipeAdjusterProps> = ({
                 onClick={handleApplyChanges}
                 className="flex-1 py-3 bg-green-500 hover:bg-green-600 text-white rounded-xl font-semibold transition-colors flex items-center justify-center gap-2"
               >
-                <Sparkles size={18} />
-                Apply Changes
+                <Save size={18} />
+                Save as New Recipe
               </button>
             </>
           ) : (

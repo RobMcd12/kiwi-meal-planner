@@ -122,10 +122,27 @@ const SingleRecipeGenerator: React.FC<SingleRecipeGeneratorProps> = ({
     setError(null);
   };
 
-  const handleApplyAdjustment = (adjustedMeal: Meal) => {
-    setGeneratedRecipe(adjustedMeal);
-    setServings(adjustedMeal.servings || servings);
-    setIsSaved(false); // Reset saved state since recipe changed
+  const handleApplyAdjustment = async (adjustedMeal: Meal, saveAsNew: boolean) => {
+    if (saveAsNew) {
+      // For single recipe generator, we save as new and update the display
+      try {
+        await saveFavoriteMeal(adjustedMeal);
+        setGeneratedRecipe(adjustedMeal);
+        setServings(adjustedMeal.servings || servings);
+        setIsSaved(true); // Mark as saved since we just saved it
+      } catch (error) {
+        console.error('Failed to save adjusted recipe:', error);
+        // Still update the display even if save failed
+        setGeneratedRecipe(adjustedMeal);
+        setServings(adjustedMeal.servings || servings);
+        setIsSaved(false);
+      }
+    } else {
+      // Legacy: just update the display
+      setGeneratedRecipe(adjustedMeal);
+      setServings(adjustedMeal.servings || servings);
+      setIsSaved(false); // Reset saved state since recipe changed
+    }
   };
 
   return (

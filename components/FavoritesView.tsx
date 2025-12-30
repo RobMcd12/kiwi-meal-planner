@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Meal, CookbookTab } from '../types';
-import { getFavoriteMeals, removeFavoriteMeal, getCachedImage, cacheImage, updateFavoriteMealImage } from '../services/storageService';
+import { getFavoriteMeals, removeFavoriteMeal, getCachedImage, cacheImage, updateFavoriteMealImage, saveFavoriteMeal } from '../services/storageService';
+import { useAuth } from './AuthProvider';
 import { generateDishImage, editDishImage, TAG_CATEGORIES } from '../services/geminiService';
 import {
   getUserUploadedRecipes,
@@ -35,6 +36,11 @@ interface FavoritesViewProps {
 type ViewMode = 'cards' | 'list';
 
 const FavoritesView: React.FC<FavoritesViewProps> = ({ onBack, onGenerateList, isLoading, isAdmin = false, onGenerateSingleRecipe }) => {
+  const { user } = useAuth();
+
+  // Get user's display name for recipe naming
+  const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User';
+
   // Tab and view state
   const [activeTab, setActiveTab] = useState<CookbookTab>('generated');
   const [viewMode, setViewMode] = useState<ViewMode>('cards');
@@ -344,16 +350,32 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({ onBack, onGenerateList, i
     return isAdmin || (activeTab === 'uploaded' && meal.source === 'uploaded');
   };
 
-  const handleApplyAdjustment = (adjustedMeal: Meal) => {
-    // Update the recipe in local state
-    const updateRecipes = (prev: Meal[]) =>
-      prev.map(m => m.id === adjustedMeal.id ? { ...adjustedMeal, imageUrl: m.imageUrl } : m);
+  const handleApplyAdjustment = async (adjustedMeal: Meal, saveAsNew: boolean) => {
+    if (saveAsNew) {
+      // Save as a new recipe - don't modify the original
+      try {
+        const saved = await saveFavoriteMeal(adjustedMeal);
+        if (saved) {
+          // Reload recipes to show the new one
+          await loadRecipes();
+          // Close the modal
+          setOpenMeal(null);
+          setShowAdjuster(false);
+        }
+      } catch (error) {
+        console.error('Failed to save adjusted recipe:', error);
+      }
+    } else {
+      // Legacy behavior: Update the recipe in local state (kept for backwards compatibility)
+      const updateRecipes = (prev: Meal[]) =>
+        prev.map(m => m.id === adjustedMeal.id ? { ...adjustedMeal, imageUrl: m.imageUrl } : m);
 
-    if (activeTab === 'generated') setGeneratedRecipes(updateRecipes);
-    else if (activeTab === 'uploaded') setUploadedRecipes(updateRecipes);
+      if (activeTab === 'generated') setGeneratedRecipes(updateRecipes);
+      else if (activeTab === 'uploaded') setUploadedRecipes(updateRecipes);
 
-    // Update the open meal with the adjustments
-    setOpenMeal(adjustedMeal);
+      // Update the open meal with the adjustments
+      setOpenMeal(adjustedMeal);
+    }
   };
 
   // Get source badge color and icon
@@ -1192,6 +1214,8 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({ onBack, onGenerateList, i
           meal={openMeal}
           onClose={() => setShowAdjuster(false)}
           onApply={handleApplyAdjustment}
+          userName={userName}
+          isPublicRecipe={activeTab === 'public' || openMeal.isPublic}
         />
       )}
     </div>
