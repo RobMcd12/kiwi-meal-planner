@@ -82,6 +82,7 @@ const RecipeNotesSection: React.FC<RecipeNotesSectionProps> = ({
   const [userRating, setUserRating] = useState<number | null>(null);
   const [savingComment, setSavingComment] = useState(false);
   const [savingRating, setSavingRating] = useState(false);
+  const [ratingSaved, setRatingSaved] = useState(false);
   const [commentsExpanded, setCommentsExpanded] = useState(false);
   const [averageRating, setAverageRating] = useState({ average: 0, count: 0 });
 
@@ -201,18 +202,26 @@ const RecipeNotesSection: React.FC<RecipeNotesSectionProps> = ({
   const handleRatingClick = async (rating: number) => {
     if (savingRating) return;
     setSavingRating(true);
+    setRatingSaved(false);
+    const previousRating = userRating; // Store previous rating for revert
     setUserRating(rating); // Optimistic update
     try {
       const result = await saveRecipeRating(mealId, rating);
       if (result.success) {
         setAverageRating({ average: result.average, count: result.count });
         onRatingChange?.(result.average, result.count);
+        setRatingSaved(true);
+        // Hide "Saved!" after 2 seconds
+        setTimeout(() => setRatingSaved(false), 2000);
+      } else {
+        // Revert on failure
+        console.error('Rating save failed');
+        setUserRating(previousRating);
       }
     } catch (err) {
       console.error('Error saving rating:', err);
       // Revert on error
-      const ownRating = await getUserRating(mealId);
-      setUserRating(ownRating);
+      setUserRating(previousRating);
     } finally {
       setSavingRating(false);
     }
@@ -539,7 +548,7 @@ const RecipeNotesSection: React.FC<RecipeNotesSectionProps> = ({
               {savingRating && (
                 <Loader2 size={14} className="animate-spin text-amber-500" />
               )}
-              {userRating && !savingRating && (
+              {ratingSaved && !savingRating && (
                 <span className="text-xs text-amber-600 font-medium">Saved!</span>
               )}
             </div>
