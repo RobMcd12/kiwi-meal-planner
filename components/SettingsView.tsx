@@ -32,10 +32,16 @@ const SettingsView: React.FC<SettingsViewProps> = ({
   const [linkError, setLinkError] = useState<string | null>(null);
   const [linkSuccess, setLinkSuccess] = useState(false);
 
-  // Check if user has Google identity linked
-  const hasGoogleLinked = user?.identities?.some(
+  // Check if user has Google identity linked and get the identity details
+  const googleIdentity = user?.identities?.find(
     (identity) => identity.provider === 'google'
-  ) ?? false;
+  );
+  const hasGoogleLinked = !!googleIdentity;
+
+  // Get Google account details from the identity
+  const googleEmail = googleIdentity?.identity_data?.email as string | undefined;
+  const googleName = googleIdentity?.identity_data?.full_name as string | undefined;
+  const googleAvatar = googleIdentity?.identity_data?.avatar_url as string | undefined;
 
   const handleLinkGoogle = async () => {
     setIsLinkingGoogle(true);
@@ -198,7 +204,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({
                         <h4 className="font-medium text-slate-700 mb-3">Connected Accounts</h4>
 
                         {/* Google Connection */}
-                        <div className="border border-slate-200 rounded-xl p-4">
+                        <div className={`border rounded-xl p-4 ${hasGoogleLinked ? 'border-emerald-200 bg-emerald-50/30' : 'border-slate-200'}`}>
                             <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-3">
                                     <div className="w-10 h-10 bg-white rounded-lg border border-slate-200 flex items-center justify-center">
@@ -239,6 +245,41 @@ const SettingsView: React.FC<SettingsViewProps> = ({
                                     </button>
                                 )}
                             </div>
+
+                            {/* Connected Google Account Details */}
+                            {hasGoogleLinked && (
+                                <div className="mt-4 pt-4 border-t border-emerald-200">
+                                    <p className="text-xs text-slate-500 uppercase tracking-wide font-medium mb-3">Connected Account</p>
+                                    <div className="flex items-center gap-3 bg-white rounded-lg p-3 border border-slate-200">
+                                        {googleAvatar ? (
+                                            <img
+                                                src={googleAvatar}
+                                                alt="Google profile"
+                                                className="w-10 h-10 rounded-full"
+                                            />
+                                        ) : (
+                                            <div className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center">
+                                                <UserCircle size={24} className="text-slate-400" />
+                                            </div>
+                                        )}
+                                        <div className="flex-1 min-w-0">
+                                            {googleName && (
+                                                <p className="font-medium text-slate-800 truncate">{googleName}</p>
+                                            )}
+                                            {googleEmail && (
+                                                <p className="text-sm text-slate-500 truncate">{googleEmail}</p>
+                                            )}
+                                        </div>
+                                        <div className="flex items-center gap-1 text-emerald-600">
+                                            <Check size={16} />
+                                            <span className="text-xs font-medium">Verified</span>
+                                        </div>
+                                    </div>
+                                    <p className="text-xs text-slate-400 mt-2">
+                                        You can sign in with this Google account anytime.
+                                    </p>
+                                </div>
+                            )}
 
                             {/* Info message for users not connected */}
                             {!hasGoogleLinked && !linkError && (
