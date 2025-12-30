@@ -20,7 +20,7 @@ import { AuthProvider, useAuth } from './components/AuthProvider';
 import { UploadProvider } from './contexts/UploadContext';
 import { ToastContainer } from './components/Toast';
 import { useToast } from './hooks/useToast';
-import { generateMealPlan, generateShoppingListFromFavorites } from './services/geminiService';
+import { generateMealPlan, generateShoppingListFromFavorites, generateDishImage } from './services/geminiService';
 import {
   saveConfig,
   loadConfig,
@@ -28,7 +28,8 @@ import {
   loadPreferences,
   savePantry,
   loadPantry,
-  savePlanToHistory
+  savePlanToHistory,
+  cacheImage
 } from './services/storageService';
 import { signOut } from './services/authService';
 import { getNewResponseCount } from './services/feedbackService';
@@ -149,6 +150,31 @@ const AppContent: React.FC = () => {
     }
   }, [step]);
 
+  // Helper to generate images for all meals in background
+  const generateMealImagesInBackground = async (planData: MealPlanResponse) => {
+    const meals: Meal[] = [];
+    planData.weeklyPlan.forEach(day => {
+      if (day.meals?.breakfast) meals.push(day.meals.breakfast);
+      if (day.meals?.lunch) meals.push(day.meals.lunch);
+      if (day.meals?.dinner) meals.push(day.meals.dinner);
+    });
+
+    // Generate images sequentially to avoid rate limits
+    for (const meal of meals) {
+      try {
+        const imageUrl = await generateDishImage(meal.name, meal.description);
+        if (imageUrl) {
+          meal.imageUrl = imageUrl;
+          await cacheImage(meal.name, meal.description, imageUrl);
+          // Update state to show image as it's generated
+          setPlanData(prev => prev ? { ...prev } : null);
+        }
+      } catch (error) {
+        console.error(`Failed to generate image for ${meal.name}:`, error);
+      }
+    }
+  };
+
   // Handlers
   const handleGenerate = async () => {
     setLoading(true);
@@ -164,6 +190,9 @@ const AppContent: React.FC = () => {
 
       setStep(AppStep.RESULTS);
       success('Meal plan generated successfully!');
+
+      // Generate images in background after showing results
+      generateMealImagesInBackground(data);
     } catch (err) {
       showError('Something went wrong generating the plan. Please try again.');
       console.error(err);

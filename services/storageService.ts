@@ -237,6 +237,39 @@ export const removeFavoriteMeal = async (id: string): Promise<void> => {
   await supabase.from('favorite_meals').delete().eq('id', id);
 };
 
+/**
+ * Update a favorite meal's image URL
+ */
+export const updateFavoriteMealImage = async (id: string, imageUrl: string): Promise<boolean> => {
+  if (!isSupabaseConfigured()) {
+    // Update in local storage
+    const favorites = getFavoriteMealsLocal();
+    const updated = favorites.map(f => f.id === id ? { ...f, imageUrl } : f);
+    localStorage.setItem(STORAGE_KEYS.FAVORITES, JSON.stringify(updated));
+    return true;
+  }
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    const favorites = getFavoriteMealsLocal();
+    const updated = favorites.map(f => f.id === id ? { ...f, imageUrl } : f);
+    localStorage.setItem(STORAGE_KEYS.FAVORITES, JSON.stringify(updated));
+    return true;
+  }
+
+  const { error } = await supabase
+    .from('favorite_meals')
+    .update({ image_url: imageUrl })
+    .eq('id', id);
+
+  if (error) {
+    console.error('Error updating favorite image:', error);
+    return false;
+  }
+
+  return true;
+};
+
 // ============================================
 // CONFIG - Supabase with LocalStorage fallback
 // ============================================

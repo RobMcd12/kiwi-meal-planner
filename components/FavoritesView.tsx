@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Meal, CookbookTab } from '../types';
-import { getFavoriteMeals, removeFavoriteMeal, getCachedImage, cacheImage } from '../services/storageService';
+import { getFavoriteMeals, removeFavoriteMeal, getCachedImage, cacheImage, updateFavoriteMealImage } from '../services/storageService';
 import { generateDishImage, editDishImage, TAG_CATEGORIES } from '../services/geminiService';
 import {
   getUserUploadedRecipes,
@@ -253,6 +253,10 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({ onBack, onGenerateList, i
       if (imageData) {
         setMealImages(prev => ({ ...prev, [meal.name]: imageData }));
         await cacheImage(meal.name, meal.description, imageData);
+        // Save to database so the image persists
+        if (meal.id) {
+          await updateFavoriteMealImage(meal.id, imageData);
+        }
       }
     } catch (error) {
       console.error('Failed to generate image:', error);
@@ -270,6 +274,10 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({ onBack, onGenerateList, i
       if (imageData) {
         setMealImages(prev => ({ ...prev, [meal.name]: imageData }));
         await cacheImage(meal.name, meal.description, imageData);
+        // Save to database so the image persists
+        if (meal.id) {
+          await updateFavoriteMealImage(meal.id, imageData);
+        }
         setShowImageEditor(false);
         setImageEditPrompt('');
       }
