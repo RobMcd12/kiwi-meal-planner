@@ -779,12 +779,19 @@ export const saveRecipeRating = async (
     if (!user) throw new Error('Not authenticated');
 
     // Check if user already has a comment/rating for this recipe
-    const { data: existing } = await supabase
+    // Use maybeSingle() to avoid throwing error when no row exists
+    const { data: existing, error: fetchError } = await supabase
       .from('recipe_comments')
       .select('id')
       .eq('meal_id', mealId)
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
+
+    // Only throw if it's a real error (not just "no rows found")
+    if (fetchError) {
+      console.error('Error checking existing rating:', fetchError);
+      throw fetchError;
+    }
 
     if (existing) {
       // Update existing rating
@@ -796,19 +803,25 @@ export const saveRecipeRating = async (
         })
         .eq('id', existing.id);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error updating rating:', error);
+        throw error;
+      }
     } else {
-      // Create new entry with just rating (empty comment)
+      // Create new entry with just rating (null comment text)
       const { error } = await supabase
         .from('recipe_comments')
         .insert({
           meal_id: mealId,
           user_id: user.id,
-          comment_text: '',
+          comment_text: null,
           rating: rating
         });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error inserting rating:', error);
+        throw error;
+      }
     }
 
     // Return updated average
@@ -835,9 +848,9 @@ export const getUserRating = async (mealId: string): Promise<number | null> => {
       .select('rating')
       .eq('meal_id', mealId)
       .eq('user_id', user.id)
-      .single();
+      .maybeSingle();
 
-    if (error && error.code !== 'PGRST116') throw error; // PGRST116 = no rows found
+    if (error) throw error;
     return data?.rating || null;
   } catch (err) {
     console.error('Error getting user rating:', err);

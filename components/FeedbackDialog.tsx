@@ -37,10 +37,10 @@ const FeedbackDialog: React.FC<FeedbackDialogProps> = ({ isOpen, onClose, curren
       // Use html2canvas to capture the screen
       const html2canvas = (await import('html2canvas')).default;
 
-      // Temporarily hide the modal
-      const modalElement = document.querySelector('[data-feedback-modal]');
-      if (modalElement) {
-        (modalElement as HTMLElement).style.display = 'none';
+      // Temporarily hide the entire modal (including backdrop)
+      const backdropElement = document.querySelector('[data-feedback-backdrop]');
+      if (backdropElement) {
+        (backdropElement as HTMLElement).style.visibility = 'hidden';
       }
 
       // Small delay to ensure modal is hidden
@@ -55,8 +55,8 @@ const FeedbackDialog: React.FC<FeedbackDialogProps> = ({ isOpen, onClose, curren
       });
 
       // Show modal again
-      if (modalElement) {
-        (modalElement as HTMLElement).style.display = '';
+      if (backdropElement) {
+        (backdropElement as HTMLElement).style.visibility = '';
       }
 
       // Convert to base64
@@ -151,10 +151,12 @@ const FeedbackDialog: React.FC<FeedbackDialogProps> = ({ isOpen, onClose, curren
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+    <div
+      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+      data-feedback-backdrop
+    >
       <div
         className="bg-white rounded-2xl max-w-lg w-full shadow-xl animate-fadeIn max-h-[90vh] overflow-y-auto"
-        data-feedback-modal
         onClick={(e) => e.stopPropagation()}
       >
         {submitted ? (
