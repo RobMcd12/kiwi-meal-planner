@@ -292,6 +292,7 @@ export const saveConfig = async (config: MealConfig): Promise<void> => {
     include_breakfast: config.includeBreakfast,
     include_lunch: config.includeLunch,
     include_dinner: config.includeDinner,
+    use_what_i_have: config.useWhatIHave || false,
   }, { onConflict: 'user_id' });
 };
 
@@ -317,6 +318,7 @@ export const loadConfig = async (fallback: MealConfig): Promise<MealConfig> => {
     includeBreakfast: data.include_breakfast,
     includeLunch: data.include_lunch,
     includeDinner: data.include_dinner,
+    useWhatIHave: data.use_what_i_have || false,
   };
 };
 
