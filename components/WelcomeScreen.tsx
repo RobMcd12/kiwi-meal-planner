@@ -1,10 +1,9 @@
 import React from 'react';
-import { BookHeart, CalendarPlus, Settings, FolderHeart, ArrowRight, ChefHat } from 'lucide-react';
+import { BookHeart, CalendarPlus, FolderHeart, ArrowRight, ChefHat } from 'lucide-react';
 
 interface WelcomeScreenProps {
   onStartNew: () => void;
   onViewFavorites: () => void;
-  onOpenSettings: () => void;
   onViewSavedPlans?: () => void;
   onGenerateSingleRecipe?: () => void;
 }
@@ -12,7 +11,6 @@ interface WelcomeScreenProps {
 const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
   onStartNew,
   onViewFavorites,
-  onOpenSettings,
   onViewSavedPlans,
   onGenerateSingleRecipe
 }) => {
@@ -24,17 +22,6 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
 
   return (
     <div className="animate-fadeIn">
-      {/* Settings Button */}
-      <div className="flex justify-end mb-4">
-        <button
-          onClick={onOpenSettings}
-          className="flex items-center gap-2 px-4 py-2 text-slate-500 hover:text-slate-700 hover:bg-white rounded-lg transition-colors border border-transparent hover:border-slate-200"
-        >
-          <Settings size={18} />
-          <span className="text-sm font-medium">Settings</span>
-        </button>
-      </div>
-
       {/* Hero Section */}
       <div className="grid md:grid-cols-2 gap-8 items-center mb-12">
         <div className="space-y-6">

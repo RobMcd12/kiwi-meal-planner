@@ -33,7 +33,7 @@ import {
 } from './services/storageService';
 import { signOut } from './services/authService';
 import { getNewResponseCount } from './services/feedbackService';
-import { ChefHat, Settings, LogOut, User, Shield, MessageSquare, Bell, HelpCircle } from 'lucide-react';
+import { ChefHat, Settings, LogOut, User, Shield, MessageSquare, Bell, HelpCircle, Menu, X, CalendarPlus, BookHeart, FolderHeart, Sparkles, UserCircle } from 'lucide-react';
 import HelpModal from './components/HelpModal';
 
 // --- Default States ---
@@ -78,6 +78,7 @@ const AppContent: React.FC = () => {
   const [feedbackResponseCount, setFeedbackResponseCount] = useState(0);
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [settingsInitialTab, setSettingsInitialTab] = useState<'general' | 'pantry' | 'prefs' | 'account'>('general');
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
 
   // Load data from storage on mount and when auth changes
   useEffect(() => {
@@ -270,7 +271,6 @@ const AppContent: React.FC = () => {
           <WelcomeScreen
             onStartNew={() => setStep(AppStep.CONFIG)}
             onViewFavorites={() => setStep(AppStep.FAVORITES)}
-            onOpenSettings={() => setStep(AppStep.SETTINGS)}
             onViewSavedPlans={() => setStep(AppStep.SAVED_PLANS)}
             onGenerateSingleRecipe={() => setStep(AppStep.SINGLE_RECIPE)}
           />
@@ -408,8 +408,8 @@ const AppContent: React.FC = () => {
             </h1>
           </div>
 
-          {/* Header Actions */}
-          <div className="flex items-center gap-3">
+          {/* Desktop Header Actions - hidden on mobile */}
+          <div className="hidden md:flex items-center gap-3">
             {/* User info if authenticated - clickable to go to Account settings */}
             {isAuthenticated && user && (
               <button
@@ -417,7 +417,7 @@ const AppContent: React.FC = () => {
                   setSettingsInitialTab('account');
                   setStep(AppStep.SETTINGS);
                 }}
-                className="hidden sm:flex items-center gap-2 text-sm text-slate-600 hover:text-slate-800 hover:bg-slate-100 px-2 py-1 rounded-lg transition-colors"
+                className="flex items-center gap-2 text-sm text-slate-600 hover:text-slate-800 hover:bg-slate-100 px-2 py-1 rounded-lg transition-colors"
                 title="Account Settings"
               >
                 {user.user_metadata?.avatar_url ? (
@@ -506,7 +506,159 @@ const AppContent: React.FC = () => {
               </button>
             )}
           </div>
+
+          {/* Mobile Menu Button */}
+          <button
+            onClick={() => setShowMobileMenu(!showMobileMenu)}
+            className="md:hidden text-slate-600 hover:text-slate-800 p-2"
+            title="Menu"
+          >
+            {showMobileMenu ? <X size={24} /> : <Menu size={24} />}
+          </button>
         </div>
+
+        {/* Mobile Menu Dropdown */}
+        {showMobileMenu && (
+          <div className="md:hidden absolute top-full left-0 right-0 bg-white border-b border-slate-200 shadow-lg z-30">
+            <div className="max-w-5xl mx-auto p-4 space-y-2">
+              {/* User Info */}
+              {isAuthenticated && user && (
+                <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl mb-4">
+                  {user.user_metadata?.avatar_url ? (
+                    <img
+                      src={user.user_metadata.avatar_url}
+                      alt=""
+                      className="w-10 h-10 rounded-full"
+                    />
+                  ) : (
+                    <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center">
+                      <UserCircle size={24} className="text-slate-400" />
+                    </div>
+                  )}
+                  <div>
+                    <p className="font-medium text-slate-800">
+                      {user.user_metadata?.full_name || 'User'}
+                    </p>
+                    <p className="text-sm text-slate-500">{user.email}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* App Links */}
+              <div className="border-b border-slate-100 pb-3 mb-3">
+                <p className="text-xs font-medium text-slate-400 uppercase tracking-wide px-3 mb-2">Navigate</p>
+                <button
+                  onClick={() => { setStep(AppStep.CONFIG); setShowMobileMenu(false); }}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+                >
+                  <CalendarPlus size={20} className="text-emerald-600" />
+                  Create Meal Plan
+                </button>
+                <button
+                  onClick={() => { setStep(AppStep.SINGLE_RECIPE); setShowMobileMenu(false); }}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+                >
+                  <Sparkles size={20} className="text-amber-600" />
+                  Generate Recipe
+                </button>
+                <button
+                  onClick={() => { setStep(AppStep.FAVORITES); setShowMobileMenu(false); }}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+                >
+                  <BookHeart size={20} className="text-rose-600" />
+                  My Cookbook
+                </button>
+                <button
+                  onClick={() => { setStep(AppStep.SAVED_PLANS); setShowMobileMenu(false); }}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+                >
+                  <FolderHeart size={20} className="text-indigo-600" />
+                  Saved Plans
+                </button>
+              </div>
+
+              {/* Settings & Account */}
+              <div className="border-b border-slate-100 pb-3 mb-3">
+                <p className="text-xs font-medium text-slate-400 uppercase tracking-wide px-3 mb-2">Settings</p>
+                <button
+                  onClick={() => { setSettingsInitialTab('general'); setStep(AppStep.SETTINGS); setShowMobileMenu(false); }}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+                >
+                  <Settings size={20} className="text-slate-500" />
+                  Preferences
+                </button>
+                {isAuthenticated && (
+                  <button
+                    onClick={() => { setSettingsInitialTab('account'); setStep(AppStep.SETTINGS); setShowMobileMenu(false); }}
+                    className="w-full flex items-center gap-3 px-3 py-2.5 text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+                  >
+                    <UserCircle size={20} className="text-blue-600" />
+                    Account
+                  </button>
+                )}
+              </div>
+
+              {/* Help & Feedback */}
+              <div className="border-b border-slate-100 pb-3 mb-3">
+                <p className="text-xs font-medium text-slate-400 uppercase tracking-wide px-3 mb-2">Support</p>
+                <button
+                  onClick={() => { setShowHelpModal(true); setShowMobileMenu(false); }}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+                >
+                  <HelpCircle size={20} className="text-slate-500" />
+                  Help & Guide
+                </button>
+                {isAuthenticated && (
+                  <button
+                    onClick={() => { setShowFeedbackDialog(true); setShowMobileMenu(false); }}
+                    className="w-full flex items-center gap-3 px-3 py-2.5 text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+                  >
+                    <MessageSquare size={20} className="text-slate-500" />
+                    Send Feedback
+                  </button>
+                )}
+                {isAuthenticated && feedbackResponseCount > 0 && (
+                  <button
+                    onClick={() => { setStep(AppStep.MY_FEEDBACK); setShowMobileMenu(false); }}
+                    className="w-full flex items-center justify-between gap-3 px-3 py-2.5 text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <Bell size={20} className="text-slate-500" />
+                      My Feedback
+                    </div>
+                    <span className="px-2 py-0.5 bg-red-500 text-white text-xs font-medium rounded-full">
+                      {feedbackResponseCount}
+                    </span>
+                  </button>
+                )}
+              </div>
+
+              {/* Admin (if applicable) */}
+              {isAdmin && (
+                <div className="border-b border-slate-100 pb-3 mb-3">
+                  <button
+                    onClick={() => { setStep(AppStep.ADMIN); setShowMobileMenu(false); }}
+                    className="w-full flex items-center gap-3 px-3 py-2.5 text-emerald-700 hover:bg-emerald-50 rounded-lg transition-colors"
+                  >
+                    <Shield size={20} />
+                    Admin Dashboard
+                  </button>
+                </div>
+              )}
+
+              {/* Sign Out */}
+              {isAuthenticated && (
+                <button
+                  onClick={() => { handleSignOut(); setShowMobileMenu(false); }}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                >
+                  <LogOut size={20} />
+                  Sign Out
+                </button>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Progress Indicator (Only for creation flow) */}
         {(step === AppStep.CONFIG || step === AppStep.PANTRY || step === AppStep.PREFERENCES) && (
