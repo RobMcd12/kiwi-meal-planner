@@ -210,40 +210,191 @@ const RecipePrintView: React.FC<RecipePrintViewProps> = ({ meal, onClose }) => {
 
   const handleDownloadPDF = async () => {
     try {
-      const html2canvas = (await import('html2canvas')).default;
       const jsPDF = (await import('jspdf')).default;
 
-      if (!printRef.current) return;
-
-      const canvas = await html2canvas(printRef.current, {
-        scale: 2,
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: '#ffffff',
-      });
-
-      const imgData = canvas.toDataURL('image/jpeg', 0.95);
       const pdf = new jsPDF({
         orientation: 'portrait',
         unit: 'mm',
         format: 'a4',
       });
 
-      const imgWidth = 210; // A4 width in mm
-      const pageHeight = 297; // A4 height in mm
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      let heightLeft = imgHeight;
-      let position = 0;
+      const pageWidth = 210;
+      const pageHeight = 297;
+      const margin = 20;
+      const contentWidth = pageWidth - (margin * 2);
+      let yPos = margin;
 
-      pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
+      // Helper function to add text with word wrap
+      const addWrappedText = (text: string, x: number, y: number, maxWidth: number, lineHeight: number, fontSize: number, fontStyle: string = 'normal'): number => {
+        pdf.setFontSize(fontSize);
+        pdf.setFont('helvetica', fontStyle);
+        const lines = pdf.splitTextToSize(text, maxWidth);
+        lines.forEach((line: string) => {
+          if (y > pageHeight - margin) {
+            pdf.addPage();
+            y = margin;
+          }
+          pdf.text(line, x, y);
+          y += lineHeight;
+        });
+        return y;
+      };
 
-      while (heightLeft >= 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, 'JPEG', 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
+      // Header with logo
+      pdf.setFillColor(5, 150, 105); // emerald-600
+      pdf.roundedRect(margin, yPos, 10, 10, 2, 2, 'F');
+
+      // Logo text
+      pdf.setFontSize(18);
+      pdf.setFont('helvetica', 'bold');
+      pdf.setTextColor(30, 41, 59); // slate-800
+      pdf.text('Kiwi', margin + 14, yPos + 7);
+      pdf.setTextColor(5, 150, 105); // emerald-600
+      pdf.text('MealPlanner', margin + 28, yPos + 7);
+
+      yPos += 15;
+
+      // Header line
+      pdf.setDrawColor(5, 150, 105);
+      pdf.setLineWidth(0.5);
+      pdf.line(margin, yPos, pageWidth - margin, yPos);
+      yPos += 10;
+
+      // Recipe Title
+      pdf.setTextColor(30, 41, 59);
+      pdf.setFontSize(24);
+      pdf.setFont('helvetica', 'bold');
+      yPos = addWrappedText(meal.name, margin, yPos, contentWidth, 10, 24, 'bold');
+      yPos += 2;
+
+      // Description
+      pdf.setTextColor(100, 116, 139); // slate-500
+      pdf.setFontSize(12);
+      pdf.setFont('helvetica', 'italic');
+      yPos = addWrappedText(meal.description, margin, yPos, contentWidth, 6, 12, 'italic');
+      yPos += 8;
+
+      // Recipe Image (if available)
+      if (meal.imageUrl) {
+        try {
+          // For base64 images
+          if (meal.imageUrl.startsWith('data:')) {
+            const imgHeight = 60;
+            if (yPos + imgHeight > pageHeight - margin) {
+              pdf.addPage();
+              yPos = margin;
+            }
+            pdf.addImage(meal.imageUrl, 'JPEG', margin, yPos, contentWidth, imgHeight);
+            yPos += imgHeight + 10;
+          }
+        } catch (imgError) {
+          console.warn('Could not add image to PDF:', imgError);
+        }
       }
+
+      // Ingredients Section
+      pdf.setTextColor(5, 150, 105);
+      pdf.setFontSize(16);
+      pdf.setFont('helvetica', 'bold');
+      if (yPos > pageHeight - 30) {
+        pdf.addPage();
+        yPos = margin;
+      }
+      pdf.text('Ingredients', margin, yPos);
+      yPos += 3;
+      pdf.setDrawColor(226, 232, 240); // slate-200
+      pdf.setLineWidth(0.3);
+      pdf.line(margin, yPos, pageWidth - margin, yPos);
+      yPos += 8;
+
+      // Ingredients list
+      pdf.setTextColor(30, 41, 59);
+      pdf.setFontSize(11);
+      pdf.setFont('helvetica', 'normal');
+      meal.ingredients.forEach((ingredient) => {
+        if (yPos > pageHeight - 15) {
+          pdf.addPage();
+          yPos = margin;
+        }
+        // Bullet point
+        pdf.setFillColor(5, 150, 105);
+        pdf.circle(margin + 2, yPos - 1.5, 1, 'F');
+        // Ingredient text
+        yPos = addWrappedText(ingredient, margin + 8, yPos, contentWidth - 8, 5, 11, 'normal');
+        yPos += 2;
+      });
+      yPos += 5;
+
+      // Instructions Section
+      pdf.setTextColor(5, 150, 105);
+      pdf.setFontSize(16);
+      pdf.setFont('helvetica', 'bold');
+      if (yPos > pageHeight - 30) {
+        pdf.addPage();
+        yPos = margin;
+      }
+      pdf.text('Instructions', margin, yPos);
+      yPos += 3;
+      pdf.setDrawColor(226, 232, 240);
+      pdf.setLineWidth(0.3);
+      pdf.line(margin, yPos, pageWidth - margin, yPos);
+      yPos += 8;
+
+      // Instructions text
+      pdf.setTextColor(30, 41, 59);
+      pdf.setFontSize(11);
+      pdf.setFont('helvetica', 'normal');
+      yPos = addWrappedText(meal.instructions, margin, yPos, contentWidth, 5.5, 11, 'normal');
+      yPos += 10;
+
+      // Disclaimer box
+      if (yPos > pageHeight - 40) {
+        pdf.addPage();
+        yPos = margin;
+      }
+      const disclaimerText = 'Disclaimer: This recipe is provided for informational purposes only. Please check all ingredients for potential allergens and adjust portions as needed. Cooking times may vary. Always ensure food is properly cooked before consuming.';
+
+      // Calculate disclaimer height
+      pdf.setFontSize(9);
+      const disclaimerLines = pdf.splitTextToSize(disclaimerText, contentWidth - 12);
+      const disclaimerHeight = disclaimerLines.length * 4 + 8;
+
+      // Draw disclaimer background
+      pdf.setFillColor(248, 250, 252); // slate-50
+      pdf.roundedRect(margin, yPos, contentWidth, disclaimerHeight, 2, 2, 'F');
+
+      // Left border accent
+      pdf.setFillColor(148, 163, 184); // slate-400
+      pdf.rect(margin, yPos, 1, disclaimerHeight, 'F');
+
+      // Disclaimer text
+      pdf.setTextColor(100, 116, 139);
+      pdf.setFontSize(9);
+      pdf.setFont('helvetica', 'normal');
+      let disclaimerY = yPos + 5;
+      disclaimerLines.forEach((line: string) => {
+        pdf.text(line, margin + 6, disclaimerY);
+        disclaimerY += 4;
+      });
+      yPos += disclaimerHeight + 10;
+
+      // Footer
+      if (yPos > pageHeight - 20) {
+        pdf.addPage();
+        yPos = margin;
+      }
+      pdf.setDrawColor(226, 232, 240);
+      pdf.setLineWidth(0.3);
+      pdf.line(margin, yPos, pageWidth - margin, yPos);
+      yPos += 8;
+
+      pdf.setTextColor(100, 116, 139);
+      pdf.setFontSize(11);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text('Powered by ', margin + (contentWidth / 2) - 25, yPos);
+      pdf.setTextColor(5, 150, 105);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Kiwi Meal Planner', margin + (contentWidth / 2) - 2, yPos);
 
       pdf.save(`${meal.name.replace(/[^a-z0-9]/gi, '_')}_recipe.pdf`);
     } catch (error) {
