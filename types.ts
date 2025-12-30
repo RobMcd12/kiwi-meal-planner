@@ -51,6 +51,7 @@ export interface Meal {
   description: string;
   ingredients: string[];
   instructions: string;
+  servings?: number; // Number of servings the recipe makes (for nutrition calculation)
   isFavorite?: boolean;
   rating?: 'like' | 'dislike' | null;
   imageUrl?: string;

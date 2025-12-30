@@ -178,19 +178,19 @@ IMPORTANT: Shopping list MUST include ingredients from ALL ${config.days * reque
       throw new Error('Invalid meal plan structure: missing shoppingList');
     }
 
-    // Add IDs to meals for database compatibility
+    // Add IDs and servings to meals for database compatibility
     const timestamp = Date.now();
     parsed.weeklyPlan = parsed.weeklyPlan.map((day: any, dayIdx: number) => ({
       ...day,
       meals: {
         breakfast: day.meals?.breakfast
-          ? { ...day.meals.breakfast, id: `${dayIdx}-breakfast-${timestamp}` }
+          ? { ...day.meals.breakfast, id: `${dayIdx}-breakfast-${timestamp}`, servings: config.peopleCount }
           : undefined,
         lunch: day.meals?.lunch
-          ? { ...day.meals.lunch, id: `${dayIdx}-lunch-${timestamp}` }
+          ? { ...day.meals.lunch, id: `${dayIdx}-lunch-${timestamp}`, servings: config.peopleCount }
           : undefined,
         dinner: day.meals?.dinner
-          ? { ...day.meals.dinner, id: `${dayIdx}-dinner-${timestamp}` }
+          ? { ...day.meals.dinner, id: `${dayIdx}-dinner-${timestamp}`, servings: config.peopleCount }
           : undefined,
       }
     }));

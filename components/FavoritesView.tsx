@@ -1145,6 +1145,7 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({ onBack, onGenerateList, i
       {showNutrition && openMeal && (
         <NutritionInfo
           meal={openMeal}
+          servings={openMeal.servings || 4}
           onClose={() => setShowNutrition(false)}
         />
       )}

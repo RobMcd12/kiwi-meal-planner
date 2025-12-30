@@ -145,6 +145,7 @@ export const saveFavoriteMeal = async (meal: Meal, autoTag: boolean = true): Pro
       source: meal.source || 'generated',
       is_public: meal.isPublic || false,
       upload_status: 'complete',
+      servings: meal.servings || 4, // Default to 4 servings if not specified
     })
     .select('id')
     .single();
@@ -204,6 +205,7 @@ export const getFavoriteMeals = async (): Promise<Meal[]> => {
         description: row.description,
         ingredients: row.ingredients,
         instructions: row.instructions,
+        servings: row.servings || 4, // Default to 4 if not set
         isFavorite: true,
         imageUrl: row.image_url,
         source: row.source as 'generated' | 'uploaded' | undefined,
