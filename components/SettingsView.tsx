@@ -57,11 +57,18 @@ const SettingsView: React.FC<SettingsViewProps> = ({
       // and then back to the app
     } catch (err: unknown) {
       console.error('Failed to link Google account:', err);
-      setLinkError(
-        err instanceof Error
-          ? err.message
-          : 'Failed to link Google account. Please try again.'
-      );
+      const errorMessage = err instanceof Error ? err.message : '';
+
+      // Handle specific error cases
+      if (errorMessage.includes('Manual linking is disabled')) {
+        setLinkError(
+          'Account linking is not currently available. Please contact support if you need to connect your Google account.'
+        );
+      } else {
+        setLinkError(
+          errorMessage || 'Failed to link Google account. Please try again.'
+        );
+      }
       setIsLinkingGoogle(false);
     }
   };
