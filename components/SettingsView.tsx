@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { MealConfig, UserPreferences, PantryItem } from '../types';
 import ConfigForm from './ConfigForm';
 import PreferenceForm from './PreferenceForm';
@@ -15,6 +15,7 @@ interface SettingsViewProps {
   pantryItems: PantryItem[];
   setPantryItems: React.Dispatch<React.SetStateAction<PantryItem[]>>;
   onClose: () => void;
+  initialTab?: 'general' | 'pantry' | 'prefs' | 'account';
 }
 
 const SettingsView: React.FC<SettingsViewProps> = ({
@@ -25,12 +26,33 @@ const SettingsView: React.FC<SettingsViewProps> = ({
   pantryItems,
   setPantryItems,
   onClose,
+  initialTab = 'general',
 }) => {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<'general' | 'pantry' | 'prefs' | 'account'>('general');
+  const [activeTab, setActiveTab] = useState<'general' | 'pantry' | 'prefs' | 'account'>(initialTab);
   const [isLinkingGoogle, setIsLinkingGoogle] = useState(false);
   const [linkError, setLinkError] = useState<string | null>(null);
   const [linkSuccess, setLinkSuccess] = useState(false);
+
+  // Check for auth callback errors in URL (e.g., after OAuth redirect)
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const errorCode = url.searchParams.get('error_code') || url.hash.match(/error_code=([^&]+)/)?.[1];
+    const errorDescription = url.searchParams.get('error_description') || url.hash.match(/error_description=([^&]+)/)?.[1];
+
+    if (errorCode === 'identity_already_exists') {
+      // Google is already linked - show success message instead of error
+      setLinkSuccess(true);
+      setActiveTab('account');
+      // Clean up URL
+      window.history.replaceState({}, '', window.location.pathname);
+    } else if (errorCode && errorDescription) {
+      setLinkError(decodeURIComponent(errorDescription.replace(/\+/g, ' ')));
+      setActiveTab('account');
+      // Clean up URL
+      window.history.replaceState({}, '', window.location.pathname);
+    }
+  }, []);
 
   // Check if user has Google identity linked and get the identity details
   const googleIdentity = user?.identities?.find(
@@ -296,10 +318,17 @@ const SettingsView: React.FC<SettingsViewProps> = ({
                             )}
 
                             {/* Success message */}
-                            {linkSuccess && (
+                            {linkSuccess && !hasGoogleLinked && (
                                 <div className="mt-3 p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
                                     <p className="text-sm text-emerald-600">
                                         Google account linked successfully!
+                                    </p>
+                                </div>
+                            )}
+                            {linkSuccess && hasGoogleLinked && (
+                                <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                                    <p className="text-sm text-blue-600">
+                                        Your Google account is already connected. You can sign in with Google anytime.
                                     </p>
                                 </div>
                             )}

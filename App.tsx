@@ -77,6 +77,7 @@ const AppContent: React.FC = () => {
   const [showFeedbackDialog, setShowFeedbackDialog] = useState(false);
   const [feedbackResponseCount, setFeedbackResponseCount] = useState(0);
   const [showHelpModal, setShowHelpModal] = useState(false);
+  const [settingsInitialTab, setSettingsInitialTab] = useState<'general' | 'pantry' | 'prefs' | 'account'>('general');
 
   // Load data from storage on mount and when auth changes
   useEffect(() => {
@@ -284,7 +285,11 @@ const AppContent: React.FC = () => {
             setPreferences={setPreferences}
             pantryItems={pantryItems}
             setPantryItems={setPantryItems}
-            onClose={() => setStep(AppStep.WELCOME)}
+            onClose={() => {
+              setStep(AppStep.WELCOME);
+              setSettingsInitialTab('general'); // Reset for next time
+            }}
+            initialTab={settingsInitialTab}
           />
         );
 
@@ -405,9 +410,16 @@ const AppContent: React.FC = () => {
 
           {/* Header Actions */}
           <div className="flex items-center gap-3">
-            {/* User info if authenticated */}
+            {/* User info if authenticated - clickable to go to Account settings */}
             {isAuthenticated && user && (
-              <div className="hidden sm:flex items-center gap-2 text-sm text-slate-600">
+              <button
+                onClick={() => {
+                  setSettingsInitialTab('account');
+                  setStep(AppStep.SETTINGS);
+                }}
+                className="hidden sm:flex items-center gap-2 text-sm text-slate-600 hover:text-slate-800 hover:bg-slate-100 px-2 py-1 rounded-lg transition-colors"
+                title="Account Settings"
+              >
                 {user.user_metadata?.avatar_url ? (
                   <img
                     src={user.user_metadata.avatar_url}
@@ -420,7 +432,7 @@ const AppContent: React.FC = () => {
                 <span className="max-w-[120px] truncate">
                   {user.user_metadata?.full_name || user.email?.split('@')[0]}
                 </span>
-              </div>
+              </button>
             )}
 
             {/* Help button */}
@@ -469,10 +481,13 @@ const AppContent: React.FC = () => {
               </button>
             )}
 
-            {/* Settings Icon */}
-            {step !== AppStep.WELCOME && step !== AppStep.SETTINGS && step !== AppStep.ADMIN && step !== AppStep.MY_FEEDBACK && (
+            {/* Settings Icon - always visible except when in settings */}
+            {step !== AppStep.SETTINGS && step !== AppStep.ADMIN && step !== AppStep.MY_FEEDBACK && (
               <button
-                onClick={() => setStep(AppStep.SETTINGS)}
+                onClick={() => {
+                  setSettingsInitialTab('general');
+                  setStep(AppStep.SETTINGS);
+                }}
                 className="text-slate-400 hover:text-slate-700 transition-colors p-1"
                 title="Settings"
               >
