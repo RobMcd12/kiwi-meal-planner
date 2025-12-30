@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Sparkles, ChefHat, Loader2, Heart, Printer, Users, Check, Apple, SlidersHorizontal } from 'lucide-react';
+import { ArrowLeft, Sparkles, ChefHat, Loader2, Heart, Printer, Users, Check, Apple, SlidersHorizontal, AlertCircle } from 'lucide-react';
 import type { Meal, UserPreferences, PantryItem } from '../types';
 import { generateSingleRecipe, generateDishImage } from '../services/geminiService';
 import { saveFavoriteMeal } from '../services/storageService';
@@ -227,8 +227,9 @@ const SingleRecipeGenerator: React.FC<SingleRecipeGeneratorProps> = ({
 
           {/* Error */}
           {error && (
-            <div className="bg-red-50 text-red-600 px-4 py-3 rounded-xl text-sm">
-              {error}
+            <div className="bg-red-50 border border-red-200 rounded-xl p-3 flex items-start gap-2">
+              <AlertCircle size={18} className="text-red-500 mt-0.5 flex-shrink-0" />
+              <p className="text-sm text-red-700">{error}</p>
             </div>
           )}
 

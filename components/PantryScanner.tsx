@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Camera, Upload, X, Loader2, Check, Plus, Trash2, Image as ImageIcon, Sparkles } from 'lucide-react';
+import { Camera, Upload, X, Loader2, Check, Plus, Trash2, Image as ImageIcon, Sparkles, AlertCircle } from 'lucide-react';
 import { scanPantryFromImages, ScannedPantryResult } from '../services/geminiService';
 import type { PantryItem } from '../types';
 
@@ -253,8 +253,9 @@ const PantryScanner: React.FC<PantryScannerProps> = ({ onItemsScanned, onClose }
 
               {/* Error */}
               {error && (
-                <div className="bg-red-50 text-red-600 px-4 py-3 rounded-xl text-sm">
-                  {error}
+                <div className="bg-red-50 border border-red-200 rounded-xl p-3 flex items-start gap-2">
+                  <AlertCircle size={18} className="text-red-500 mt-0.5 flex-shrink-0" />
+                  <p className="text-sm text-red-700">{error}</p>
                 </div>
               )}
             </div>

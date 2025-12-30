@@ -90,6 +90,37 @@ See [MIGRATION_GUIDE.md](MIGRATION_GUIDE.md) for details.
 └── types.ts            # TypeScript types
 ```
 
+## Styling Guidelines
+
+### Popup, Toast & Alert Styling
+
+All error messages, warnings, success messages, and info popups **must** use consistent app styling:
+
+| Type | Background | Border | Text | Icon |
+|------|------------|--------|------|------|
+| **Error** | `bg-red-50` | `border-red-200` | `text-red-700` | `AlertCircle` (red-500) |
+| **Success** | `bg-emerald-50` | `border-emerald-200` | `text-emerald-600` | `CheckCircle` (emerald-500) |
+| **Warning** | `bg-amber-50` | `border-amber-200` | `text-amber-700` | `AlertTriangle` (amber-500) |
+| **Info** | `bg-blue-50` | `border-blue-200` | `text-blue-600` | `Info` (blue-500) |
+
+**Standard error component pattern:**
+```tsx
+{error && (
+  <div className="bg-red-50 border border-red-200 rounded-xl p-3 flex items-start gap-2">
+    <AlertCircle size={18} className="text-red-500 mt-0.5 flex-shrink-0" />
+    <p className="text-sm text-red-700">{error}</p>
+  </div>
+)}
+```
+
+**Key requirements:**
+- Always use `rounded-xl` for consistency with app design
+- Include appropriate icon from `lucide-react`
+- Use border for visual separation
+- Icons should have `flex-shrink-0` to prevent squishing
+
+For toast notifications, use the `useToast` hook which handles styling automatically.
+
 ## License
 
 MIT
