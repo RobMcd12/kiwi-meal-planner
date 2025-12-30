@@ -1,6 +1,8 @@
-import React, { useState } from 'react';
-import { ChefHat, Sparkles, ShoppingCart, Heart, ArrowRight, Camera, Package, Upload, Apple, Users, SlidersHorizontal, Video, Mic } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { ChefHat, Sparkles, ShoppingCart, Heart, ArrowRight, Camera, Package, Upload, Apple, Users, SlidersHorizontal, Video, Mic, Crown, Check, Infinity } from 'lucide-react';
 import LegalPages from './LegalPages';
+import { getSubscriptionConfig, formatPrice } from '../services/subscriptionService';
+import type { SubscriptionConfig } from '../types';
 
 type LegalPageType = 'privacy' | 'terms' | 'data' | null;
 
@@ -11,6 +13,11 @@ interface LandingPageProps {
 
 const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin }) => {
   const [showLegalPage, setShowLegalPage] = useState<LegalPageType>(null);
+  const [subscriptionConfig, setSubscriptionConfig] = useState<SubscriptionConfig | null>(null);
+
+  useEffect(() => {
+    getSubscriptionConfig().then(setSubscriptionConfig);
+  }, []);
 
   const foodImages = [
     'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=300&fit=crop',
@@ -294,6 +301,131 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin }) => {
                   </button>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Pricing Section */}
+      <section className="px-6 py-16 bg-white" id="pricing">
+        <div className="max-w-5xl mx-auto">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-bold text-slate-800 mb-4">
+              Simple, Affordable Pricing
+            </h2>
+            <p className="text-lg text-slate-600">
+              Start free, upgrade when you're ready for Pro features
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-8 max-w-3xl mx-auto">
+            {/* Free Tier */}
+            <div className="bg-slate-50 rounded-2xl p-8 border border-slate-200">
+              <div className="mb-6">
+                <h3 className="text-2xl font-bold text-slate-800 mb-2">Free</h3>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-4xl font-bold text-slate-800">$0</span>
+                  <span className="text-slate-500">/forever</span>
+                </div>
+              </div>
+
+              <ul className="space-y-4 mb-8">
+                <li className="flex items-start gap-3">
+                  <Check size={20} className="text-emerald-500 flex-shrink-0 mt-0.5" />
+                  <span className="text-slate-700">AI-powered meal plans</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <Check size={20} className="text-emerald-500 flex-shrink-0 mt-0.5" />
+                  <span className="text-slate-700">Smart shopping lists</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <Check size={20} className="text-emerald-500 flex-shrink-0 mt-0.5" />
+                  <span className="text-slate-700">
+                    {subscriptionConfig?.freeRecipeLimit || 20} saved recipes
+                  </span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <Check size={20} className="text-emerald-500 flex-shrink-0 mt-0.5" />
+                  <span className="text-slate-700">Basic pantry management</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <Check size={20} className="text-emerald-500 flex-shrink-0 mt-0.5" />
+                  <span className="text-slate-700">Scan pantry with photos</span>
+                </li>
+              </ul>
+
+              <button
+                onClick={onGetStarted}
+                className="w-full py-3 bg-slate-200 hover:bg-slate-300 text-slate-800 rounded-xl font-semibold transition-colors"
+              >
+                Get Started Free
+              </button>
+            </div>
+
+            {/* Pro Tier */}
+            <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-2xl p-8 border-2 border-emerald-400 relative">
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                <span className="inline-flex items-center gap-1.5 px-4 py-1 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-sm font-bold rounded-full">
+                  <Sparkles size={14} />
+                  POPULAR
+                </span>
+              </div>
+
+              <div className="mb-6">
+                <div className="flex items-center gap-2 mb-2">
+                  <h3 className="text-2xl font-bold text-slate-800">Pro</h3>
+                  <Crown size={24} className="text-amber-500" />
+                </div>
+                <div className="flex items-baseline gap-1">
+                  <span className="text-4xl font-bold text-emerald-700">
+                    {subscriptionConfig ? formatPrice(subscriptionConfig.priceMonthlyCents) : '$9.99'}
+                  </span>
+                  <span className="text-slate-500">/month</span>
+                </div>
+                {subscriptionConfig && (
+                  <p className="text-sm text-emerald-600 mt-1">
+                    Or {formatPrice(subscriptionConfig.priceYearlyCents)}/year (Save {subscriptionConfig.yearlyDiscountPercent}%)
+                  </p>
+                )}
+              </div>
+
+              <ul className="space-y-4 mb-8">
+                <li className="flex items-start gap-3">
+                  <Check size={20} className="text-emerald-600 flex-shrink-0 mt-0.5" />
+                  <span className="text-slate-700 font-medium">Everything in Free, plus:</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <Infinity size={20} className="text-emerald-600 flex-shrink-0 mt-0.5" />
+                  <span className="text-slate-700">
+                    <span className="font-semibold">Unlimited</span> saved recipes
+                  </span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <Video size={20} className="text-emerald-600 flex-shrink-0 mt-0.5" />
+                  <span className="text-slate-700">Video pantry scanning</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <Mic size={20} className="text-emerald-600 flex-shrink-0 mt-0.5" />
+                  <span className="text-slate-700">Live voice dictation</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <Upload size={20} className="text-emerald-600 flex-shrink-0 mt-0.5" />
+                  <span className="text-slate-700">Audio file upload</span>
+                </li>
+              </ul>
+
+              <button
+                onClick={onGetStarted}
+                className="w-full py-3 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white rounded-xl font-semibold transition-all shadow-lg flex items-center justify-center gap-2"
+              >
+                <Crown size={18} />
+                Start Free Trial
+              </button>
+              {subscriptionConfig && (
+                <p className="text-center text-sm text-slate-500 mt-3">
+                  {subscriptionConfig.trialPeriodDays} days free, cancel anytime
+                </p>
+              )}
             </div>
           </div>
         </div>

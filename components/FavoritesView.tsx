@@ -22,7 +22,7 @@ import RecipeAdjuster from './RecipeAdjuster';
 import {
   Trash2, Heart, ShoppingCart, ArrowLeft, X, ChefHat, Clock,
   Image as ImageIcon, Loader2, Search, Grid, List, Plus, Upload,
-  Globe, Lock, Tag, User, Sparkles, FileText, Pencil, RefreshCw, Star, Printer, Apple, SlidersHorizontal
+  Globe, Lock, Tag, User, Sparkles, FileText, Pencil, RefreshCw, Star, Printer, Apple, SlidersHorizontal, Crown, AlertCircle
 } from 'lucide-react';
 
 interface FavoritesViewProps {
@@ -31,12 +31,30 @@ interface FavoritesViewProps {
   isLoading: boolean;
   isAdmin?: boolean;
   onGenerateSingleRecipe?: () => void;
+  hasPro?: boolean;
+  recipeCount?: number;
+  recipeLimit?: number;
+  onUpgradeClick?: () => void;
 }
 
 type ViewMode = 'cards' | 'list';
 
-const FavoritesView: React.FC<FavoritesViewProps> = ({ onBack, onGenerateList, isLoading, isAdmin = false, onGenerateSingleRecipe }) => {
+const FavoritesView: React.FC<FavoritesViewProps> = ({
+  onBack,
+  onGenerateList,
+  isLoading,
+  isAdmin = false,
+  onGenerateSingleRecipe,
+  hasPro = false,
+  recipeCount = 0,
+  recipeLimit = 20,
+  onUpgradeClick
+}) => {
   const { user } = useAuth();
+
+  // Calculate if user can create more recipes
+  const canCreateRecipe = hasPro || recipeCount < recipeLimit;
+  const recipesRemaining = hasPro ? null : Math.max(0, recipeLimit - recipeCount);
 
   // Get user's display name for recipe naming
   const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User';
@@ -402,7 +420,49 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({ onBack, onGenerateList, i
             >
               <ArrowLeft size={24} className="text-slate-600" />
             </button>
-            <h2 className="text-2xl font-bold text-slate-800">My Cookbook</h2>
+            <div>
+              <h2 className="text-2xl font-bold text-slate-800">My Cookbook</h2>
+              {/* Recipe limit indicator for free users */}
+              {!hasPro && (
+                <div className="flex items-center gap-2 mt-1">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-sm text-slate-500">
+                      {recipeCount} / {recipeLimit} recipes
+                    </span>
+                    <div className="w-24 h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all ${
+                          recipeCount >= recipeLimit
+                            ? 'bg-red-500'
+                            : recipeCount >= recipeLimit * 0.8
+                            ? 'bg-amber-500'
+                            : 'bg-emerald-500'
+                        }`}
+                        style={{ width: `${Math.min(100, (recipeCount / recipeLimit) * 100)}%` }}
+                      />
+                    </div>
+                  </div>
+                  {recipeCount >= recipeLimit && (
+                    <button
+                      onClick={onUpgradeClick}
+                      className="flex items-center gap-1 px-2 py-0.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-medium rounded-full hover:from-amber-600 hover:to-orange-600 transition-colors"
+                    >
+                      <Crown size={10} />
+                      Upgrade
+                    </button>
+                  )}
+                </div>
+              )}
+              {hasPro && (
+                <div className="flex items-center gap-1 mt-1">
+                  <span className="px-1.5 py-0.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[10px] font-bold rounded-full flex items-center gap-0.5">
+                    <Crown size={10} />
+                    PRO
+                  </span>
+                  <span className="text-xs text-slate-400">Unlimited recipes</span>
+                </div>
+              )}
+            </div>
           </div>
 
           {/* Action Buttons in Header */}
@@ -410,22 +470,42 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({ onBack, onGenerateList, i
             {/* Generate Recipe Button */}
             {onGenerateSingleRecipe && (
               <button
-                onClick={onGenerateSingleRecipe}
-                className="flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-lg font-medium transition-colors"
-                title="Generate a Recipe"
+                onClick={() => {
+                  if (!canCreateRecipe) {
+                    onUpgradeClick?.();
+                  } else {
+                    onGenerateSingleRecipe();
+                  }
+                }}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+                  canCreateRecipe
+                    ? 'bg-amber-500 hover:bg-amber-600 text-white'
+                    : 'bg-slate-200 text-slate-500 cursor-pointer'
+                }`}
+                title={canCreateRecipe ? 'Generate a Recipe' : 'Recipe limit reached - Upgrade to Pro'}
               >
-                <Sparkles size={18} />
+                {canCreateRecipe ? <Sparkles size={18} /> : <Lock size={18} />}
                 <span className="hidden sm:inline">Generate</span>
               </button>
             )}
 
             {/* Upload Button */}
             <button
-              onClick={() => setShowUploadModal(true)}
-              className="flex items-center gap-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
-              title="Upload Recipe"
+              onClick={() => {
+                if (!canCreateRecipe) {
+                  onUpgradeClick?.();
+                } else {
+                  setShowUploadModal(true);
+                }
+              }}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+                canCreateRecipe
+                  ? 'bg-purple-600 hover:bg-purple-700 text-white'
+                  : 'bg-slate-200 text-slate-500 cursor-pointer'
+              }`}
+              title={canCreateRecipe ? 'Upload Recipe' : 'Recipe limit reached - Upgrade to Pro'}
             >
-              <Plus size={18} />
+              {canCreateRecipe ? <Plus size={18} /> : <Lock size={18} />}
               <span className="hidden sm:inline">Upload</span>
             </button>
 

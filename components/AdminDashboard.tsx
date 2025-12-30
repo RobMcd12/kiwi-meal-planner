@@ -49,7 +49,11 @@ import {
   createCategory,
   deleteCategory
 } from '../services/adminInstructionsService';
-import type { FeedbackItem, FeedbackStatus, AdminInstruction, AdminInstructionCategory, InstructionTag } from '../types';
+import type { FeedbackItem, FeedbackStatus, AdminInstruction, AdminInstructionCategory, InstructionTag, UserLoginSummary } from '../types';
+import UserLoginHistory from './admin/UserLoginHistory';
+import SubscriptionSettings from './admin/SubscriptionSettings';
+import { getAllUsersWithLoginSummary } from '../services/loginHistoryService';
+import { Crown } from 'lucide-react';
 
 interface AdminDashboardProps {
   onBack: () => void;
@@ -61,11 +65,21 @@ interface Stats {
   totalFavorites: number;
 }
 
+interface UserWithLoginSummary {
+  userId: string;
+  email: string;
+  fullName: string | null;
+  avatarUrl: string | null;
+  isAdmin: boolean;
+  createdAt: string;
+  loginSummary: UserLoginSummary | null;
+}
+
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
   const { user, isAdmin, refreshAdminStatus } = useAuth();
   const [stats, setStats] = useState<Stats>({ totalUsers: 0, totalMealPlans: 0, totalFavorites: 0 });
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'overview' | 'feedback' | 'data' | 'users' | 'instructions'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'feedback' | 'data' | 'users' | 'instructions' | 'subscriptions'>('overview');
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   // Instructions state
@@ -102,7 +116,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
   const [isResponding, setIsResponding] = useState(false);
 
   // Users state
-  const [usersList, setUsersList] = useState<UserProfile[]>([]);
+  const [usersList, setUsersList] = useState<UserWithLoginSummary[]>([]);
   const [usersLoading, setUsersLoading] = useState(false);
   const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
   const [showAddUserModal, setShowAddUserModal] = useState(false);
@@ -114,6 +128,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
   const [creatingUser, setCreatingUser] = useState(false);
   const [resettingPasswordUserId, setResettingPasswordUserId] = useState<string | null>(null);
   const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
+  const [expandedUserId, setExpandedUserId] = useState<string | null>(null);
 
   // Check if current user is super admin (can manage other admins)
   const currentUserIsSuperAdmin = isSuperAdmin(user?.email ?? undefined);
@@ -314,7 +329,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
   const loadUsers = async () => {
     setUsersLoading(true);
     try {
-      const users = await getAllUsers();
+      const users = await getAllUsersWithLoginSummary();
       setUsersList(users);
     } catch (err) {
       console.error('Failed to load users:', err);
@@ -335,7 +350,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
       const success = await setUserAdminStatus(userId, !currentIsAdmin);
       if (success) {
         setUsersList(prev =>
-          prev.map(u => u.id === userId ? { ...u, is_admin: !currentIsAdmin } : u)
+          prev.map(u => u.userId === userId ? { ...u, isAdmin: !currentIsAdmin } : u)
         );
         setMessage({ type: 'success', text: `Admin status ${!currentIsAdmin ? 'granted' : 'revoked'} successfully.` });
         // Refresh the admin status in case the user changed their own status
@@ -415,7 +430,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
       const result = await deleteUser(userId);
       if (result.success) {
         setMessage({ type: 'success', text: 'User deleted successfully.' });
-        setUsersList(prev => prev.filter(u => u.id !== userId));
+        setUsersList(prev => prev.filter(u => u.userId !== userId));
       } else {
         setMessage({ type: 'error', text: result.error || 'Failed to delete user.' });
       }
@@ -663,6 +678,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
           { id: 'overview', label: 'Overview', icon: Activity },
           { id: 'feedback', label: 'Feedback', icon: MessageSquare, badge: newFeedbackCount },
           { id: 'instructions', label: 'Instructions', icon: Settings },
+          { id: 'subscriptions', label: 'Subscriptions', icon: Crown },
           { id: 'data', label: 'Data Management', icon: Database },
           { id: 'users', label: 'Users', icon: Users },
         ].map((tab) => (
@@ -1381,6 +1397,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
         </div>
       )}
 
+      {/* Subscriptions Tab */}
+      {activeTab === 'subscriptions' && (
+        <div>
+          <SubscriptionSettings onMessage={setMessage} />
+        </div>
+      )}
+
       {/* Data Management Tab */}
       {activeTab === 'data' && (
         <div className="space-y-6">
@@ -1478,133 +1501,127 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
               <p className="text-slate-500">No users found.</p>
             </div>
           ) : (
-            <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-              <table className="w-full">
-                <thead className="bg-slate-50 border-b border-slate-200">
-                  <tr>
-                    <th className="text-left px-4 py-3 text-sm font-medium text-slate-600">User</th>
-                    <th className="text-left px-4 py-3 text-sm font-medium text-slate-600">Email</th>
-                    <th className="text-left px-4 py-3 text-sm font-medium text-slate-600 hidden md:table-cell">Joined</th>
-                    <th className="text-center px-4 py-3 text-sm font-medium text-slate-600">Admin</th>
-                    <th className="text-right px-4 py-3 text-sm font-medium text-slate-600">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {usersList.map((userItem) => {
-                    const isUserSuperAdmin = isSuperAdmin(userItem.email);
-                    return (
-                      <tr key={userItem.id} className="hover:bg-slate-50">
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-3">
-                            {userItem.avatar_url ? (
-                              <img
-                                src={userItem.avatar_url}
-                                alt=""
-                                className="w-8 h-8 rounded-full"
-                              />
-                            ) : (
-                              <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center">
-                                <Users size={16} className="text-slate-500" />
-                              </div>
-                            )}
-                            <span className="font-medium text-slate-800">
-                              {userItem.full_name || 'Unknown'}
-                            </span>
+            <div className="space-y-3">
+              {usersList.map((userItem) => {
+                const isUserSuperAdmin = isSuperAdmin(userItem.email);
+                return (
+                  <div key={userItem.userId} className="bg-white rounded-xl border border-slate-200 p-4">
+                    {/* User header row */}
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex items-center gap-3 min-w-0">
+                        {userItem.avatarUrl ? (
+                          <img
+                            src={userItem.avatarUrl}
+                            alt=""
+                            className="w-10 h-10 rounded-full flex-shrink-0"
+                          />
+                        ) : (
+                          <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center flex-shrink-0">
+                            <Users size={20} className="text-slate-500" />
                           </div>
-                        </td>
-                        <td className="px-4 py-3 text-sm text-slate-600">
-                          {userItem.email}
-                          {isUserSuperAdmin && (
-                            <span className="ml-2 px-1.5 py-0.5 bg-purple-100 text-purple-700 text-xs font-medium rounded">
-                              Super Admin
+                        )}
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-medium text-slate-800 truncate">
+                              {userItem.fullName || 'Unknown'}
                             </span>
-                          )}
-                        </td>
-                        <td className="px-4 py-3 text-sm text-slate-500 hidden md:table-cell">
-                          {new Date(userItem.created_at).toLocaleDateString('en-NZ', {
-                            day: 'numeric',
-                            month: 'short',
-                            year: 'numeric',
-                          })}
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          {userItem.is_admin || isUserSuperAdmin ? (
-                            <span className="inline-flex items-center gap-1 px-2 py-1 bg-emerald-100 text-emerald-700 text-xs font-medium rounded-full">
-                              <ShieldCheck size={14} />
-                              Admin
-                            </span>
+                            {userItem.isAdmin || isUserSuperAdmin ? (
+                              <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-100 text-emerald-700 text-xs font-medium rounded-full">
+                                <ShieldCheck size={12} />
+                                Admin
+                              </span>
+                            ) : null}
+                            {isUserSuperAdmin && (
+                              <span className="px-1.5 py-0.5 bg-purple-100 text-purple-700 text-xs font-medium rounded">
+                                Super Admin
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-sm text-slate-500 truncate">{userItem.email}</div>
+                          <div className="text-xs text-slate-400 mt-0.5">
+                            Joined {new Date(userItem.createdAt).toLocaleDateString('en-NZ', {
+                              day: 'numeric',
+                              month: 'short',
+                              year: 'numeric',
+                            })}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Actions */}
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        {/* Reset Password Button */}
+                        <button
+                          onClick={() => handleResetPassword(userItem.email, userItem.userId)}
+                          disabled={resettingPasswordUserId === userItem.userId}
+                          className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-50"
+                          title="Send password reset email"
+                        >
+                          {resettingPasswordUserId === userItem.userId ? (
+                            <Loader2 size={16} className="animate-spin" />
                           ) : (
-                            <span className="inline-flex items-center gap-1 px-2 py-1 bg-slate-100 text-slate-500 text-xs font-medium rounded-full">
-                              <ShieldX size={14} />
-                              User
-                            </span>
+                            <Key size={16} />
                           )}
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="flex items-center justify-end gap-2">
-                            {/* Reset Password Button */}
-                            <button
-                              onClick={() => handleResetPassword(userItem.email, userItem.id)}
-                              disabled={resettingPasswordUserId === userItem.id}
-                              className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors disabled:opacity-50"
-                              title="Send password reset email"
-                            >
-                              {resettingPasswordUserId === userItem.id ? (
-                                <Loader2 size={16} className="animate-spin" />
-                              ) : (
-                                <Key size={16} />
-                              )}
-                            </button>
+                        </button>
 
-                            {/* Admin Toggle - Only for super admin */}
-                            {currentUserIsSuperAdmin && !isUserSuperAdmin && (
-                              <button
-                                onClick={() => handleToggleAdmin(userItem.id, userItem.is_admin)}
-                                disabled={updatingUserId === userItem.id}
-                                className={`p-1.5 rounded-lg transition-colors disabled:opacity-50 ${
-                                  userItem.is_admin
-                                    ? 'text-emerald-600 hover:text-red-600 hover:bg-red-50'
-                                    : 'text-slate-400 hover:text-emerald-600 hover:bg-emerald-50'
-                                }`}
-                                title={userItem.is_admin ? 'Revoke admin' : 'Make admin'}
-                              >
-                                {updatingUserId === userItem.id ? (
-                                  <Loader2 size={16} className="animate-spin" />
-                                ) : userItem.is_admin ? (
-                                  <ShieldCheck size={16} />
-                                ) : (
-                                  <ShieldX size={16} />
-                                )}
-                              </button>
+                        {/* Admin Toggle - Only for super admin */}
+                        {currentUserIsSuperAdmin && !isUserSuperAdmin && (
+                          <button
+                            onClick={() => handleToggleAdmin(userItem.userId, userItem.isAdmin)}
+                            disabled={updatingUserId === userItem.userId}
+                            className={`p-1.5 rounded-lg transition-colors disabled:opacity-50 ${
+                              userItem.isAdmin
+                                ? 'text-emerald-600 hover:text-red-600 hover:bg-red-50'
+                                : 'text-slate-400 hover:text-emerald-600 hover:bg-emerald-50'
+                            }`}
+                            title={userItem.isAdmin ? 'Revoke admin' : 'Make admin'}
+                          >
+                            {updatingUserId === userItem.userId ? (
+                              <Loader2 size={16} className="animate-spin" />
+                            ) : userItem.isAdmin ? (
+                              <ShieldCheck size={16} />
+                            ) : (
+                              <ShieldX size={16} />
                             )}
+                          </button>
+                        )}
 
-                            {/* Delete Button - Only for super admin, not for self or super admin */}
-                            {currentUserIsSuperAdmin && !isUserSuperAdmin && userItem.id !== user?.id && (
-                              <button
-                                onClick={() => handleDeleteUser(userItem.id, userItem.email)}
-                                disabled={deletingUserId === userItem.id}
-                                className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
-                                title="Delete user"
-                              >
-                                {deletingUserId === userItem.id ? (
-                                  <Loader2 size={16} className="animate-spin" />
-                                ) : (
-                                  <Trash2 size={16} />
-                                )}
-                              </button>
+                        {/* Delete Button - Only for super admin, not for self or super admin */}
+                        {currentUserIsSuperAdmin && !isUserSuperAdmin && userItem.userId !== user?.id && (
+                          <button
+                            onClick={() => handleDeleteUser(userItem.userId, userItem.email)}
+                            disabled={deletingUserId === userItem.userId}
+                            className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                            title="Delete user"
+                          >
+                            {deletingUserId === userItem.userId ? (
+                              <Loader2 size={16} className="animate-spin" />
+                            ) : (
+                              <Trash2 size={16} />
                             )}
+                          </button>
+                        )}
 
-                            {/* Protected label for super admin */}
-                            {isUserSuperAdmin && currentUserIsSuperAdmin && (
-                              <span className="text-xs text-slate-400 px-2">Protected</span>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                        {/* Protected label for super admin */}
+                        {isUserSuperAdmin && currentUserIsSuperAdmin && (
+                          <span className="text-xs text-slate-400 px-2">Protected</span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Login History */}
+                    <UserLoginHistory
+                      userId={userItem.userId}
+                      userEmail={userItem.email}
+                      loginSummary={userItem.loginSummary}
+                      isExpanded={expandedUserId === userItem.userId}
+                      onToggle={() => setExpandedUserId(
+                        expandedUserId === userItem.userId ? null : userItem.userId
+                      )}
+                    />
+                  </div>
+                );
+              })}
             </div>
           )}
 

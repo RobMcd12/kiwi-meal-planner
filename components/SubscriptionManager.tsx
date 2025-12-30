@@ -1,0 +1,345 @@
+import React, { useState, useEffect } from 'react';
+import {
+  Crown,
+  Check,
+  Loader2,
+  AlertCircle,
+  ExternalLink,
+  Calendar,
+  CreditCard,
+  Clock,
+  Camera,
+  Video,
+  Mic,
+  FileAudio,
+  Infinity,
+  Gift
+} from 'lucide-react';
+import {
+  getSubscriptionState,
+  getSubscriptionConfig,
+  createCheckoutSession,
+  createPortalSession,
+  formatPrice
+} from '../services/subscriptionService';
+import type { SubscriptionState, SubscriptionConfig, BillingInterval } from '../types';
+
+interface SubscriptionManagerProps {
+  onRefresh?: () => void;
+}
+
+const SubscriptionManager: React.FC<SubscriptionManagerProps> = ({ onRefresh }) => {
+  const [subscriptionState, setSubscriptionState] = useState<SubscriptionState | null>(null);
+  const [config, setConfig] = useState<SubscriptionConfig | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [checkingOut, setCheckingOut] = useState(false);
+  const [openingPortal, setOpeningPortal] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    loadSubscription();
+  }, []);
+
+  const loadSubscription = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [state, configData] = await Promise.all([
+        getSubscriptionState(),
+        getSubscriptionConfig()
+      ]);
+      setSubscriptionState(state);
+      setConfig(configData);
+    } catch (err) {
+      console.error('Failed to load subscription:', err);
+      setError('Failed to load subscription information');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUpgrade = async (interval: BillingInterval) => {
+    setCheckingOut(true);
+    setError(null);
+    try {
+      const result = await createCheckoutSession(interval);
+      if (result?.url) {
+        window.location.href = result.url;
+      } else {
+        setError('Failed to start checkout. Please try again.');
+      }
+    } catch (err) {
+      console.error('Checkout error:', err);
+      setError('Failed to start checkout. Please try again.');
+    } finally {
+      setCheckingOut(false);
+    }
+  };
+
+  const handleManageSubscription = async () => {
+    setOpeningPortal(true);
+    setError(null);
+    try {
+      const result = await createPortalSession();
+      if (result?.url) {
+        window.location.href = result.url;
+      } else {
+        setError('Failed to open billing portal. Please try again.');
+      }
+    } catch (err) {
+      console.error('Portal error:', err);
+      setError('Failed to open billing portal. Please try again.');
+    } finally {
+      setOpeningPortal(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 size={32} className="animate-spin text-emerald-600" />
+      </div>
+    );
+  }
+
+  if (!subscriptionState || !config) {
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3">
+        <AlertCircle className="text-red-500 flex-shrink-0 mt-0.5\" size={20} />
+        <div>
+          <p className="text-red-800 font-medium">Unable to load subscription</p>
+          <button
+            onClick={loadSubscription}
+            className="mt-2 text-sm text-red-600 hover:text-red-700 font-medium"
+          >
+            Try again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const { subscription, hasPro, isTrialing, daysLeftInTrial, recipeCount, recipeLimit } = subscriptionState;
+
+  // Pro features list
+  const proFeatures = [
+    { icon: Camera, text: 'Scan pantry with photos' },
+    { icon: Video, text: 'Video pantry scanning' },
+    { icon: Mic, text: 'Live voice dictation' },
+    { icon: FileAudio, text: 'Upload audio recordings' },
+    { icon: Infinity, text: 'Unlimited saved recipes' },
+  ];
+
+  return (
+    <div className="space-y-6">
+      {/* Current Plan */}
+      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+        <div className={`p-6 ${hasPro ? 'bg-gradient-to-r from-amber-50 to-orange-50' : 'bg-slate-50'}`}>
+          <div className="flex items-start justify-between">
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                {hasPro ? (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-sm font-bold rounded-full">
+                    <Crown size={16} />
+                    Pro Plan
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-slate-200 text-slate-600 text-sm font-medium rounded-full">
+                    Free Plan
+                  </span>
+                )}
+                {isTrialing && daysLeftInTrial !== null && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-100 text-emerald-700 text-xs font-medium rounded-full">
+                    <Gift size={12} />
+                    {daysLeftInTrial} days left in trial
+                  </span>
+                )}
+              </div>
+              {subscription?.adminGrantedPro && (
+                <p className="text-sm text-amber-600 flex items-center gap-1 mt-1">
+                  <Gift size={14} />
+                  Pro access granted by admin
+                  {subscription.adminGrantExpiresAt && (
+                    <span className="text-amber-500">
+                      (until {new Date(subscription.adminGrantExpiresAt).toLocaleDateString()})
+                    </span>
+                  )}
+                </p>
+              )}
+            </div>
+
+            {hasPro && subscription?.stripeSubscriptionId && (
+              <button
+                onClick={handleManageSubscription}
+                disabled={openingPortal}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors disabled:opacity-50"
+              >
+                {openingPortal ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : (
+                  <ExternalLink size={16} />
+                )}
+                Manage Billing
+              </button>
+            )}
+          </div>
+
+          {/* Usage stats for free users */}
+          {!hasPro && (
+            <div className="mt-4 p-4 bg-white rounded-lg border border-slate-200">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium text-slate-700">Saved Recipes</span>
+                <span className="text-sm text-slate-500">
+                  {recipeCount} / {recipeLimit}
+                </span>
+              </div>
+              <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                <div
+                  className={`h-full rounded-full transition-all ${
+                    recipeCount >= recipeLimit
+                      ? 'bg-red-500'
+                      : recipeCount >= recipeLimit * 0.8
+                      ? 'bg-amber-500'
+                      : 'bg-emerald-500'
+                  }`}
+                  style={{ width: `${Math.min(100, (recipeCount / recipeLimit) * 100)}%` }}
+                />
+              </div>
+              {recipeCount >= recipeLimit && (
+                <p className="mt-2 text-sm text-red-600 flex items-center gap-1">
+                  <AlertCircle size={14} />
+                  Recipe limit reached. Upgrade to Pro for unlimited recipes.
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* Stripe subscription details */}
+          {hasPro && subscription?.stripeCurrentPeriodEnd && (
+            <div className="mt-4 flex items-center gap-4 text-sm text-slate-600">
+              <span className="flex items-center gap-1.5">
+                <Calendar size={14} />
+                {subscription.cancelAtPeriodEnd ? 'Cancels' : 'Renews'} on{' '}
+                {new Date(subscription.stripeCurrentPeriodEnd).toLocaleDateString()}
+              </span>
+              {subscription.cancelAtPeriodEnd && (
+                <span className="text-amber-600 font-medium">
+                  (Cancelled - access until end of period)
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Upgrade options for free users */}
+      {!hasPro && config && (
+        <div className="space-y-4">
+          <h3 className="text-lg font-semibold text-slate-800">Upgrade to Pro</h3>
+
+          {/* Pro features */}
+          <div className="bg-gradient-to-br from-emerald-50 to-emerald-100 rounded-xl p-6 border border-emerald-200">
+            <h4 className="font-semibold text-emerald-800 mb-3">Pro Features</h4>
+            <div className="grid gap-2">
+              {proFeatures.map((feature, index) => (
+                <div key={index} className="flex items-center gap-3">
+                  <div className="p-1.5 bg-emerald-200 rounded-lg">
+                    <feature.icon size={16} className="text-emerald-700" />
+                  </div>
+                  <span className="text-sm text-emerald-800">{feature.text}</span>
+                  <Check size={16} className="ml-auto text-emerald-600" />
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Pricing options */}
+          <div className="grid gap-3">
+            {/* Monthly */}
+            <button
+              onClick={() => handleUpgrade('monthly')}
+              disabled={checkingOut}
+              className="w-full p-4 bg-white rounded-xl border-2 border-emerald-500 hover:bg-emerald-50 transition-colors text-left flex items-center justify-between disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <div>
+                <div className="font-semibold text-slate-800">Monthly</div>
+                <div className="text-sm text-slate-500">Billed monthly, cancel anytime</div>
+              </div>
+              <div className="text-right">
+                <div className="text-xl font-bold text-emerald-600">
+                  {formatPrice(config.priceMonthlyCents)}
+                </div>
+                <div className="text-xs text-slate-400">/month</div>
+              </div>
+            </button>
+
+            {/* Yearly */}
+            <button
+              onClick={() => handleUpgrade('yearly')}
+              disabled={checkingOut}
+              className="w-full p-4 bg-gradient-to-r from-amber-50 to-orange-50 rounded-xl border-2 border-amber-400 hover:from-amber-100 hover:to-orange-100 transition-colors text-left flex items-center justify-between relative disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <div className="absolute -top-2.5 left-4 px-2 py-0.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-xs font-bold rounded-full">
+                Save {config.yearlyDiscountPercent}%
+              </div>
+              <div>
+                <div className="font-semibold text-slate-800">Yearly</div>
+                <div className="text-sm text-slate-500">Best value, cancel anytime</div>
+              </div>
+              <div className="text-right">
+                <div className="text-xl font-bold text-amber-600">
+                  {formatPrice(config.priceYearlyCents)}
+                </div>
+                <div className="text-xs text-slate-400">/year</div>
+              </div>
+            </button>
+
+            {/* Weekly */}
+            <button
+              onClick={() => handleUpgrade('weekly')}
+              disabled={checkingOut}
+              className="w-full p-4 bg-white rounded-xl border border-slate-200 hover:border-slate-300 hover:bg-slate-50 transition-colors text-left flex items-center justify-between disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <div>
+                <div className="font-semibold text-slate-800">Weekly</div>
+                <div className="text-sm text-slate-500">Try it out first</div>
+              </div>
+              <div className="text-right">
+                <div className="text-xl font-bold text-slate-600">
+                  {formatPrice(config.priceWeeklyCents)}
+                </div>
+                <div className="text-xs text-slate-400">/week</div>
+              </div>
+            </button>
+          </div>
+
+          {checkingOut && (
+            <div className="flex items-center justify-center gap-2 py-4 text-emerald-600">
+              <Loader2 size={20} className="animate-spin" />
+              Starting checkout...
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Error message */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3">
+          <AlertCircle className="text-red-500 flex-shrink-0 mt-0.5" size={20} />
+          <div>
+            <p className="text-red-800 font-medium">Error</p>
+            <p className="text-sm text-red-700">{error}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Secure payment notice */}
+      <div className="flex items-center justify-center gap-2 text-xs text-slate-400">
+        <CreditCard size={14} />
+        Secure payment processed by Stripe
+      </div>
+    </div>
+  );
+};
+
+export default SubscriptionManager;

@@ -4,9 +4,10 @@ import ConfigForm from './ConfigForm';
 import PreferenceForm from './PreferenceForm';
 import PantryManager from './PantryManager';
 import MediaFilesManager from './MediaFilesManager';
+import SubscriptionManager from './SubscriptionManager';
 import { useAuth } from './AuthProvider';
 import { supabase } from '../services/authService';
-import { ArrowLeft, Check, Sliders, Archive, Utensils, UserCircle, Loader2, FileVideo } from 'lucide-react';
+import { ArrowLeft, Check, Sliders, Archive, Utensils, UserCircle, Loader2, FileVideo, Crown } from 'lucide-react';
 
 interface SettingsViewProps {
   config: MealConfig;
@@ -16,7 +17,7 @@ interface SettingsViewProps {
   pantryItems: PantryItem[];
   setPantryItems: React.Dispatch<React.SetStateAction<PantryItem[]>>;
   onClose: () => void;
-  initialTab?: 'general' | 'pantry' | 'prefs' | 'account';
+  initialTab?: 'general' | 'pantry' | 'prefs' | 'account' | 'subscription';
 }
 
 const SettingsView: React.FC<SettingsViewProps> = ({
@@ -30,7 +31,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({
   initialTab = 'general',
 }) => {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<'general' | 'pantry' | 'prefs' | 'account'>(initialTab);
+  const [activeTab, setActiveTab] = useState<'general' | 'pantry' | 'prefs' | 'account' | 'subscription'>(initialTab);
   const [isLinkingGoogle, setIsLinkingGoogle] = useState(false);
   const [linkError, setLinkError] = useState<string | null>(null);
   const [linkSuccess, setLinkSuccess] = useState(false);
@@ -168,6 +169,17 @@ const SettingsView: React.FC<SettingsViewProps> = ({
             >
                 <UserCircle size={18} />
                 Account
+            </button>
+            <button
+                onClick={() => setActiveTab('subscription')}
+                className={`flex-1 min-w-[120px] py-4 text-center font-medium text-sm flex items-center justify-center gap-2 transition-colors border-b-2 ${
+                    activeTab === 'subscription'
+                    ? 'border-amber-600 text-amber-600 bg-amber-50/50'
+                    : 'border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-50'
+                }`}
+            >
+                <Crown size={18} />
+                Subscription
             </button>
         </div>
 
@@ -366,6 +378,17 @@ const SettingsView: React.FC<SettingsViewProps> = ({
                         </div>
                         <MediaFilesManager />
                     </div>
+                </div>
+            )}
+            {activeTab === 'subscription' && (
+                <div className="animate-fadeIn">
+                    <div className="mb-6">
+                        <h3 className="text-lg font-semibold text-slate-800 mb-2">Subscription</h3>
+                        <p className="text-sm text-slate-500">
+                            Manage your subscription and billing.
+                        </p>
+                    </div>
+                    <SubscriptionManager />
                 </div>
             )}
         </div>

@@ -1,7 +1,8 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase, onAuthStateChange, isSupabaseConfigured } from '../services/authService';
 import { checkIsAdmin, isSuperAdmin } from '../services/adminService';
+import { recordLogin } from '../services/loginHistoryService';
 
 interface AuthContextType {
   user: User | null;
@@ -34,6 +35,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [isAdmin, setIsAdmin] = useState(false);
   const isConfigured = isSupabaseConfigured();
 
+  // Track if we've already recorded login for current session to avoid duplicates
+  const loginRecordedRef = useRef<string | null>(null);
+
   // Function to check and update admin status
   const refreshAdminStatus = async () => {
     if (user) {
@@ -42,6 +46,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     } else {
       setIsAdmin(false);
     }
+  };
+
+  // Helper to detect login method from user data
+  const detectLoginMethod = (user: User): 'email' | 'google' | 'apple' | 'github' => {
+    const provider = user.app_metadata?.provider;
+    if (provider === 'google') return 'google';
+    if (provider === 'apple') return 'apple';
+    if (provider === 'github') return 'github';
+    return 'email';
+  };
+
+  // Record login when user signs in
+  const handleLoginRecord = async (user: User, sessionId: string) => {
+    // Only record if we haven't recorded for this specific session
+    if (loginRecordedRef.current === sessionId) return;
+    loginRecordedRef.current = sessionId;
+
+    const loginMethod = detectLoginMethod(user);
+    await recordLogin(user.id, loginMethod);
   };
 
   useEffect(() => {
@@ -61,6 +84,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         if (session?.user) {
           const adminStatus = await checkIsAdmin(session.user.id, session.user.email ?? undefined);
           setIsAdmin(adminStatus);
+
+          // Record login for this session (only on fresh page load with existing session)
+          // We use access_token as session identifier
+          if (session.access_token) {
+            handleLoginRecord(session.user, session.access_token);
+          }
         }
       } catch (error) {
         console.error('Error getting session:', error);
@@ -80,8 +109,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (newSession?.user) {
         const adminStatus = await checkIsAdmin(newSession.user.id, newSession.user.email ?? undefined);
         setIsAdmin(adminStatus);
+
+        // Record login when user signs in (new session)
+        if (newSession.access_token) {
+          handleLoginRecord(newSession.user, newSession.access_token);
+        }
       } else {
         setIsAdmin(false);
+        // Clear the login recorded ref when user signs out
+        loginRecordedRef.current = null;
       }
     });
 

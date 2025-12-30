@@ -293,3 +293,87 @@ export interface ScannedPantryResult {
 }
 
 export type PantryUploadMode = 'replace' | 'add_new';
+
+// ============================================
+// LOGIN HISTORY TYPES
+// ============================================
+
+export interface LoginHistoryEntry {
+  id: string;
+  userId: string;
+  loginAt: string;
+  ipAddress: string | null;
+  deviceType: string | null;
+  browser: string | null;
+  os: string | null;
+  country: string | null;
+  city: string | null;
+  loginMethod: string;
+  success: boolean;
+}
+
+export interface UserLoginSummary {
+  totalLogins: number;
+  lastLoginAt: string | null;
+  lastLoginLocation: string | null;
+  devices: string[];
+  countries: string[];
+}
+
+// ============================================
+// SUBSCRIPTION TYPES
+// ============================================
+
+export type SubscriptionTier = 'free' | 'pro';
+export type SubscriptionStatus = 'active' | 'cancelled' | 'expired' | 'trialing';
+export type ProFeature = 'pantry_scanner' | 'video_scanner' | 'live_dictation' | 'audio_recorder' | 'unlimited_recipes';
+export type BillingInterval = 'weekly' | 'monthly' | 'yearly';
+
+export interface SubscriptionConfig {
+  trialPeriodDays: number;
+  priceWeeklyCents: number;
+  priceMonthlyCents: number;
+  priceYearlyCents: number;
+  yearlyDiscountPercent: number;
+  freeRecipeLimit: number;
+  proFeatures: ProFeature[];
+  stripeWeeklyPriceId: string | null;
+  stripeMonthlyPriceId: string | null;
+  stripeYearlyPriceId: string | null;
+}
+
+export interface UserSubscription {
+  userId: string;
+  tier: SubscriptionTier;
+  status: SubscriptionStatus;
+  trialStartedAt: string | null;
+  trialEndsAt: string | null;
+  stripeCustomerId: string | null;
+  stripeSubscriptionId: string | null;
+  stripePriceId: string | null;
+  stripeCurrentPeriodEnd: string | null;
+  cancelAtPeriodEnd: boolean;
+  adminGrantedPro: boolean;
+  adminGrantedBy: string | null;
+  adminGrantExpiresAt: string | null;
+  adminGrantNote: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface SubscriptionState {
+  subscription: UserSubscription | null;
+  config: SubscriptionConfig | null;
+  hasPro: boolean;
+  isTrialing: boolean;
+  daysLeftInTrial: number | null;
+  recipeCount: number;
+  recipeLimit: number;
+  canCreateRecipe: boolean;
+}
+
+export interface AdminSubscriptionGrant {
+  userId: string;
+  expiresAt: string | null;
+  note: string | null;
+}

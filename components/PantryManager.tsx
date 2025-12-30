@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { PantryItem, PantryUploadMode } from '../types';
-import { Plus, Trash2, Archive, Camera, Sparkles, Star, ShoppingCart, Check, Video, Mic, Upload } from 'lucide-react';
+import { Plus, Trash2, Archive, Camera, Sparkles, Star, ShoppingCart, Check, Video, Mic, Upload, Lock, Crown } from 'lucide-react';
 import PantryScanner from './PantryScanner';
 import VideoRecorder from './VideoRecorder';
 import LiveDictation from './LiveDictation';
@@ -12,13 +12,15 @@ interface PantryManagerProps {
   setItems: React.Dispatch<React.SetStateAction<PantryItem[]>>;
   onNext?: () => void;
   isSettingsMode?: boolean;
+  hasPro?: boolean;
+  onUpgradeClick?: () => void;
 }
 
 const COMMON_PANTRY_ITEMS = [
   "Salt", "Pepper", "Olive Oil", "Rice", "Pasta", "Flour", "Sugar", "Milk", "Butter", "Eggs", "Garlic", "Onions"
 ];
 
-const PantryManager: React.FC<PantryManagerProps> = ({ items, setItems, onNext, isSettingsMode = false }) => {
+const PantryManager: React.FC<PantryManagerProps> = ({ items, setItems, onNext, isSettingsMode = false, hasPro = false, onUpgradeClick }) => {
   const [newItem, setNewItem] = useState('');
   const [showScanner, setShowScanner] = useState(false);
   const [showVideoRecorder, setShowVideoRecorder] = useState(false);
@@ -158,28 +160,66 @@ const PantryManager: React.FC<PantryManagerProps> = ({ items, setItems, onNext, 
               <Sparkles size={16} />
             </button>
 
-            {/* Additional input methods */}
+            {/* Additional input methods - Pro features */}
             <div className="grid grid-cols-2 gap-2 mb-4">
+              {/* Video Scan - Pro */}
               <button
-                onClick={() => setShowVideoRecorder(true)}
-                className="py-2.5 bg-red-50 hover:bg-red-100 text-red-700 rounded-xl font-medium flex items-center justify-center gap-2 transition-colors border border-red-200"
+                onClick={() => hasPro ? setShowVideoRecorder(true) : onUpgradeClick?.()}
+                className={`py-2.5 rounded-xl font-medium flex items-center justify-center gap-2 transition-colors border relative ${
+                  hasPro
+                    ? 'bg-red-50 hover:bg-red-100 text-red-700 border-red-200'
+                    : 'bg-slate-100 text-slate-400 border-slate-200 cursor-pointer'
+                }`}
               >
                 <Video size={18} />
                 <span className="text-sm">Video Scan</span>
+                {!hasPro && <Lock size={14} className="ml-1" />}
+                {hasPro && (
+                  <span className="absolute -top-1.5 -right-1.5 px-1 py-0.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[8px] font-bold rounded-full flex items-center gap-0.5">
+                    <Crown size={8} />
+                    PRO
+                  </span>
+                )}
               </button>
+
+              {/* Talk to Add - Pro */}
               <button
-                onClick={() => setShowLiveDictation(true)}
-                className="py-2.5 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-xl font-medium flex items-center justify-center gap-2 transition-colors border border-purple-200"
+                onClick={() => hasPro ? setShowLiveDictation(true) : onUpgradeClick?.()}
+                className={`py-2.5 rounded-xl font-medium flex items-center justify-center gap-2 transition-colors border relative ${
+                  hasPro
+                    ? 'bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-200'
+                    : 'bg-slate-100 text-slate-400 border-slate-200 cursor-pointer'
+                }`}
               >
                 <Mic size={18} />
                 <span className="text-sm">Talk to Add</span>
+                {!hasPro && <Lock size={14} className="ml-1" />}
+                {hasPro && (
+                  <span className="absolute -top-1.5 -right-1.5 px-1 py-0.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[8px] font-bold rounded-full flex items-center gap-0.5">
+                    <Crown size={8} />
+                    PRO
+                  </span>
+                )}
               </button>
+
+              {/* Upload Audio - Pro */}
               <button
-                onClick={() => setShowAudioRecorder(true)}
-                className="col-span-2 py-2.5 bg-orange-50 hover:bg-orange-100 text-orange-700 rounded-xl font-medium flex items-center justify-center gap-2 transition-colors border border-orange-200"
+                onClick={() => hasPro ? setShowAudioRecorder(true) : onUpgradeClick?.()}
+                className={`col-span-2 py-2.5 rounded-xl font-medium flex items-center justify-center gap-2 transition-colors border relative ${
+                  hasPro
+                    ? 'bg-orange-50 hover:bg-orange-100 text-orange-700 border-orange-200'
+                    : 'bg-slate-100 text-slate-400 border-slate-200 cursor-pointer'
+                }`}
               >
                 <Upload size={18} />
                 <span className="text-sm">Upload Audio</span>
+                {!hasPro && <Lock size={14} className="ml-1" />}
+                {hasPro && (
+                  <span className="absolute -top-1.5 -right-1.5 px-1 py-0.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[8px] font-bold rounded-full flex items-center gap-0.5">
+                    <Crown size={8} />
+                    PRO
+                  </span>
+                )}
               </button>
             </div>
 
