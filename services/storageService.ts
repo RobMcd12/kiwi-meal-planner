@@ -260,13 +260,15 @@ export const updateFavoriteMealImage = async (id: string, imageUrl: string): Pro
   const { error } = await supabase
     .from('favorite_meals')
     .update({ image_url: imageUrl })
-    .eq('id', id);
+    .eq('id', id)
+    .eq('user_id', user.id); // Ensure user owns this recipe
 
   if (error) {
     console.error('Error updating favorite image:', error);
     return false;
   }
 
+  console.log('Image saved to database for meal:', id);
   return true;
 };
 

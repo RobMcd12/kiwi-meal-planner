@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Sparkles, ChefHat, Loader2, Heart, Printer, Users, Check, Apple } from 'lucide-react';
+import { ArrowLeft, Sparkles, ChefHat, Loader2, Heart, Printer, Users, Check, Apple, SlidersHorizontal } from 'lucide-react';
 import type { Meal, UserPreferences, PantryItem } from '../types';
 import { generateSingleRecipe, generateDishImage } from '../services/geminiService';
 import { saveFavoriteMeal } from '../services/storageService';
 import RecipePrintView from './RecipePrintView';
 import NutritionInfo from './NutritionInfo';
+import RecipeAdjuster from './RecipeAdjuster';
 
 interface SingleRecipeGeneratorProps {
   onBack: () => void;
@@ -29,6 +30,7 @@ const SingleRecipeGenerator: React.FC<SingleRecipeGeneratorProps> = ({
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
   const [showPrintView, setShowPrintView] = useState(false);
   const [showNutrition, setShowNutrition] = useState(false);
+  const [showAdjuster, setShowAdjuster] = useState(false);
 
   const examplePrompts = [
     "A quick weeknight pasta dish",
@@ -112,6 +114,12 @@ const SingleRecipeGenerator: React.FC<SingleRecipeGeneratorProps> = ({
     setDescription('');
     setIsSaved(false);
     setError(null);
+  };
+
+  const handleApplyAdjustment = (adjustedMeal: Meal) => {
+    setGeneratedRecipe(adjustedMeal);
+    setServings(adjustedMeal.servings || servings);
+    setIsSaved(false); // Reset saved state since recipe changed
   };
 
   return (
@@ -371,6 +379,14 @@ const SingleRecipeGenerator: React.FC<SingleRecipeGeneratorProps> = ({
               </button>
 
               <button
+                onClick={() => setShowAdjuster(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-purple-500 hover:bg-purple-600 text-white rounded-lg font-medium transition-colors"
+              >
+                <SlidersHorizontal size={18} />
+                Adjust
+              </button>
+
+              <button
                 onClick={handleNewRecipe}
                 className="flex items-center gap-2 px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg font-medium transition-colors ml-auto"
               >
@@ -396,6 +412,16 @@ const SingleRecipeGenerator: React.FC<SingleRecipeGeneratorProps> = ({
           meal={generatedRecipe}
           servings={servings}
           onClose={() => setShowNutrition(false)}
+        />
+      )}
+
+      {/* Recipe Adjuster Modal */}
+      {showAdjuster && generatedRecipe && (
+        <RecipeAdjuster
+          meal={generatedRecipe}
+          preferences={preferences}
+          onClose={() => setShowAdjuster(false)}
+          onApply={handleApplyAdjustment}
         />
       )}
     </div>

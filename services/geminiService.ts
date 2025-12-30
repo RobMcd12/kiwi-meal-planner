@@ -901,6 +901,145 @@ export interface NutritionInfo {
   healthNotes?: string[];
 }
 
+// Schema for recipe adjustment
+const adjustedRecipeSchema: Schema = {
+  type: Type.OBJECT,
+  properties: {
+    name: { type: Type.STRING, description: "Recipe name (may be updated if significantly changed)" },
+    description: { type: Type.STRING, description: "Updated description" },
+    ingredients: {
+      type: Type.ARRAY,
+      items: { type: Type.STRING },
+      description: "Adjusted ingredients with quantities"
+    },
+    instructions: { type: Type.STRING, description: "Updated cooking instructions with adjusted times" },
+    servings: { type: Type.NUMBER, description: "New number of servings" },
+    adjustmentNotes: { type: Type.STRING, description: "Brief explanation of what was changed" }
+  },
+  required: ["name", "description", "ingredients", "instructions", "servings", "adjustmentNotes"]
+};
+
+export interface AdjustedRecipe {
+  name: string;
+  description: string;
+  ingredients: string[];
+  instructions: string;
+  servings: number;
+  adjustmentNotes: string;
+}
+
+export type RecipeAdjustmentType =
+  | { type: 'servings'; targetServings: number }
+  | { type: 'protein'; adjustment: 'increase' | 'decrease'; targetGrams?: number }
+  | { type: 'macros'; targetCalories?: number; targetProtein?: number; targetCarbs?: number; targetFat?: number }
+  | { type: 'custom'; instructions: string };
+
+/**
+ * Adjust a recipe based on user requirements
+ * Can modify servings, protein content, or retarget macros
+ */
+export const adjustRecipe = async (
+  recipe: Meal,
+  adjustment: RecipeAdjustmentType,
+  preferences?: UserPreferences
+): Promise<AdjustedRecipe> => {
+  const apiKey = process.env.API_KEY;
+  if (!apiKey) throw new Error("API Key is missing.");
+
+  const ai = new GoogleGenAI({ apiKey });
+
+  let adjustmentPrompt = '';
+
+  switch (adjustment.type) {
+    case 'servings':
+      adjustmentPrompt = `Adjust this recipe from ${recipe.servings || 4} servings to ${adjustment.targetServings} servings.
+Scale ALL ingredient quantities proportionally.
+Adjust cooking times if necessary (e.g., larger batches may need more time).
+Keep the same cooking method and techniques.`;
+      break;
+
+    case 'protein':
+      if (adjustment.targetGrams) {
+        adjustmentPrompt = `Adjust this recipe to have approximately ${adjustment.targetGrams}g of protein per serving.
+${adjustment.adjustment === 'increase' ? 'Add more protein sources or increase existing protein ingredients.' : 'Reduce protein ingredients.'}
+Maintain the overall flavor profile and dish concept.
+Adjust other ingredients as needed for balance.`;
+      } else {
+        adjustmentPrompt = `${adjustment.adjustment === 'increase' ? 'Increase' : 'Decrease'} the protein content of this recipe significantly.
+${adjustment.adjustment === 'increase' ? 'Add more protein sources (meat, legumes, eggs, dairy, etc.) or increase existing protein ingredients.' : 'Reduce protein-heavy ingredients while maintaining flavor.'}
+Adjust cooking times and other ingredients as needed.`;
+      }
+      break;
+
+    case 'macros':
+      const targets = [];
+      if (adjustment.targetCalories) targets.push(`~${adjustment.targetCalories} calories per serving`);
+      if (adjustment.targetProtein) targets.push(`~${adjustment.targetProtein}g protein per serving`);
+      if (adjustment.targetCarbs) targets.push(`~${adjustment.targetCarbs}g carbohydrates per serving`);
+      if (adjustment.targetFat) targets.push(`~${adjustment.targetFat}g fat per serving`);
+
+      adjustmentPrompt = `Adjust this recipe to meet these nutritional targets per serving:
+${targets.join('\n')}
+
+Modify ingredients and portions to achieve these targets while:
+- Maintaining the dish's core concept and flavor profile
+- Keeping it practical and delicious
+- Using substitutions where beneficial (e.g., lean meat, low-fat alternatives, more vegetables)`;
+      break;
+
+    case 'custom':
+      adjustmentPrompt = adjustment.instructions;
+      break;
+  }
+
+  const unitSystem = preferences?.unitSystem || 'metric';
+  const tempScale = preferences?.temperatureScale || 'celsius';
+
+  const prompt = `Adjust this recipe according to the instructions below.
+
+ORIGINAL RECIPE:
+Name: ${recipe.name}
+Description: ${recipe.description}
+Current servings: ${recipe.servings || 4}
+Ingredients:
+${recipe.ingredients.map(i => `- ${i}`).join('\n')}
+
+Instructions:
+${recipe.instructions}
+
+ADJUSTMENT REQUEST:
+${adjustmentPrompt}
+
+REQUIREMENTS:
+- Use ${unitSystem} units for measurements
+- Use ${tempScale} for temperatures
+- Keep instructions clear and practical
+- Adjust cooking times appropriately
+- Provide a brief note explaining the main changes made
+
+Return the fully adjusted recipe.`;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-2.0-flash",
+      contents: prompt,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: adjustedRecipeSchema,
+      },
+    });
+
+    if (!response.text) {
+      throw new Error('Empty response from AI model');
+    }
+
+    return JSON.parse(response.text) as AdjustedRecipe;
+  } catch (error) {
+    console.error("Recipe adjustment error:", error);
+    throw new Error("Failed to adjust recipe");
+  }
+};
+
 /**
  * Calculate nutritional information for a recipe
  * Analyzes ingredients to estimate macros and other nutritional data

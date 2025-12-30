@@ -17,10 +17,11 @@ import RecipeNotesSection from './RecipeNotesSection';
 import RecipePrintView from './RecipePrintView';
 import NutritionInfo from './NutritionInfo';
 import TagEditor from './TagEditor';
+import RecipeAdjuster from './RecipeAdjuster';
 import {
   Trash2, Heart, ShoppingCart, ArrowLeft, X, ChefHat, Clock,
   Image as ImageIcon, Loader2, Search, Grid, List, Plus, Upload,
-  Globe, Lock, Tag, User, Sparkles, FileText, Pencil, RefreshCw, Star, Printer, Apple
+  Globe, Lock, Tag, User, Sparkles, FileText, Pencil, RefreshCw, Star, Printer, Apple, SlidersHorizontal
 } from 'lucide-react';
 
 interface FavoritesViewProps {
@@ -57,6 +58,7 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({ onBack, onGenerateList, i
   const [imageEditPrompt, setImageEditPrompt] = useState('');
   const [showPrintView, setShowPrintView] = useState(false);
   const [showNutrition, setShowNutrition] = useState(false);
+  const [showAdjuster, setShowAdjuster] = useState(false);
 
   // Images
   const [mealImages, setMealImages] = useState<Record<string, string>>({});
@@ -180,6 +182,10 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({ onBack, onGenerateList, i
           if (imageData) {
             setMealImages(prev => ({ ...prev, [meal.name]: imageData }));
             await cacheImage(meal.name, meal.description, imageData);
+            // Save to database so image persists
+            if (meal.id) {
+              await updateFavoriteMealImage(meal.id, imageData);
+            }
           }
         } catch (error) {
           console.error(`Failed to auto-generate image for ${meal.name}:`, error);
@@ -336,6 +342,18 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({ onBack, onGenerateList, i
     // Users can edit tags on their uploaded recipes
     // Admins can edit any tags
     return isAdmin || (activeTab === 'uploaded' && meal.source === 'uploaded');
+  };
+
+  const handleApplyAdjustment = (adjustedMeal: Meal) => {
+    // Update the recipe in local state
+    const updateRecipes = (prev: Meal[]) =>
+      prev.map(m => m.id === adjustedMeal.id ? { ...adjustedMeal, imageUrl: m.imageUrl } : m);
+
+    if (activeTab === 'generated') setGeneratedRecipes(updateRecipes);
+    else if (activeTab === 'uploaded') setUploadedRecipes(updateRecipes);
+
+    // Update the open meal with the adjustments
+    setOpenMeal(adjustedMeal);
   };
 
   // Get source badge color and icon
@@ -969,6 +987,16 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({ onBack, onGenerateList, i
                     Nutrition
                   </button>
 
+                  {/* Adjust recipe button */}
+                  <button
+                    onClick={() => setShowAdjuster(true)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors bg-purple-100 text-purple-700 hover:bg-purple-200"
+                    title="Adjust servings, protein, or macros"
+                  >
+                    <SlidersHorizontal size={14} />
+                    Adjust
+                  </button>
+
                   {/* Public toggle for uploaded recipes */}
                   {activeTab === 'uploaded' && openMeal.source === 'uploaded' && (
                     <button
@@ -1155,6 +1183,15 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({ onBack, onGenerateList, i
           meal={openMeal}
           servings={openMeal.servings || 4}
           onClose={() => setShowNutrition(false)}
+        />
+      )}
+
+      {/* Recipe Adjuster Modal */}
+      {showAdjuster && openMeal && (
+        <RecipeAdjuster
+          meal={openMeal}
+          onClose={() => setShowAdjuster(false)}
+          onApply={handleApplyAdjustment}
         />
       )}
     </div>

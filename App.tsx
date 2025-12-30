@@ -150,8 +150,8 @@ const AppContent: React.FC = () => {
     }
   }, [step]);
 
-  // Helper to generate images for all meals in background
-  const generateMealImagesInBackground = async (planData: MealPlanResponse) => {
+  // Helper to generate images for all meals (called during plan generation)
+  const generateAllMealImages = async (planData: MealPlanResponse): Promise<void> => {
     const meals: Meal[] = [];
     planData.weeklyPlan.forEach(day => {
       if (day.meals?.breakfast) meals.push(day.meals.breakfast);
@@ -159,19 +159,21 @@ const AppContent: React.FC = () => {
       if (day.meals?.dinner) meals.push(day.meals.dinner);
     });
 
-    // Generate images sequentially to avoid rate limits
-    for (const meal of meals) {
-      try {
-        const imageUrl = await generateDishImage(meal.name, meal.description);
-        if (imageUrl) {
-          meal.imageUrl = imageUrl;
-          await cacheImage(meal.name, meal.description, imageUrl);
-          // Update state to show image as it's generated
-          setPlanData(prev => prev ? { ...prev } : null);
+    // Generate images in parallel (up to 3 at a time to avoid rate limits)
+    const batchSize = 3;
+    for (let i = 0; i < meals.length; i += batchSize) {
+      const batch = meals.slice(i, i + batchSize);
+      await Promise.all(batch.map(async (meal) => {
+        try {
+          const imageUrl = await generateDishImage(meal.name, meal.description);
+          if (imageUrl) {
+            meal.imageUrl = imageUrl;
+            await cacheImage(meal.name, meal.description, imageUrl);
+          }
+        } catch (error) {
+          console.error(`Failed to generate image for ${meal.name}:`, error);
         }
-      } catch (error) {
-        console.error(`Failed to generate image for ${meal.name}:`, error);
-      }
+      }));
     }
   };
 
@@ -180,9 +182,13 @@ const AppContent: React.FC = () => {
     setLoading(true);
     try {
       const data = await generateMealPlan(config, preferences, pantryItems);
+
+      // Generate images for all meals before showing results
+      await generateAllMealImages(data);
+
       setPlanData(data);
 
-      // Save to history
+      // Save to history (with images)
       const planId = await savePlanToHistory(data);
       if (planId) {
         data.id = planId;
@@ -190,9 +196,6 @@ const AppContent: React.FC = () => {
 
       setStep(AppStep.RESULTS);
       success('Meal plan generated successfully!');
-
-      // Generate images in background after showing results
-      generateMealImagesInBackground(data);
     } catch (err) {
       showError('Something went wrong generating the plan. Please try again.');
       console.error(err);
