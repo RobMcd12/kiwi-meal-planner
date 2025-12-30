@@ -11,17 +11,18 @@
 3. [Use What I Have Mode](#use-what-i-have-mode)
 4. [Single Recipe Generator](#single-recipe-generator)
 5. [AI Pantry Scanner](#ai-pantry-scanner)
-6. [Nutritional Information](#nutritional-information)
-7. [My Cookbook](#my-cookbook)
-8. [Uploading Recipes](#uploading-recipes)
-9. [Recipe Images](#recipe-images)
-10. [Tags & Search](#tags--search)
-11. [Sharing Recipes](#sharing-recipes)
-12. [Notes & Comments](#notes--comments)
-13. [Shopping Lists](#shopping-lists)
-14. [Settings & Preferences](#settings--preferences)
-15. [Feedback & Support](#feedback--support)
-16. [Installing as an App](#installing-as-an-app)
+6. [Pantry Staples](#pantry-staples)
+7. [Nutritional Information](#nutritional-information)
+8. [My Cookbook](#my-cookbook)
+9. [Uploading Recipes](#uploading-recipes)
+10. [Recipe Images](#recipe-images)
+11. [Tags & Search](#tags--search)
+12. [Sharing Recipes](#sharing-recipes)
+13. [Notes & Comments](#notes--comments)
+14. [Shopping Lists](#shopping-lists)
+15. [Settings & Preferences](#settings--preferences)
+16. [Feedback & Support](#feedback--support)
+17. [Installing as an App](#installing-as-an-app)
 
 ---
 
@@ -226,6 +227,77 @@ For the best experience, follow this workflow:
 4. **Generate your plan** - AI creates recipes prioritizing your ingredients
 5. **Shop minimally** - Only buy the few items you're missing
 6. **Cook and enjoy!** - Make meals with what you already had
+
+---
+
+## Pantry Staples
+
+Track items you always keep in stock and create quick shopping lists for restocking.
+
+### What are Staples?
+
+Staples are pantry items that you always want to have on hand. Unlike regular pantry items that come and go, staples are essentials you want to maintain at all times - like olive oil, salt, pasta, rice, or your favorite sauces.
+
+### Setting Up Staples
+
+1. Go to **Pantry Settings** (during meal plan setup or in Settings)
+2. You'll see two tabs: **Pantry Items** and **Staples**
+3. In the Pantry Items tab, hover over any item
+4. Click the **star icon** (⭐) to mark it as a staple
+5. The item moves to the Staples tab
+
+### Managing Staples
+
+#### Viewing Staples
+- Click the **Staples** tab in the pantry manager
+- See all your staple items in one place
+- A badge shows how many items need restocking
+
+#### Marking Items for Restock
+When you run low on a staple:
+1. Go to the **Staples** tab
+2. **Check the box** next to items you need to buy
+3. Items marked for restock show a "Need to buy" badge
+4. A red banner appears showing your shopping list summary
+
+#### Shopping Completed
+After buying your staples:
+1. The red banner shows all items needing restock
+2. Click the green **"Shopping Completed"** button
+3. All restock checkboxes are cleared
+4. Start fresh for your next shopping trip
+
+### Removing Staples
+
+To remove an item from staples (not delete it):
+1. Go to the **Staples** tab
+2. Click the **filled star icon** on the item
+3. The item returns to regular pantry items
+
+### Benefits of Staples
+
+- **Never run out** - Track essentials separately from temporary items
+- **Quick shopping lists** - Checkbox items you need with one click
+- **Easy reset** - Clear your list after shopping with one button
+- **Visual organization** - See regular pantry vs. always-stock items
+- **Badge notifications** - Know at a glance if staples need restocking
+
+### Best Practices
+
+1. **Start with basics** - Mark 5-10 essential items as staples
+2. **Review weekly** - Check which staples need restocking
+3. **Keep it manageable** - Too many staples defeats the purpose
+4. **Be specific** - "Olive Oil" is better than just "Oil"
+5. **Update regularly** - Add new essentials, remove ones you no longer use
+
+### Example Workflow
+
+1. Mark "Olive Oil", "Pasta", "Rice", and "Garlic" as staples
+2. During the week, notice you're low on olive oil and pasta
+3. Check those two items in the Staples tab
+4. Go shopping, buy olive oil and pasta
+5. Click "Shopping Completed" to clear the list
+6. Ready for next week!
 
 ---
 
@@ -593,7 +665,14 @@ Note: Generating new meal plans requires an internet connection.
 
 ## Version History
 
-### v1.0.8 (Current)
+### v1.0.9 (Current)
+- **Pantry Staples** - Track essential items you always keep in stock
+- Mark pantry items as staples with the star icon
+- Checkbox system to add staples to shopping list for restocking
+- "Shopping Completed" button to clear restock list after shopping
+- Badge notifications showing items needing restock
+
+### v1.0.8
 - **Use What I Have mode** - AI prioritizes your pantry ingredients to minimize shopping
 - Smart mode toggle in meal plan configuration and single recipe generator
 - Featured "Use What I Have" button on welcome screen for quick access

@@ -88,7 +88,7 @@ export const loadPantry = async (): Promise<PantryItem[]> => {
 
   const { data, error } = await supabase
     .from('pantry_items')
-    .select('id, name')
+    .select('id, name, is_staple, needs_restock')
     .eq('user_id', user.id)
     .order('created_at', { ascending: true });
 
@@ -96,7 +96,14 @@ export const loadPantry = async (): Promise<PantryItem[]> => {
     console.error('Error loading pantry:', error);
     return loadPantryLocal();
   }
-  return data || [];
+
+  // Map database fields to TypeScript interface
+  return (data || []).map(item => ({
+    id: item.id,
+    name: item.name,
+    isStaple: item.is_staple || false,
+    needsRestock: item.needs_restock || false,
+  }));
 };
 
 export const removePantryItem = async (id: string): Promise<void> => {
@@ -119,6 +126,102 @@ export const removePantryItem = async (id: string): Promise<void> => {
 // Sync function for bulk pantry operations
 export const savePantry = async (items: PantryItem[]): Promise<void> => {
   savePantryLocal(items);
+};
+
+// Update a pantry item's staple status
+export const updatePantryItemStaple = async (id: string, isStaple: boolean): Promise<boolean> => {
+  if (!isSupabaseConfigured()) {
+    const items = loadPantryLocal();
+    const updated = items.map(item =>
+      item.id === id ? { ...item, isStaple, needsRestock: isStaple ? item.needsRestock : false } : item
+    );
+    savePantryLocal(updated);
+    return true;
+  }
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    const items = loadPantryLocal();
+    const updated = items.map(item =>
+      item.id === id ? { ...item, isStaple, needsRestock: isStaple ? item.needsRestock : false } : item
+    );
+    savePantryLocal(updated);
+    return true;
+  }
+
+  const { error } = await supabase
+    .from('pantry_items')
+    .update({ is_staple: isStaple, needs_restock: isStaple ? undefined : false })
+    .eq('id', id);
+
+  if (error) {
+    console.error('Error updating pantry item staple status:', error);
+    return false;
+  }
+  return true;
+};
+
+// Toggle restock status for a staple item
+export const togglePantryItemRestock = async (id: string, needsRestock: boolean): Promise<boolean> => {
+  if (!isSupabaseConfigured()) {
+    const items = loadPantryLocal();
+    const updated = items.map(item =>
+      item.id === id ? { ...item, needsRestock } : item
+    );
+    savePantryLocal(updated);
+    return true;
+  }
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    const items = loadPantryLocal();
+    const updated = items.map(item =>
+      item.id === id ? { ...item, needsRestock } : item
+    );
+    savePantryLocal(updated);
+    return true;
+  }
+
+  const { error } = await supabase
+    .from('pantry_items')
+    .update({ needs_restock: needsRestock })
+    .eq('id', id);
+
+  if (error) {
+    console.error('Error toggling pantry item restock:', error);
+    return false;
+  }
+  return true;
+};
+
+// Clear all restock flags (mark shopping as completed)
+export const clearStaplesRestock = async (): Promise<boolean> => {
+  if (!isSupabaseConfigured()) {
+    const items = loadPantryLocal();
+    const updated = items.map(item => ({ ...item, needsRestock: false }));
+    savePantryLocal(updated);
+    return true;
+  }
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    const items = loadPantryLocal();
+    const updated = items.map(item => ({ ...item, needsRestock: false }));
+    savePantryLocal(updated);
+    return true;
+  }
+
+  const { error } = await supabase
+    .from('pantry_items')
+    .update({ needs_restock: false })
+    .eq('user_id', user.id)
+    .eq('needs_restock', true);
+
+  if (error) {
+    console.error('Error clearing staples restock:', error);
+    return false;
+  }
+  return true;
 };
 
 // ============================================

@@ -17,6 +17,8 @@ export const CONSTANTS = {
 export interface PantryItem {
   id: string;
   name: string;
+  isStaple?: boolean;      // If true, this is a staple item the user always keeps
+  needsRestock?: boolean;  // If true, this staple needs to be added to shopping list
 }
 
 export interface MealConfig {
