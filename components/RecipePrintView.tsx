@@ -283,47 +283,47 @@ const RecipePrintView: React.FC<RecipePrintViewProps> = ({ meal, onClose }) => {
         </div>
 
         {/* Preview Area */}
-        <div className="flex-1 overflow-y-auto p-6 bg-slate-50">
+        <div className="flex-1 overflow-y-auto p-4 bg-slate-50">
           <div
             ref={printRef}
             className="bg-white rounded-xl shadow-lg p-6 max-w-2xl mx-auto"
           >
             {/* Branding Header */}
-            <div className="header">
-              <div className="logo">
-                <div className="logo-icon">
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M6 13.87A4 4 0 0 1 7.41 6a5.11 5.11 0 0 1 1.05-1.54 5 5 0 0 1 7.08 0A5.11 5.11 0 0 1 16.59 6 4 4 0 0 1 18 13.87V21H6Z" stroke="white" fill="none"/>
-                    <line x1="6" y1="17" x2="18" y2="17" stroke="white"/>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '20px', paddingBottom: '12px', borderBottom: '2px solid #059669' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ width: '40px', height: '40px', background: '#059669', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <svg viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ width: '24px', height: '24px' }}>
+                    <path d="M6 13.87A4 4 0 0 1 7.41 6a5.11 5.11 0 0 1 1.05-1.54 5 5 0 0 1 7.08 0A5.11 5.11 0 0 1 16.59 6 4 4 0 0 1 18 13.87V21H6Z"/>
+                    <line x1="6" y1="17" x2="18" y2="17"/>
                   </svg>
                 </div>
-                <span className="logo-text">
-                  Kiwi<span>MealPlanner</span>
+                <span style={{ fontWeight: 700, fontSize: '20px', color: '#1e293b' }}>
+                  Kiwi<span style={{ color: '#059669' }}>MealPlanner</span>
                 </span>
               </div>
             </div>
 
             {/* Recipe Title */}
-            <h1 className="recipe-title">{meal.name}</h1>
-            <p className="recipe-description">{meal.description}</p>
+            <h1 style={{ fontSize: '28px', fontWeight: 700, color: '#1e293b', marginBottom: '8px' }}>{meal.name}</h1>
+            <p style={{ fontSize: '16px', color: '#64748b', fontStyle: 'italic', marginBottom: '24px' }}>{meal.description}</p>
 
             {/* Recipe Image */}
             {meal.imageUrl && (
               <img
                 src={meal.imageUrl}
                 alt={meal.name}
-                className="recipe-image"
+                style={{ width: '100%', maxHeight: '300px', objectFit: 'cover', borderRadius: '12px', marginBottom: '24px' }}
                 crossOrigin="anonymous"
               />
             )}
 
             {/* Ingredients */}
-            <div className="section">
-              <h2 className="section-title">Ingredients</h2>
-              <ul className="ingredients-list">
+            <div style={{ marginBottom: '24px' }}>
+              <h2 style={{ fontSize: '18px', fontWeight: 600, color: '#059669', marginBottom: '12px', paddingBottom: '8px', borderBottom: '1px solid #e2e8f0' }}>Ingredients</h2>
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
                 {meal.ingredients.map((ingredient, idx) => (
-                  <li key={idx}>
-                    <span className="bullet"></span>
+                  <li key={idx} style={{ padding: '8px 0', borderBottom: idx < meal.ingredients.length - 1 ? '1px dashed #e2e8f0' : 'none', display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                    <span style={{ width: '8px', height: '8px', background: '#059669', borderRadius: '50%', flexShrink: 0, marginTop: '8px' }}></span>
                     <span>{ingredient}</span>
                   </li>
                 ))}
@@ -331,22 +331,22 @@ const RecipePrintView: React.FC<RecipePrintViewProps> = ({ meal, onClose }) => {
             </div>
 
             {/* Instructions */}
-            <div className="section">
-              <h2 className="section-title">Instructions</h2>
-              <div className="instructions">{meal.instructions}</div>
+            <div style={{ marginBottom: '24px' }}>
+              <h2 style={{ fontSize: '18px', fontWeight: 600, color: '#059669', marginBottom: '12px', paddingBottom: '8px', borderBottom: '1px solid #e2e8f0' }}>Instructions</h2>
+              <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.8 }}>{meal.instructions}</div>
             </div>
 
             {/* Disclaimer */}
-            <div className="disclaimer">
+            <div style={{ marginTop: '32px', padding: '12px 16px', background: '#f8fafc', borderRadius: '8px', borderLeft: '3px solid #94a3b8', fontSize: '11px', color: '#64748b', lineHeight: 1.5 }}>
               <strong>Disclaimer:</strong> This recipe is provided for informational purposes only.
               Please check all ingredients for potential allergens and adjust portions as needed.
               Cooking times may vary. Always ensure food is properly cooked before consuming.
             </div>
 
             {/* Footer */}
-            <div className="footer">
+            <div style={{ marginTop: '24px', paddingTop: '16px', borderTop: '1px solid #e2e8f0', textAlign: 'center', color: '#64748b', fontSize: '13px' }}>
               <p>
-                Powered by <a href="https://kiwimealplanner.com">Kiwi Meal Planner</a>
+                Powered by <a href="https://kiwimealplanner.com" style={{ color: '#059669', textDecoration: 'none', fontWeight: 600 }}>Kiwi Meal Planner</a>
               </p>
             </div>
           </div>
