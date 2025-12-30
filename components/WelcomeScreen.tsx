@@ -1,5 +1,5 @@
 import React from 'react';
-import { BookHeart, CalendarPlus, Settings, Sparkles, FolderHeart, ArrowRight, ChefHat } from 'lucide-react';
+import { BookHeart, CalendarPlus, Settings, FolderHeart, ArrowRight, ChefHat } from 'lucide-react';
 
 interface WelcomeScreenProps {
   onStartNew: () => void;
@@ -38,11 +38,6 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
       {/* Hero Section */}
       <div className="grid md:grid-cols-2 gap-8 items-center mb-12">
         <div className="space-y-6">
-          <div className="inline-flex items-center gap-2 bg-emerald-100 text-emerald-700 px-4 py-2 rounded-full text-sm font-medium">
-            <Sparkles size={16} />
-            AI-Powered Meal Planning
-          </div>
-
           <h1 className="text-3xl md:text-4xl font-bold text-slate-800 leading-tight">
             What would you like to do today?
           </h1>
@@ -153,11 +148,6 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
           <div className="text-center">
             <div className="text-2xl font-bold text-emerald-600">NZ</div>
             <div className="text-sm text-slate-500">Local Ingredients</div>
-          </div>
-          <div className="hidden md:block w-px h-12 bg-slate-200" />
-          <div className="text-center">
-            <div className="text-2xl font-bold text-emerald-600">AI</div>
-            <div className="text-sm text-slate-500">Powered by Gemini</div>
           </div>
         </div>
       </div>

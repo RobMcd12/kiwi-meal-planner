@@ -61,7 +61,7 @@ const AppContent: React.FC = () => {
 
   // Redirect to welcome once authenticated
   useEffect(() => {
-    if (isAuthenticated && step === AppStep.LANDING) {
+    if (isAuthenticated && (step === AppStep.LANDING || step === AppStep.AUTH)) {
       setStep(AppStep.WELCOME);
     }
   }, [isAuthenticated, step]);
