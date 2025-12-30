@@ -20,6 +20,7 @@ import { AuthProvider, useAuth } from './components/AuthProvider';
 import { UploadProvider } from './contexts/UploadContext';
 import { ToastContainer } from './components/Toast';
 import { useToast } from './hooks/useToast';
+import { useNavigationHistory, pathToStep } from './hooks/useNavigationHistory';
 import { generateMealPlan, generateShoppingListFromFavorites, generateDishImage } from './services/geminiService';
 import {
   saveConfig,
@@ -57,15 +58,48 @@ const AppContent: React.FC = () => {
   const { user, isAuthenticated, loading: authLoading, isAdmin } = useAuth();
   const { toasts, dismissToast, success, error: showError } = useToast();
 
-  // Start on landing page, move to welcome after auth
-  const [step, setStep] = useState<AppStep>(AppStep.LANDING);
-
-  // Redirect to welcome once authenticated
-  useEffect(() => {
-    if (isAuthenticated && (step === AppStep.LANDING || step === AppStep.AUTH)) {
-      setStep(AppStep.WELCOME);
+  // Determine initial step from URL or default to landing
+  const getInitialStep = (): AppStep => {
+    const path = window.location.pathname;
+    const matchedStep = pathToStep[path];
+    // If we have a valid path, use it (auth will be validated later)
+    if (matchedStep) {
+      return matchedStep;
     }
-  }, [isAuthenticated, step]);
+    // Default to landing page
+    return AppStep.LANDING;
+  };
+
+  const [step, setStep] = useState<AppStep>(getInitialStep);
+
+  // Set up browser history navigation
+  useNavigationHistory({
+    step,
+    setStep,
+    isAuthenticated,
+  });
+
+  // Redirect to welcome once authenticated (from landing or auth pages)
+  // Also handle URL-based navigation when auth state changes
+  useEffect(() => {
+    if (isAuthenticated) {
+      // If on landing or auth, go to welcome
+      if (step === AppStep.LANDING || step === AppStep.AUTH) {
+        setStep(AppStep.WELCOME);
+      }
+      // If on a protected route, stay there (URL-based deep link)
+    } else if (!authLoading) {
+      // If not authenticated and trying to access protected route, go to landing
+      const protectedSteps = [
+        AppStep.WELCOME, AppStep.CONFIG, AppStep.PANTRY, AppStep.PREFERENCES,
+        AppStep.RESULTS, AppStep.FAVORITES, AppStep.SETTINGS, AppStep.ADMIN,
+        AppStep.MY_FEEDBACK, AppStep.SAVED_PLANS, AppStep.SINGLE_RECIPE,
+      ];
+      if (protectedSteps.includes(step)) {
+        setStep(AppStep.LANDING);
+      }
+    }
+  }, [isAuthenticated, authLoading, step]);
   const [pantryItems, setPantryItems] = useState<PantryItem[]>([]);
   const [config, setConfig] = useState<MealConfig>(DEFAULT_CONFIG);
   const [preferences, setPreferences] = useState<UserPreferences>(DEFAULT_PREFERENCES);
