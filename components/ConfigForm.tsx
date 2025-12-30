@@ -8,9 +8,11 @@ interface ConfigFormProps {
   onNext?: () => void;
   isSettingsMode?: boolean;
   hasPantryItems?: boolean;
+  pantryItemCount?: number;
+  onManagePantry?: () => void;
 }
 
-const ConfigForm: React.FC<ConfigFormProps> = ({ config, setConfig, onNext, isSettingsMode = false, hasPantryItems = false }) => {
+const ConfigForm: React.FC<ConfigFormProps> = ({ config, setConfig, onNext, isSettingsMode = false, hasPantryItems = false, pantryItemCount = 0, onManagePantry }) => {
   const updateConfig = (key: keyof MealConfig, value: any) => {
     setConfig(prev => ({ ...prev, [key]: value }));
   };
@@ -120,10 +122,21 @@ const ConfigForm: React.FC<ConfigFormProps> = ({ config, setConfig, onNext, isSe
 
         {/* Use What I Have Mode */}
         <div>
-          <label className="flex items-center gap-2 text-sm font-semibold text-slate-700 mb-4">
-            <Package size={18} className="text-blue-500" />
-            Recipe Mode
-          </label>
+          <div className="flex items-center justify-between mb-4">
+            <label className="flex items-center gap-2 text-sm font-semibold text-slate-700">
+              <Package size={18} className="text-blue-500" />
+              Recipe Mode
+            </label>
+            {onManagePantry && (
+              <button
+                type="button"
+                onClick={onManagePantry}
+                className="text-xs text-blue-600 hover:text-blue-700 font-medium"
+              >
+                {hasPantryItems ? `Manage Pantry (${pantryItemCount})` : 'Add Pantry Items'}
+              </button>
+            )}
+          </div>
           <div className="grid grid-cols-2 gap-4">
             <button
               onClick={() => updateConfig('useWhatIHave', false)}
@@ -159,6 +172,11 @@ const ConfigForm: React.FC<ConfigFormProps> = ({ config, setConfig, onNext, isSe
               </span>
             </button>
           </div>
+          {!hasPantryItems && (
+            <p className="text-xs text-slate-400 mt-2 text-center">
+              Scan or add pantry items to enable smart mode
+            </p>
+          )}
           {config.useWhatIHave && hasPantryItems && (
             <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-xl">
               <p className="text-xs text-blue-700">

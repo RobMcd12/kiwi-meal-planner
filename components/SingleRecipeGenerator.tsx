@@ -12,6 +12,7 @@ interface SingleRecipeGeneratorProps {
   preferences: UserPreferences;
   pantryItems: PantryItem[];
   peopleCount: number;
+  onManagePantry?: () => void;
 }
 
 const SingleRecipeGenerator: React.FC<SingleRecipeGeneratorProps> = ({
@@ -19,6 +20,7 @@ const SingleRecipeGenerator: React.FC<SingleRecipeGeneratorProps> = ({
   preferences,
   pantryItems,
   peopleCount,
+  onManagePantry,
 }) => {
   const [description, setDescription] = useState('');
   const [servings, setServings] = useState(peopleCount);
@@ -213,50 +215,66 @@ const SingleRecipeGenerator: React.FC<SingleRecipeGeneratorProps> = ({
           </div>
 
           {/* Recipe Mode Toggle */}
-          {hasPantryItems && (
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className="block text-sm font-medium text-slate-700">
                 <Package size={16} className="inline mr-1" />
                 Recipe Mode
               </label>
-              <div className="grid grid-cols-2 gap-3">
+              {onManagePantry && (
                 <button
                   type="button"
-                  onClick={() => setUseWhatIHave(false)}
-                  disabled={isGenerating}
-                  className={`p-3 rounded-xl border-2 flex flex-col items-center gap-1 transition-all ${
-                    !useWhatIHave
-                      ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
-                      : 'border-slate-200 hover:border-slate-300 text-slate-500'
-                  }`}
+                  onClick={onManagePantry}
+                  className="text-xs text-blue-600 hover:text-blue-700 font-medium"
                 >
-                  <ShoppingCart size={20} />
-                  <span className="font-medium text-xs">Standard</span>
+                  {hasPantryItems ? 'Manage Pantry' : 'Add Pantry Items'}
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setUseWhatIHave(true)}
-                  disabled={isGenerating}
-                  className={`p-3 rounded-xl border-2 flex flex-col items-center gap-1 transition-all ${
-                    useWhatIHave
-                      ? 'border-blue-500 bg-blue-50 text-blue-700'
-                      : 'border-slate-200 hover:border-slate-300 text-slate-500'
-                  }`}
-                >
-                  <div className="relative">
-                    <Package size={20} />
-                    <Sparkles size={10} className="absolute -top-1 -right-1 text-blue-500" />
-                  </div>
-                  <span className="font-medium text-xs">Use What I Have</span>
-                </button>
-              </div>
-              {useWhatIHave && (
-                <p className="text-xs text-blue-600 mt-2">
-                  Recipe will prioritize your {pantryItems.length} pantry items
-                </p>
               )}
             </div>
-          )}
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={() => setUseWhatIHave(false)}
+                disabled={isGenerating}
+                className={`p-3 rounded-xl border-2 flex flex-col items-center gap-1 transition-all ${
+                  !useWhatIHave
+                    ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
+                    : 'border-slate-200 hover:border-slate-300 text-slate-500'
+                }`}
+              >
+                <ShoppingCart size={20} />
+                <span className="font-medium text-xs">Standard</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setUseWhatIHave(true)}
+                disabled={isGenerating || !hasPantryItems}
+                className={`p-3 rounded-xl border-2 flex flex-col items-center gap-1 transition-all ${
+                  useWhatIHave
+                    ? 'border-blue-500 bg-blue-50 text-blue-700'
+                    : hasPantryItems
+                      ? 'border-slate-200 hover:border-slate-300 text-slate-500'
+                      : 'border-slate-100 bg-slate-50 text-slate-400 cursor-not-allowed'
+                }`}
+              >
+                <div className="relative">
+                  <Package size={20} />
+                  <Sparkles size={10} className="absolute -top-1 -right-1 text-blue-500" />
+                </div>
+                <span className="font-medium text-xs">Use What I Have</span>
+              </button>
+            </div>
+            {!hasPantryItems && (
+              <p className="text-xs text-slate-400 mt-2">
+                Add pantry items to enable "Use What I Have" mode
+              </p>
+            )}
+            {useWhatIHave && hasPantryItems && (
+              <p className="text-xs text-blue-600 mt-2">
+                Recipe will prioritize your {pantryItems.length} pantry items
+              </p>
+            )}
+          </div>
 
           {/* Info about preferences */}
           <div className="bg-slate-50 rounded-xl p-4">

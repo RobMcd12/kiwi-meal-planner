@@ -306,6 +306,8 @@ const AppContent: React.FC = () => {
             setConfig={setConfig}
             onNext={() => setStep(AppStep.PANTRY)}
             hasPantryItems={pantryItems.length > 0}
+            pantryItemCount={pantryItems.length}
+            onManagePantry={() => setStep(AppStep.PANTRY)}
           />
         );
 
@@ -379,6 +381,10 @@ const AppContent: React.FC = () => {
             preferences={preferences}
             pantryItems={pantryItems}
             peopleCount={config.peopleCount}
+            onManagePantry={() => {
+              setSettingsInitialTab('pantry');
+              setStep(AppStep.SETTINGS);
+            }}
           />
         );
 
