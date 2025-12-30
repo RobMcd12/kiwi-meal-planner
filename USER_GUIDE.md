@@ -8,19 +8,20 @@
 
 1. [Getting Started](#getting-started)
 2. [Creating a Meal Plan](#creating-a-meal-plan)
-3. [Single Recipe Generator](#single-recipe-generator)
-4. [AI Pantry Scanner](#ai-pantry-scanner)
-5. [Nutritional Information](#nutritional-information)
-6. [My Cookbook](#my-cookbook)
-7. [Uploading Recipes](#uploading-recipes)
-8. [Recipe Images](#recipe-images)
-9. [Tags & Search](#tags--search)
-10. [Sharing Recipes](#sharing-recipes)
-11. [Notes & Comments](#notes--comments)
-12. [Shopping Lists](#shopping-lists)
-13. [Settings & Preferences](#settings--preferences)
-14. [Feedback & Support](#feedback--support)
-15. [Installing as an App](#installing-as-an-app)
+3. [Use What I Have Mode](#use-what-i-have-mode)
+4. [Single Recipe Generator](#single-recipe-generator)
+5. [AI Pantry Scanner](#ai-pantry-scanner)
+6. [Nutritional Information](#nutritional-information)
+7. [My Cookbook](#my-cookbook)
+8. [Uploading Recipes](#uploading-recipes)
+9. [Recipe Images](#recipe-images)
+10. [Tags & Search](#tags--search)
+11. [Sharing Recipes](#sharing-recipes)
+12. [Notes & Comments](#notes--comments)
+13. [Shopping Lists](#shopping-lists)
+14. [Settings & Preferences](#settings--preferences)
+15. [Feedback & Support](#feedback--support)
+16. [Installing as an App](#installing-as-an-app)
 
 ---
 
@@ -83,6 +84,66 @@ Click "Generate Meal Plan" and the AI will create:
 After viewing a meal plan, rate each meal:
 - **4-5 stars** - Recipe is saved to your "AI Generated" cookbook
 - Lower ratings help the AI learn your preferences
+
+---
+
+## Use What I Have Mode
+
+Maximize your pantry ingredients and minimize shopping with the smart "Use What I Have" mode.
+
+### What is Use What I Have?
+
+This intelligent mode tells the AI to **prioritize ingredients you already have** when generating meal plans and recipes. Instead of creating the "best" recipes and then building a shopping list, it flips the approach: build recipes around what's in your kitchen first.
+
+### Benefits
+
+- **Reduce food waste** - Use ingredients before they expire
+- **Save money** - Smaller shopping lists mean lower grocery bills
+- **Less shopping trips** - Only buy what you truly need
+- **Smarter meal planning** - AI considers what's available, not just what's ideal
+
+### How to Enable It
+
+#### From the Welcome Screen
+1. If you have pantry items saved, a prominent **"Use What I Have"** button appears
+2. Click it to go directly to meal plan configuration with the mode enabled
+3. The button shows a ✨ Smart badge indicating AI-powered optimization
+
+#### From Plan Configuration
+1. During meal plan setup, find the **Recipe Mode** section
+2. Choose between:
+   - **Standard** - Best recipes, then shop for ingredients
+   - **Use What I Have** - Prioritize pantry items to minimize shopping
+3. Note: "Use What I Have" is only available if you have pantry items saved
+
+#### From Single Recipe Generator
+1. When generating individual recipes, toggle the **"Use What I Have"** option
+2. The AI will try to incorporate your pantry ingredients into the recipe
+
+### How It Works
+
+When enabled, the AI receives special instructions to:
+1. **Prioritize** your pantry, fridge, and freezer items as primary ingredients
+2. **Build recipes around** what you have available
+3. **Minimize** the shopping list by using existing ingredients creatively
+4. **Only add items** to the shopping list when absolutely necessary
+
+### Best Practices
+
+1. **Keep your pantry updated** - Scan or add items regularly for best results
+2. **Use the AI Pantry Scanner** - Quickly photograph your kitchen to keep inventory current
+3. **Remove used items** - Delete ingredients after you've used them up
+4. **Be thorough** - The more pantry items the AI knows about, the smarter it can plan
+
+### Example Scenario
+
+**Without Use What I Have:**
+- AI creates a Thai curry recipe requiring lemongrass, coconut milk, fish sauce
+- Shopping list includes all specialty ingredients
+
+**With Use What I Have (and chicken, carrots, onions in pantry):**
+- AI creates a chicken stir-fry using your chicken, carrots, and onions
+- Shopping list only includes soy sauce and sesame oil
 
 ---
 
@@ -153,6 +214,18 @@ After AI analysis:
 - **Better meal plans** - AI knows exactly what you have
 - **Reduced waste** - Plans use ingredients before they expire
 - **Smaller shopping lists** - Excludes items you already own
+- **Enables "Use What I Have" mode** - See [Use What I Have Mode](#use-what-i-have-mode) for how to maximize your scanned items
+
+### Workflow: Scan → Plan → Cook
+
+For the best experience, follow this workflow:
+
+1. **Scan your kitchen** - Take photos of your fridge, freezer, and pantry
+2. **Review and add items** - Check the AI's suggestions and add to your pantry
+3. **Enable "Use What I Have"** - Turn on the smart mode when creating a meal plan
+4. **Generate your plan** - AI creates recipes prioritizing your ingredients
+5. **Shop minimally** - Only buy the few items you're missing
+6. **Cook and enjoy!** - Make meals with what you already had
 
 ---
 
@@ -520,7 +593,13 @@ Note: Generating new meal plans requires an internet connection.
 
 ## Version History
 
-### v1.0.7 (Current)
+### v1.0.8 (Current)
+- **Use What I Have mode** - AI prioritizes your pantry ingredients to minimize shopping
+- Smart mode toggle in meal plan configuration and single recipe generator
+- Featured "Use What I Have" button on welcome screen for quick access
+- Updated landing page with kitchen scanning and recipe upload feature highlights
+
+### v1.0.7
 - Single recipe generator - create individual recipes on demand
 - AI Pantry Scanner - photograph your fridge/pantry to add ingredients
 - Nutritional information - view macros and nutrition for any recipe
