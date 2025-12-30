@@ -142,6 +142,13 @@ const AppContent: React.FC = () => {
     return () => clearInterval(interval);
   }, [isAuthenticated, user]);
 
+  // Clear feedback badge when viewing the feedback page
+  useEffect(() => {
+    if (step === AppStep.MY_FEEDBACK) {
+      setFeedbackResponseCount(0);
+    }
+  }, [step]);
+
   // Handlers
   const handleGenerate = async () => {
     setLoading(true);

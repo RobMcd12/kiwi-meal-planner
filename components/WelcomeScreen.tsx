@@ -137,20 +137,6 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
         </button>
       </div>
 
-      {/* Stats Row */}
-      <div className="bg-white rounded-2xl border border-slate-100 p-6">
-        <div className="flex flex-wrap justify-center gap-8 md:gap-16">
-          <div className="text-center">
-            <div className="text-2xl font-bold text-emerald-600">500+</div>
-            <div className="text-sm text-slate-500">Recipes Generated</div>
-          </div>
-          <div className="hidden md:block w-px h-12 bg-slate-200" />
-          <div className="text-center">
-            <div className="text-2xl font-bold text-emerald-600">NZ</div>
-            <div className="text-sm text-slate-500">Local Ingredients</div>
-          </div>
-        </div>
-      </div>
     </div>
   );
 };
