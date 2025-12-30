@@ -18,6 +18,12 @@ const stepToPath: Record<AppStep, string> = {
   [AppStep.SINGLE_RECIPE]: '/recipe',
 };
 
+// Check if current URL is an OAuth callback
+export const isOAuthCallback = (): boolean => {
+  const path = window.location.pathname;
+  return path === '/auth/callback' || path.startsWith('/auth/callback');
+};
+
 // Reverse mapping: URL path to AppStep
 const pathToStep: Record<string, AppStep> = Object.entries(stepToPath).reduce(
   (acc, [step, path]) => ({ ...acc, [path]: step as AppStep }),

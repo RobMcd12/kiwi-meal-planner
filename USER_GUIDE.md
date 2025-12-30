@@ -180,19 +180,40 @@ Don't need a full meal plan? Generate individual recipes on demand.
 
 ## AI Pantry Scanner
 
-Quickly add ingredients to your pantry by taking photos of your fridge, freezer, or pantry shelves.
+Quickly add ingredients to your pantry using multiple methods: photos, video, or voice.
 
-### How to Use
+### Input Methods
 
+#### Photo Scanning
 1. Go to **Pantry Settings** (during meal plan setup or in Settings)
-2. Click the purple **"Scan Pantry with AI"** button
+2. Click the purple **"Scan with Photos"** button
 3. **Take photos or upload images** of your:
    - Refrigerator shelves
    - Freezer contents
    - Pantry/cupboard shelves
    - Grocery bags
 4. Add multiple images for thorough scanning
-5. Click **Analyze Images**
+5. Click **Scan for Ingredients**
+
+#### Video Scanning
+1. Click **"Video Scan"** in the pantry manager
+2. Either record directly or upload an existing video
+3. Walk through your kitchen showing fridge, pantry, and freezer
+4. AI extracts frames and identifies all visible items
+5. Review and select items to add
+
+#### Voice Dictation (Talk to Add)
+1. Click **"Talk to Add"** in the pantry manager
+2. Grant microphone permission when prompted
+3. Simply say your items: *"I have milk, eggs, bread, chicken, and some pasta"*
+4. AI transcribes in real-time and extracts items
+5. Review detected items and add with one click
+
+#### Audio Upload
+1. Click **"Upload Audio"** in the pantry manager
+2. Upload a pre-recorded audio file (MP3, M4A, WAV, etc.)
+3. AI transcribes the audio and extracts pantry items
+4. Review and select items to add
 
 ### Review & Select
 
@@ -200,18 +221,35 @@ After AI analysis:
 - Items are organized by category (Produce, Dairy, Meat, Frozen, etc.)
 - **Check or uncheck** items to include
 - Use **Select All** or **Clear All** for quick selection
-- Click **Add Selected Items** to add to your pantry
+- Click **Add Items to Pantry**
+
+### Upload Mode Options
+
+When adding scanned items to an existing pantry, you can choose:
+- **Add New Items Only** - Only add items not already in your pantry (recommended)
+- **Replace All Items** - Clear existing pantry and replace with scanned items
+
+### Media File Management
+
+Video and audio files are stored temporarily:
+- Files are automatically deleted after **10 days**
+- View your uploaded files in **Settings > Account > Uploaded Media Files**
+- Each file shows days until automatic deletion
+- Delete files manually if no longer needed
+- Your extracted pantry items are saved permanently (only the media files expire)
 
 ### Tips
 
 - Take clear, well-lit photos
 - Capture labels when possible for better identification
 - Multiple angles help identify more items
-- The AI recognizes both packaged products and fresh ingredients
+- For video, speak clearly about what you're showing
+- Voice dictation works best in quiet environments
 
 ### Why Use It?
 
 - **Faster setup** - No manual typing of each ingredient
+- **Multiple input methods** - Choose what works best for you
 - **Better meal plans** - AI knows exactly what you have
 - **Reduced waste** - Plans use ingredients before they expire
 - **Smaller shopping lists** - Excludes items you already own
@@ -221,7 +259,7 @@ After AI analysis:
 
 For the best experience, follow this workflow:
 
-1. **Scan your kitchen** - Take photos of your fridge, freezer, and pantry
+1. **Scan your kitchen** - Use photos, video, or voice to capture what you have
 2. **Review and add items** - Check the AI's suggestions and add to your pantry
 3. **Enable "Use What I Have"** - Turn on the smart mode when creating a meal plan
 4. **Generate your plan** - AI creates recipes prioritizing your ingredients
@@ -665,7 +703,16 @@ Note: Generating new meal plans requires an internet connection.
 
 ## Version History
 
-### v1.0.9 (Current)
+### v2.0 (Current)
+- **Video Pantry Scanning** - Record or upload videos to scan your kitchen
+- **Voice Dictation** - Talk to the app to add pantry items in real-time
+- **Audio Upload** - Upload pre-recorded audio files for AI transcription
+- **Upload Mode Options** - Choose to replace all pantry items or add only new ones
+- **Media File Management** - View and manage uploaded video/audio with 10-day auto-cleanup
+- **Admin AI Instructions** - Behind-the-scenes AI rules for better scanning results
+- Updated landing page with video and voice scanning features
+
+### v1.0.9
 - **Pantry Staples** - Track essential items you always keep in stock
 - Mark pantry items as staples with the star icon
 - Checkbox system to add staples to shopping list for restocking

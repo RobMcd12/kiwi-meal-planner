@@ -1,6 +1,7 @@
 import { GoogleGenAI, Type, Schema } from "@google/genai";
-import { UserPreferences, PantryItem, MealPlanResponse, MealConfig, Meal, ExtractedRecipe } from "../types";
+import { UserPreferences, PantryItem, MealPlanResponse, MealConfig, Meal, ExtractedRecipe, ScannedPantryResult } from "../types";
 import { supabase, isSupabaseConfigured } from "./authService";
+import { getInstructionsByTag, buildPromptWithInstructions } from "./adminInstructionsService";
 
 // Predefined tag categories for AI to choose from
 export const TAG_CATEGORIES = {
@@ -773,23 +774,12 @@ const pantryItemsSchema: Schema = {
   required: ["items"]
 };
 
-export interface ScannedPantryResult {
-  items: string[];
-  categories?: {
-    produce?: string[];
-    dairy?: string[];
-    meat?: string[];
-    pantryStaples?: string[];
-    frozen?: string[];
-    beverages?: string[];
-    condiments?: string[];
-    other?: string[];
-  };
-}
+// ScannedPantryResult is now imported from types.ts
 
 /**
  * Analyze images of pantry/fridge/freezer to identify available ingredients
  * Accepts multiple images for comprehensive scanning
+ * Applies admin-managed instructions for pantry scanning
  */
 export const scanPantryFromImages = async (
   images: { base64: string; mimeType: string }[]
@@ -799,17 +789,11 @@ export const scanPantryFromImages = async (
 
   const ai = new GoogleGenAI({ apiKey });
 
-  // Build content array with all images
-  const contents: any[] = images.map(img => ({
-    inlineData: {
-      mimeType: img.mimeType,
-      data: img.base64,
-    },
-  }));
+  // Fetch admin instructions for pantry scanning
+  const adminInstructions = await getInstructionsByTag('pantry_scanning');
 
-  // Add the prompt at the end
-  contents.push({
-    text: `Analyze these images of a pantry, refrigerator, freezer, or kitchen counter with ingredients.
+  // Build the base prompt
+  const basePrompt = `Analyze these images of a pantry, refrigerator, freezer, or kitchen counter with ingredients.
 
 Identify ALL visible food items, ingredients, and cooking supplies. Be thorough and specific.
 
@@ -828,8 +812,21 @@ Group items into categories:
 - Condiments & Sauces
 - Other
 
-Return all identified items as a flat list in "items" and categorized in "categories".`
-  });
+Return all identified items as a flat list in "items" and categorized in "categories".`;
+
+  // Apply admin instructions to the prompt
+  const finalPrompt = buildPromptWithInstructions(basePrompt, adminInstructions);
+
+  // Build content array with all images
+  const contents: any[] = images.map(img => ({
+    inlineData: {
+      mimeType: img.mimeType,
+      data: img.base64,
+    },
+  }));
+
+  // Add the prompt at the end
+  contents.push({ text: finalPrompt });
 
   try {
     const response = await ai.models.generateContent({
@@ -850,6 +847,242 @@ Return all identified items as a flat list in "items" and categorized in "catego
     console.error("Pantry scanning error:", error);
     throw new Error("Failed to analyze pantry images");
   }
+};
+
+/**
+ * Analyze video of pantry/fridge/freezer to identify available ingredients
+ * Extracts frames from video and sends to AI for analysis
+ * Applies admin-managed instructions for pantry scanning
+ */
+export const scanPantryFromVideo = async (
+  videoBlob: Blob
+): Promise<ScannedPantryResult> => {
+  const apiKey = process.env.API_KEY;
+  if (!apiKey) throw new Error("API Key is missing.");
+
+  const ai = new GoogleGenAI({ apiKey });
+
+  // Fetch admin instructions for pantry scanning
+  const adminInstructions = await getInstructionsByTag('pantry_scanning');
+
+  // Build the base prompt
+  const basePrompt = `Analyze this video of a pantry, refrigerator, freezer, or kitchen counter with ingredients.
+
+Identify ALL visible food items, ingredients, and cooking supplies throughout the video. Be thorough and specific.
+
+For each item:
+- Use common names (e.g., "eggs" not "chicken eggs")
+- Include quantities if clearly visible (e.g., "milk (1 gallon)")
+- Note if items appear fresh, frozen, or packaged
+
+Group items into categories:
+- Produce (fruits, vegetables)
+- Dairy (milk, cheese, yogurt, butter)
+- Meat & Seafood (fresh or frozen)
+- Pantry Staples (flour, sugar, rice, pasta, canned goods, spices)
+- Frozen items
+- Beverages
+- Condiments & Sauces
+- Other
+
+Return all identified items as a flat list in "items" and categorized in "categories".`;
+
+  // Apply admin instructions to the prompt
+  const finalPrompt = buildPromptWithInstructions(basePrompt, adminInstructions);
+
+  // Convert video blob to base64
+  const base64Video = await blobToBase64(videoBlob);
+  const mimeType = videoBlob.type || 'video/webm';
+
+  // Build content array with video
+  const contents: any[] = [
+    {
+      inlineData: {
+        mimeType: mimeType,
+        data: base64Video,
+      },
+    },
+    { text: finalPrompt },
+  ];
+
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-2.0-flash",
+      contents: contents,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: pantryItemsSchema,
+      },
+    });
+
+    if (!response.text) {
+      throw new Error('Empty response from AI model');
+    }
+
+    return JSON.parse(response.text) as ScannedPantryResult;
+  } catch (error) {
+    console.error("Video pantry scanning error:", error);
+    throw new Error("Failed to analyze pantry video");
+  }
+};
+
+/**
+ * Analyze audio transcription for pantry items
+ * User verbally lists items in their pantry
+ * Applies admin-managed instructions for pantry scanning
+ */
+export const scanPantryFromAudio = async (
+  audioBlob: Blob
+): Promise<ScannedPantryResult> => {
+  const apiKey = process.env.API_KEY;
+  if (!apiKey) throw new Error("API Key is missing.");
+
+  const ai = new GoogleGenAI({ apiKey });
+
+  // Fetch admin instructions for pantry scanning
+  const adminInstructions = await getInstructionsByTag('pantry_scanning');
+
+  // Build the base prompt
+  const basePrompt = `Listen to this audio recording of someone listing items in their pantry, refrigerator, or kitchen.
+
+Transcribe and identify ALL food items, ingredients, and cooking supplies mentioned.
+
+For each item:
+- Use common names
+- Include quantities if mentioned (e.g., "two bottles of milk")
+- Handle casual speech patterns (e.g., "I've got some eggs and milk")
+
+Group items into categories:
+- Produce (fruits, vegetables)
+- Dairy (milk, cheese, yogurt, butter)
+- Meat & Seafood
+- Pantry Staples (flour, sugar, rice, pasta, canned goods, spices)
+- Frozen items
+- Beverages
+- Condiments & Sauces
+- Other
+
+Return all identified items as a flat list in "items" and categorized in "categories".`;
+
+  // Apply admin instructions to the prompt
+  const finalPrompt = buildPromptWithInstructions(basePrompt, adminInstructions);
+
+  // Convert audio blob to base64
+  const base64Audio = await blobToBase64(audioBlob);
+  const mimeType = audioBlob.type || 'audio/webm';
+
+  // Build content array with audio
+  const contents: any[] = [
+    {
+      inlineData: {
+        mimeType: mimeType,
+        data: base64Audio,
+      },
+    },
+    { text: finalPrompt },
+  ];
+
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-2.0-flash",
+      contents: contents,
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: pantryItemsSchema,
+      },
+    });
+
+    if (!response.text) {
+      throw new Error('Empty response from AI model');
+    }
+
+    return JSON.parse(response.text) as ScannedPantryResult;
+  } catch (error) {
+    console.error("Audio pantry scanning error:", error);
+    throw new Error("Failed to analyze pantry audio");
+  }
+};
+
+/**
+ * Parse live dictation text for pantry items
+ * Uses Web Speech API transcription text for real-time item extraction
+ * Applies admin-managed instructions for pantry scanning
+ */
+export const parseDictationForPantryItems = async (
+  transcriptionText: string
+): Promise<ScannedPantryResult> => {
+  const apiKey = process.env.API_KEY;
+  if (!apiKey) throw new Error("API Key is missing.");
+
+  const ai = new GoogleGenAI({ apiKey });
+
+  // Fetch admin instructions for pantry scanning
+  const adminInstructions = await getInstructionsByTag('pantry_scanning');
+
+  // Build the base prompt
+  const basePrompt = `Parse this transcription of someone listing items in their pantry, refrigerator, or kitchen:
+
+"${transcriptionText}"
+
+Identify ALL food items, ingredients, and cooking supplies mentioned.
+
+For each item:
+- Use common names
+- Include quantities if mentioned
+- Clean up any speech recognition errors (e.g., "bread" not "bred")
+- Handle casual speech patterns
+
+Group items into categories:
+- Produce (fruits, vegetables)
+- Dairy (milk, cheese, yogurt, butter)
+- Meat & Seafood
+- Pantry Staples (flour, sugar, rice, pasta, canned goods, spices)
+- Frozen items
+- Beverages
+- Condiments & Sauces
+- Other
+
+Return all identified items as a flat list in "items" and categorized in "categories".`;
+
+  // Apply admin instructions to the prompt
+  const finalPrompt = buildPromptWithInstructions(basePrompt, adminInstructions);
+
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-2.0-flash",
+      contents: [{ text: finalPrompt }],
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: pantryItemsSchema,
+      },
+    });
+
+    if (!response.text) {
+      throw new Error('Empty response from AI model');
+    }
+
+    return JSON.parse(response.text) as ScannedPantryResult;
+  } catch (error) {
+    console.error("Dictation parsing error:", error);
+    throw new Error("Failed to parse dictation for pantry items");
+  }
+};
+
+/**
+ * Helper function to convert Blob to base64 string
+ */
+const blobToBase64 = (blob: Blob): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const dataUrl = reader.result as string;
+      // Remove the data URL prefix (e.g., "data:video/webm;base64,")
+      const base64 = dataUrl.split(',')[1];
+      resolve(base64);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
+  });
 };
 
 // ============================================

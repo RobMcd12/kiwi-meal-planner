@@ -3,9 +3,10 @@ import { MealConfig, UserPreferences, PantryItem } from '../types';
 import ConfigForm from './ConfigForm';
 import PreferenceForm from './PreferenceForm';
 import PantryManager from './PantryManager';
+import MediaFilesManager from './MediaFilesManager';
 import { useAuth } from './AuthProvider';
 import { supabase } from '../services/authService';
-import { ArrowLeft, Check, Sliders, Archive, Utensils, UserCircle, Loader2 } from 'lucide-react';
+import { ArrowLeft, Check, Sliders, Archive, Utensils, UserCircle, Loader2, FileVideo } from 'lucide-react';
 
 interface SettingsViewProps {
   config: MealConfig;
@@ -351,6 +352,20 @@ const SettingsView: React.FC<SettingsViewProps> = ({
                             </div>
                         </div>
                     )}
+
+                    {/* Uploaded Media Files */}
+                    <div className="bg-white rounded-xl border border-slate-200 p-6">
+                        <div className="flex items-center gap-3 mb-4">
+                            <div className="bg-slate-100 p-2 rounded-lg">
+                                <FileVideo className="text-slate-600" size={20} />
+                            </div>
+                            <div>
+                                <h3 className="text-lg font-semibold text-slate-800">Uploaded Media Files</h3>
+                                <p className="text-sm text-slate-500">Video and audio recordings from pantry scanning</p>
+                            </div>
+                        </div>
+                        <MediaFilesManager />
+                    </div>
                 </div>
             )}
         </div>

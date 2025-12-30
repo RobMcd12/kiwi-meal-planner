@@ -1,11 +1,13 @@
 import React, { useState, useRef } from 'react';
 import { Camera, Upload, X, Loader2, Check, Plus, Trash2, Image as ImageIcon, Sparkles, AlertCircle } from 'lucide-react';
-import { scanPantryFromImages, ScannedPantryResult } from '../services/geminiService';
-import type { PantryItem } from '../types';
+import { scanPantryFromImages } from '../services/geminiService';
+import type { PantryItem, ScannedPantryResult, PantryUploadMode } from '../types';
+import PantryUploadModeModal from './PantryUploadModeModal';
 
 interface PantryScannerProps {
-  onItemsScanned: (items: PantryItem[]) => void;
+  onItemsScanned: (items: PantryItem[], mode: PantryUploadMode) => void;
   onClose: () => void;
+  existingItemCount: number;
 }
 
 interface ImagePreview {
@@ -15,12 +17,13 @@ interface ImagePreview {
   preview: string;
 }
 
-const PantryScanner: React.FC<PantryScannerProps> = ({ onItemsScanned, onClose }) => {
+const PantryScanner: React.FC<PantryScannerProps> = ({ onItemsScanned, onClose, existingItemCount }) => {
   const [images, setImages] = useState<ImagePreview[]>([]);
   const [isScanning, setIsScanning] = useState(false);
   const [scanResult, setScanResult] = useState<ScannedPantryResult | null>(null);
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
+  const [showUploadModeModal, setShowUploadModeModal] = useState(false);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -110,11 +113,26 @@ const PantryScanner: React.FC<PantryScannerProps> = ({ onItemsScanned, onClose }
   };
 
   const handleAddSelected = () => {
+    // If there are existing items, show the upload mode modal
+    if (existingItemCount > 0) {
+      setShowUploadModeModal(true);
+    } else {
+      // No existing items, just add the new ones
+      finalizeAddItems('add_new');
+    }
+  };
+
+  const finalizeAddItems = (mode: PantryUploadMode) => {
     const items: PantryItem[] = Array.from(selectedItems).map(name => ({
       id: `scanned-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       name,
     }));
-    onItemsScanned(items);
+    onItemsScanned(items, mode);
+  };
+
+  const handleUploadModeSelect = (mode: PantryUploadMode) => {
+    setShowUploadModeModal(false);
+    finalizeAddItems(mode);
   };
 
   const categoryLabels: Record<string, string> = {
@@ -385,6 +403,16 @@ const PantryScanner: React.FC<PantryScannerProps> = ({ onItemsScanned, onClose }
           )}
         </div>
       </div>
+
+      {/* Upload Mode Modal */}
+      {showUploadModeModal && (
+        <PantryUploadModeModal
+          onSelect={handleUploadModeSelect}
+          onClose={() => setShowUploadModeModal(false)}
+          existingItemCount={existingItemCount}
+          newItemCount={selectedItems.size}
+        />
+      )}
     </div>
   );
 };

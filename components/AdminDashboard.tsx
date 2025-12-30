@@ -20,7 +20,15 @@ import {
   Eye,
   EyeOff,
   Loader2,
-  X
+  X,
+  Settings,
+  Plus,
+  Edit3,
+  Search,
+  Tag,
+  FolderPlus,
+  ToggleLeft,
+  ToggleRight
 } from 'lucide-react';
 import { useAuth } from './AuthProvider';
 import { supabase, isSupabaseConfigured } from '../services/authService';
@@ -32,7 +40,16 @@ import {
   updateFeedbackStatus
 } from '../services/feedbackService';
 import { getAllUsers, setUserAdminStatus, isSuperAdmin, sendPasswordResetEmail, createUser, deleteUser, type UserProfile } from '../services/adminService';
-import type { FeedbackItem, FeedbackStatus } from '../types';
+import {
+  getAllInstructions,
+  createInstruction,
+  updateInstruction,
+  deleteInstruction,
+  getCategories,
+  createCategory,
+  deleteCategory
+} from '../services/adminInstructionsService';
+import type { FeedbackItem, FeedbackStatus, AdminInstruction, AdminInstructionCategory, InstructionTag } from '../types';
 
 interface AdminDashboardProps {
   onBack: () => void;
@@ -48,8 +65,31 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
   const { user, isAdmin, refreshAdminStatus } = useAuth();
   const [stats, setStats] = useState<Stats>({ totalUsers: 0, totalMealPlans: 0, totalFavorites: 0 });
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'overview' | 'feedback' | 'data' | 'users'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'feedback' | 'data' | 'users' | 'instructions'>('overview');
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  // Instructions state
+  const [instructionsList, setInstructionsList] = useState<AdminInstruction[]>([]);
+  const [categoriesList, setCategoriesList] = useState<AdminInstructionCategory[]>([]);
+  const [instructionsLoading, setInstructionsLoading] = useState(false);
+  const [instructionSearch, setInstructionSearch] = useState('');
+  const [instructionTagFilter, setInstructionTagFilter] = useState<InstructionTag | 'all'>('all');
+  const [showInstructionModal, setShowInstructionModal] = useState(false);
+  const [showCategoryModal, setShowCategoryModal] = useState(false);
+  const [editingInstruction, setEditingInstruction] = useState<AdminInstruction | null>(null);
+  const [instructionForm, setInstructionForm] = useState({
+    title: '',
+    instructionText: '',
+    categoryId: '',
+    tags: [] as InstructionTag[],
+    priority: 0,
+    isActive: true
+  });
+  const [categoryForm, setCategoryForm] = useState({ name: '', description: '' });
+  const [savingInstruction, setSavingInstruction] = useState(false);
+  const [savingCategory, setSavingCategory] = useState(false);
+  const [deletingInstructionId, setDeletingInstructionId] = useState<string | null>(null);
+  const [deletingCategoryId, setDeletingCategoryId] = useState<string | null>(null);
 
   // Feedback state
   const [feedbackList, setFeedbackList] = useState<FeedbackItem[]>([]);
@@ -88,8 +128,188 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
       loadFeedback();
     } else if (activeTab === 'users') {
       loadUsers();
+    } else if (activeTab === 'instructions') {
+      loadInstructions();
     }
   }, [activeTab]);
+
+  const loadInstructions = async () => {
+    setInstructionsLoading(true);
+    try {
+      const [instructions, categories] = await Promise.all([
+        getAllInstructions(),
+        getCategories()
+      ]);
+      setInstructionsList(instructions);
+      setCategoriesList(categories);
+    } catch (err) {
+      console.error('Failed to load instructions:', err);
+      setMessage({ type: 'error', text: 'Failed to load instructions.' });
+    } finally {
+      setInstructionsLoading(false);
+    }
+  };
+
+  const handleSaveInstruction = async () => {
+    if (!instructionForm.title.trim() || !instructionForm.instructionText.trim() || !instructionForm.categoryId) {
+      setMessage({ type: 'error', text: 'Please fill in all required fields.' });
+      return;
+    }
+
+    setSavingInstruction(true);
+    try {
+      if (editingInstruction) {
+        await updateInstruction(editingInstruction.id, {
+          title: instructionForm.title.trim(),
+          instructionText: instructionForm.instructionText.trim(),
+          categoryId: instructionForm.categoryId,
+          tags: instructionForm.tags,
+          priority: instructionForm.priority,
+          isActive: instructionForm.isActive
+        });
+        setMessage({ type: 'success', text: 'Instruction updated successfully!' });
+      } else {
+        const newInstruction = await createInstruction({
+          title: instructionForm.title.trim(),
+          instructionText: instructionForm.instructionText.trim(),
+          categoryId: instructionForm.categoryId,
+          tags: instructionForm.tags,
+          priority: instructionForm.priority,
+        });
+        // If user unchecked "Active", immediately update the newly created instruction
+        if (newInstruction && !instructionForm.isActive) {
+          await updateInstruction(newInstruction.id, { isActive: false });
+        }
+        setMessage({ type: 'success', text: 'Instruction created successfully!' });
+      }
+      setShowInstructionModal(false);
+      setEditingInstruction(null);
+      resetInstructionForm();
+      await loadInstructions();
+    } catch (err) {
+      setMessage({ type: 'error', text: 'Failed to save instruction.' });
+    } finally {
+      setSavingInstruction(false);
+    }
+  };
+
+  const handleDeleteInstruction = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this instruction?')) return;
+
+    setDeletingInstructionId(id);
+    try {
+      await deleteInstruction(id);
+      setInstructionsList(prev => prev.filter(i => i.id !== id));
+      setMessage({ type: 'success', text: 'Instruction deleted successfully!' });
+    } catch (err) {
+      setMessage({ type: 'error', text: 'Failed to delete instruction.' });
+    } finally {
+      setDeletingInstructionId(null);
+    }
+  };
+
+  const handleToggleInstructionActive = async (instruction: AdminInstruction) => {
+    try {
+      await updateInstruction(instruction.id, { isActive: !instruction.isActive });
+      setInstructionsList(prev =>
+        prev.map(i => i.id === instruction.id ? { ...i, isActive: !i.isActive } : i)
+      );
+    } catch (err) {
+      setMessage({ type: 'error', text: 'Failed to update instruction status.' });
+    }
+  };
+
+  const handleSaveCategory = async () => {
+    if (!categoryForm.name.trim()) {
+      setMessage({ type: 'error', text: 'Please enter a category name.' });
+      return;
+    }
+
+    setSavingCategory(true);
+    try {
+      await createCategory(categoryForm.name.trim(), categoryForm.description.trim() || undefined);
+      setMessage({ type: 'success', text: 'Category created successfully!' });
+      setShowCategoryModal(false);
+      setCategoryForm({ name: '', description: '' });
+      await loadInstructions();
+    } catch (err) {
+      setMessage({ type: 'error', text: 'Failed to create category.' });
+    } finally {
+      setSavingCategory(false);
+    }
+  };
+
+  const handleDeleteCategory = async (id: string) => {
+    const category = categoriesList.find(c => c.id === id);
+    const instructionsInCategory = instructionsList.filter(i => i.categoryId === id).length;
+
+    if (instructionsInCategory > 0) {
+      if (!confirm(`This category has ${instructionsInCategory} instruction(s). Deleting it will also delete all instructions in this category. Continue?`)) {
+        return;
+      }
+    } else if (!confirm('Are you sure you want to delete this category?')) {
+      return;
+    }
+
+    setDeletingCategoryId(id);
+    try {
+      await deleteCategory(id);
+      setCategoriesList(prev => prev.filter(c => c.id !== id));
+      setInstructionsList(prev => prev.filter(i => i.categoryId !== id));
+      setMessage({ type: 'success', text: 'Category deleted successfully!' });
+    } catch (err) {
+      setMessage({ type: 'error', text: 'Failed to delete category.' });
+    } finally {
+      setDeletingCategoryId(null);
+    }
+  };
+
+  const resetInstructionForm = () => {
+    setInstructionForm({
+      title: '',
+      instructionText: '',
+      categoryId: '',
+      tags: [],
+      priority: 0,
+      isActive: true
+    });
+  };
+
+  const openEditInstructionModal = (instruction: AdminInstruction) => {
+    setEditingInstruction(instruction);
+    setInstructionForm({
+      title: instruction.title,
+      instructionText: instruction.instructionText,
+      categoryId: instruction.categoryId,
+      tags: instruction.tags,
+      priority: instruction.priority,
+      isActive: instruction.isActive
+    });
+    setShowInstructionModal(true);
+  };
+
+  const toggleInstructionTag = (tag: InstructionTag) => {
+    setInstructionForm(prev => ({
+      ...prev,
+      tags: prev.tags.includes(tag)
+        ? prev.tags.filter(t => t !== tag)
+        : [...prev.tags, tag]
+    }));
+  };
+
+  const filteredInstructions = instructionsList.filter(instruction => {
+    const matchesSearch = instructionSearch === '' ||
+      instruction.title.toLowerCase().includes(instructionSearch.toLowerCase()) ||
+      instruction.instructionText.toLowerCase().includes(instructionSearch.toLowerCase());
+    const matchesTag = instructionTagFilter === 'all' || instruction.tags.includes(instructionTagFilter);
+    return matchesSearch && matchesTag;
+  });
+
+  const groupedInstructions = categoriesList.map(category => ({
+    category,
+    instructions: filteredInstructions.filter(i => i.categoryId === category.id)
+      .sort((a, b) => b.priority - a.priority)
+  })).filter(group => group.instructions.length > 0);
 
   const loadUsers = async () => {
     setUsersLoading(true);
@@ -442,6 +662,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
         {[
           { id: 'overview', label: 'Overview', icon: Activity },
           { id: 'feedback', label: 'Feedback', icon: MessageSquare, badge: newFeedbackCount },
+          { id: 'instructions', label: 'Instructions', icon: Settings },
           { id: 'data', label: 'Data Management', icon: Database },
           { id: 'users', label: 'Users', icon: Users },
         ].map((tab) => (
@@ -717,6 +938,439 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
                       <>
                         <Send size={18} />
                         Send Response
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Instructions Tab */}
+      {activeTab === 'instructions' && (
+        <div className="space-y-6">
+          {/* Header with actions */}
+          <div className="flex items-center justify-between flex-wrap gap-4">
+            <h2 className="text-lg font-semibold text-slate-800">AI Instructions</h2>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setShowCategoryModal(true)}
+                className="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-medium rounded-lg transition-colors"
+              >
+                <FolderPlus size={16} />
+                Add Category
+              </button>
+              <button
+                onClick={() => {
+                  resetInstructionForm();
+                  setEditingInstruction(null);
+                  setShowInstructionModal(true);
+                }}
+                className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg transition-colors"
+              >
+                <Plus size={16} />
+                Add Instruction
+              </button>
+            </div>
+          </div>
+
+          {/* Info banner */}
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 flex items-start gap-3">
+            <Settings className="text-blue-600 flex-shrink-0 mt-0.5" size={20} />
+            <div>
+              <p className="text-blue-800 font-medium">How Instructions Work</p>
+              <p className="text-blue-700 text-sm">Instructions are automatically applied to AI prompts based on their tags. Active instructions with the "pantry_scanning" tag will be included when users scan their pantry.</p>
+            </div>
+          </div>
+
+          {/* Search and filter */}
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="relative flex-1">
+              <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                value={instructionSearch}
+                onChange={(e) => setInstructionSearch(e.target.value)}
+                placeholder="Search instructions..."
+                className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+              />
+            </div>
+            <div className="flex gap-2 flex-wrap">
+              {(['all', 'meal_planner', 'recipe_generation', 'pantry_scanning'] as const).map((tag) => (
+                <button
+                  key={tag}
+                  onClick={() => setInstructionTagFilter(tag)}
+                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    instructionTagFilter === tag
+                      ? 'bg-emerald-600 text-white'
+                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  {tag === 'all' ? 'All' : tag.replace('_', ' ')}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Instructions list */}
+          {instructionsLoading ? (
+            <div className="flex items-center justify-center py-16">
+              <Loader2 size={32} className="animate-spin text-emerald-600" />
+            </div>
+          ) : groupedInstructions.length === 0 ? (
+            <div className="bg-white rounded-xl border border-slate-200 p-8 text-center">
+              <Settings className="mx-auto text-slate-300 mb-4" size={48} />
+              <p className="text-slate-500">
+                {instructionSearch || instructionTagFilter !== 'all'
+                  ? 'No instructions match your search criteria.'
+                  : 'No instructions yet. Create your first instruction!'}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {groupedInstructions.map(({ category, instructions }) => (
+                <div key={category.id} className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                  <div className="flex items-center justify-between p-4 bg-slate-50 border-b border-slate-200">
+                    <div>
+                      <h3 className="font-semibold text-slate-800">{category.name}</h3>
+                      {category.description && (
+                        <p className="text-sm text-slate-500 mt-0.5">{category.description}</p>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => handleDeleteCategory(category.id)}
+                      disabled={deletingCategoryId === category.id}
+                      className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                      title="Delete category"
+                    >
+                      {deletingCategoryId === category.id ? (
+                        <Loader2 size={16} className="animate-spin" />
+                      ) : (
+                        <Trash2 size={16} />
+                      )}
+                    </button>
+                  </div>
+                  <div className="divide-y divide-slate-100">
+                    {instructions.map((instruction) => (
+                      <div
+                        key={instruction.id}
+                        className={`p-4 ${!instruction.isActive ? 'opacity-60 bg-slate-50' : ''}`}
+                      >
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <h4 className="font-medium text-slate-800">{instruction.title}</h4>
+                              <span className="text-xs text-slate-400">Priority: {instruction.priority}</span>
+                            </div>
+                            <p className="text-sm text-slate-600 whitespace-pre-wrap mb-2">
+                              {instruction.instructionText}
+                            </p>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              {instruction.tags.map((tag) => (
+                                <span
+                                  key={tag}
+                                  className="px-2 py-0.5 bg-slate-100 text-slate-600 text-xs font-medium rounded-full flex items-center gap-1"
+                                >
+                                  <Tag size={10} />
+                                  {tag.replace('_', ' ')}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => handleToggleInstructionActive(instruction)}
+                              className={`p-2 rounded-lg transition-colors ${
+                                instruction.isActive
+                                  ? 'text-emerald-600 hover:bg-emerald-50'
+                                  : 'text-slate-400 hover:bg-slate-100'
+                              }`}
+                              title={instruction.isActive ? 'Deactivate' : 'Activate'}
+                            >
+                              {instruction.isActive ? <ToggleRight size={20} /> : <ToggleLeft size={20} />}
+                            </button>
+                            <button
+                              onClick={() => openEditInstructionModal(instruction)}
+                              className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                              title="Edit instruction"
+                            >
+                              <Edit3 size={16} />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteInstruction(instruction.id)}
+                              disabled={deletingInstructionId === instruction.id}
+                              className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                              title="Delete instruction"
+                            >
+                              {deletingInstructionId === instruction.id ? (
+                                <Loader2 size={16} className="animate-spin" />
+                              ) : (
+                                <Trash2 size={16} />
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+
+              {/* Show empty categories */}
+              {categoriesList.filter(c => !groupedInstructions.find(g => g.category.id === c.id)).map(category => (
+                <div key={category.id} className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+                  <div className="flex items-center justify-between p-4 bg-slate-50 border-b border-slate-200">
+                    <div>
+                      <h3 className="font-semibold text-slate-800">{category.name}</h3>
+                      {category.description && (
+                        <p className="text-sm text-slate-500 mt-0.5">{category.description}</p>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => handleDeleteCategory(category.id)}
+                      disabled={deletingCategoryId === category.id}
+                      className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                      title="Delete category"
+                    >
+                      {deletingCategoryId === category.id ? (
+                        <Loader2 size={16} className="animate-spin" />
+                      ) : (
+                        <Trash2 size={16} />
+                      )}
+                    </button>
+                  </div>
+                  <div className="p-8 text-center">
+                    <p className="text-slate-400 text-sm">No instructions in this category</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Instruction Modal */}
+          {showInstructionModal && (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-2xl max-w-lg w-full shadow-xl max-h-[90vh] overflow-y-auto">
+                <div className="flex items-center justify-between p-6 border-b border-slate-200">
+                  <h3 className="text-lg font-bold text-slate-800">
+                    {editingInstruction ? 'Edit Instruction' : 'Add Instruction'}
+                  </h3>
+                  <button
+                    onClick={() => {
+                      setShowInstructionModal(false);
+                      setEditingInstruction(null);
+                      resetInstructionForm();
+                    }}
+                    className="p-2 hover:bg-slate-100 rounded-full transition-colors"
+                  >
+                    <X size={20} className="text-slate-400" />
+                  </button>
+                </div>
+
+                <div className="p-6 space-y-4">
+                  {/* Title */}
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      Title *
+                    </label>
+                    <input
+                      type="text"
+                      value={instructionForm.title}
+                      onChange={(e) => setInstructionForm(prev => ({ ...prev, title: e.target.value }))}
+                      placeholder="e.g., Generic Item Prevention"
+                      className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                    />
+                  </div>
+
+                  {/* Category */}
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      Category *
+                    </label>
+                    <select
+                      value={instructionForm.categoryId}
+                      onChange={(e) => setInstructionForm(prev => ({ ...prev, categoryId: e.target.value }))}
+                      className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                    >
+                      <option value="">Select a category</option>
+                      {categoriesList.map(cat => (
+                        <option key={cat.id} value={cat.id}>{cat.name}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  {/* Instruction Text */}
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      Instruction Text *
+                    </label>
+                    <textarea
+                      value={instructionForm.instructionText}
+                      onChange={(e) => setInstructionForm(prev => ({ ...prev, instructionText: e.target.value }))}
+                      placeholder="Enter the instruction that will be applied to AI prompts..."
+                      className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none resize-none h-32"
+                    />
+                  </div>
+
+                  {/* Tags */}
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      Tags (select where this applies)
+                    </label>
+                    <div className="flex gap-2 flex-wrap">
+                      {(['meal_planner', 'recipe_generation', 'pantry_scanning'] as const).map((tag) => (
+                        <button
+                          key={tag}
+                          type="button"
+                          onClick={() => toggleInstructionTag(tag)}
+                          className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                            instructionForm.tags.includes(tag)
+                              ? 'bg-emerald-600 text-white'
+                              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                          }`}
+                        >
+                          {tag.replace('_', ' ')}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Priority */}
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      Priority (higher = applied first)
+                    </label>
+                    <input
+                      type="number"
+                      value={instructionForm.priority}
+                      onChange={(e) => setInstructionForm(prev => ({ ...prev, priority: parseInt(e.target.value) || 0 }))}
+                      className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                    />
+                  </div>
+
+                  {/* Active toggle */}
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={instructionForm.isActive}
+                      onChange={(e) => setInstructionForm(prev => ({ ...prev, isActive: e.target.checked }))}
+                      className="w-5 h-5 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500"
+                    />
+                    <div>
+                      <span className="font-medium text-slate-700">Active</span>
+                      <p className="text-xs text-slate-500">Active instructions are applied to AI prompts</p>
+                    </div>
+                  </label>
+                </div>
+
+                <div className="flex justify-end gap-3 p-6 border-t border-slate-200 bg-slate-50 rounded-b-2xl">
+                  <button
+                    onClick={() => {
+                      setShowInstructionModal(false);
+                      setEditingInstruction(null);
+                      resetInstructionForm();
+                    }}
+                    className="px-5 py-2.5 text-slate-600 hover:bg-slate-200 rounded-xl font-medium transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleSaveInstruction}
+                    disabled={savingInstruction}
+                    className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {savingInstruction ? (
+                      <>
+                        <Loader2 size={18} className="animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle size={18} />
+                        {editingInstruction ? 'Update Instruction' : 'Create Instruction'}
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Category Modal */}
+          {showCategoryModal && (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-2xl max-w-md w-full shadow-xl">
+                <div className="flex items-center justify-between p-6 border-b border-slate-200">
+                  <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                    <FolderPlus size={20} className="text-emerald-600" />
+                    Add Category
+                  </h3>
+                  <button
+                    onClick={() => {
+                      setShowCategoryModal(false);
+                      setCategoryForm({ name: '', description: '' });
+                    }}
+                    className="p-2 hover:bg-slate-100 rounded-full transition-colors"
+                  >
+                    <X size={20} className="text-slate-400" />
+                  </button>
+                </div>
+
+                <div className="p-6 space-y-4">
+                  {/* Name */}
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      Category Name *
+                    </label>
+                    <input
+                      type="text"
+                      value={categoryForm.name}
+                      onChange={(e) => setCategoryForm(prev => ({ ...prev, name: e.target.value }))}
+                      placeholder="e.g., Meal Planning Rules"
+                      className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                    />
+                  </div>
+
+                  {/* Description */}
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      Description (optional)
+                    </label>
+                    <textarea
+                      value={categoryForm.description}
+                      onChange={(e) => setCategoryForm(prev => ({ ...prev, description: e.target.value }))}
+                      placeholder="Brief description of this category..."
+                      className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none resize-none h-24"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-3 p-6 border-t border-slate-200 bg-slate-50 rounded-b-2xl">
+                  <button
+                    onClick={() => {
+                      setShowCategoryModal(false);
+                      setCategoryForm({ name: '', description: '' });
+                    }}
+                    className="px-5 py-2.5 text-slate-600 hover:bg-slate-200 rounded-xl font-medium transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleSaveCategory}
+                    disabled={savingCategory || !categoryForm.name.trim()}
+                    className="flex items-center gap-2 px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {savingCategory ? (
+                      <>
+                        <Loader2 size={18} className="animate-spin" />
+                        Creating...
+                      </>
+                    ) : (
+                      <>
+                        <FolderPlus size={18} />
+                        Create Category
                       </>
                     )}
                   </button>

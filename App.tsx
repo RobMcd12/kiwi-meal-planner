@@ -20,7 +20,7 @@ import { AuthProvider, useAuth } from './components/AuthProvider';
 import { UploadProvider } from './contexts/UploadContext';
 import { ToastContainer } from './components/Toast';
 import { useToast } from './hooks/useToast';
-import { useNavigationHistory, pathToStep } from './hooks/useNavigationHistory';
+import { useNavigationHistory, pathToStep, isOAuthCallback } from './hooks/useNavigationHistory';
 import { generateMealPlan, generateShoppingListFromFavorites, generateDishImage } from './services/geminiService';
 import {
   saveConfig,
@@ -60,6 +60,13 @@ const AppContent: React.FC = () => {
 
   // Determine initial step from URL or default to landing
   const getInitialStep = (): AppStep => {
+    // If this is an OAuth callback, wait for auth to complete
+    // Don't change the step yet - let the auth flow finish
+    if (isOAuthCallback()) {
+      // Return AUTH step temporarily - we'll redirect after auth completes
+      return AppStep.AUTH;
+    }
+
     const path = window.location.pathname;
     const matchedStep = pathToStep[path];
     // If we have a valid path, use it (auth will be validated later)
@@ -71,6 +78,15 @@ const AppContent: React.FC = () => {
   };
 
   const [step, setStep] = useState<AppStep>(getInitialStep);
+
+  // Handle OAuth callback - clear the callback URL once auth is detected
+  useEffect(() => {
+    if (isOAuthCallback() && isAuthenticated) {
+      // OAuth completed successfully, redirect to welcome
+      window.history.replaceState({ step: AppStep.WELCOME }, '', '/home');
+      setStep(AppStep.WELCOME);
+    }
+  }, [isAuthenticated]);
 
   // Set up browser history navigation
   useNavigationHistory({

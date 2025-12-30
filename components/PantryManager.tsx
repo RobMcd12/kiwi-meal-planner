@@ -1,7 +1,10 @@
 import React, { useState } from 'react';
-import { PantryItem } from '../types';
-import { Plus, Trash2, Archive, Camera, Sparkles, Star, ShoppingCart, Check } from 'lucide-react';
+import { PantryItem, PantryUploadMode } from '../types';
+import { Plus, Trash2, Archive, Camera, Sparkles, Star, ShoppingCart, Check, Video, Mic, Upload } from 'lucide-react';
 import PantryScanner from './PantryScanner';
+import VideoRecorder from './VideoRecorder';
+import LiveDictation from './LiveDictation';
+import AudioRecorder from './AudioRecorder';
 import { updatePantryItemStaple, togglePantryItemRestock, clearStaplesRestock } from '../services/storageService';
 
 interface PantryManagerProps {
@@ -18,6 +21,9 @@ const COMMON_PANTRY_ITEMS = [
 const PantryManager: React.FC<PantryManagerProps> = ({ items, setItems, onNext, isSettingsMode = false }) => {
   const [newItem, setNewItem] = useState('');
   const [showScanner, setShowScanner] = useState(false);
+  const [showVideoRecorder, setShowVideoRecorder] = useState(false);
+  const [showLiveDictation, setShowLiveDictation] = useState(false);
+  const [showAudioRecorder, setShowAudioRecorder] = useState(false);
   const [activeTab, setActiveTab] = useState<'pantry' | 'staples'>('pantry');
 
   // Separate items into regular pantry and staples
@@ -48,14 +54,19 @@ const PantryManager: React.FC<PantryManagerProps> = ({ items, setItems, onNext, 
     }
   };
 
-  const handleScannedItems = (scannedItems: PantryItem[]) => {
-    // Filter out items that already exist in pantry
-    const newItems = scannedItems.filter(
-      scanned => !items.some(existing =>
-        existing.name.toLowerCase() === scanned.name.toLowerCase()
-      )
-    );
-    setItems([...items, ...newItems]);
+  const handleScannedItems = (scannedItems: PantryItem[], mode: PantryUploadMode) => {
+    if (mode === 'replace') {
+      // Replace all existing items with new scanned items
+      setItems(scannedItems);
+    } else {
+      // Add only new items that don't exist yet (add_new mode)
+      const newItems = scannedItems.filter(
+        scanned => !items.some(existing =>
+          existing.name.toLowerCase() === scanned.name.toLowerCase()
+        )
+      );
+      setItems([...items, ...newItems]);
+    }
     setShowScanner(false);
   };
 
@@ -137,14 +148,40 @@ const PantryManager: React.FC<PantryManagerProps> = ({ items, setItems, onNext, 
         <>
           <div className="mb-6">
             {/* Scan Pantry Button */}
+            {/* Main scan button */}
             <button
               onClick={() => setShowScanner(true)}
-              className="w-full mb-4 py-3 bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white rounded-xl font-semibold flex items-center justify-center gap-2 transition-all shadow-md hover:shadow-lg"
+              className="w-full mb-3 py-3 bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white rounded-xl font-semibold flex items-center justify-center gap-2 transition-all shadow-md hover:shadow-lg"
             >
               <Camera size={20} />
-              <span>Scan Pantry with AI</span>
+              <span>Scan with Photos</span>
               <Sparkles size={16} />
             </button>
+
+            {/* Additional input methods */}
+            <div className="grid grid-cols-2 gap-2 mb-4">
+              <button
+                onClick={() => setShowVideoRecorder(true)}
+                className="py-2.5 bg-red-50 hover:bg-red-100 text-red-700 rounded-xl font-medium flex items-center justify-center gap-2 transition-colors border border-red-200"
+              >
+                <Video size={18} />
+                <span className="text-sm">Video Scan</span>
+              </button>
+              <button
+                onClick={() => setShowLiveDictation(true)}
+                className="py-2.5 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-xl font-medium flex items-center justify-center gap-2 transition-colors border border-purple-200"
+              >
+                <Mic size={18} />
+                <span className="text-sm">Talk to Add</span>
+              </button>
+              <button
+                onClick={() => setShowAudioRecorder(true)}
+                className="col-span-2 py-2.5 bg-orange-50 hover:bg-orange-100 text-orange-700 rounded-xl font-medium flex items-center justify-center gap-2 transition-colors border border-orange-200"
+              >
+                <Upload size={18} />
+                <span className="text-sm">Upload Audio</span>
+              </button>
+            </div>
 
             <div className="flex gap-2">
               <input
@@ -316,6 +353,34 @@ const PantryManager: React.FC<PantryManagerProps> = ({ items, setItems, onNext, 
         <PantryScanner
           onItemsScanned={handleScannedItems}
           onClose={() => setShowScanner(false)}
+          existingItemCount={items.length}
+        />
+      )}
+
+      {/* Video Recorder Modal */}
+      {showVideoRecorder && (
+        <VideoRecorder
+          onItemsScanned={handleScannedItems}
+          onClose={() => setShowVideoRecorder(false)}
+          existingItemCount={items.length}
+        />
+      )}
+
+      {/* Live Dictation Modal */}
+      {showLiveDictation && (
+        <LiveDictation
+          onItemsScanned={handleScannedItems}
+          onClose={() => setShowLiveDictation(false)}
+          existingItemCount={items.length}
+        />
+      )}
+
+      {/* Audio Recorder Modal */}
+      {showAudioRecorder && (
+        <AudioRecorder
+          onItemsScanned={handleScannedItems}
+          onClose={() => setShowAudioRecorder(false)}
+          existingItemCount={items.length}
         />
       )}
     </div>

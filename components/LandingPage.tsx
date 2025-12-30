@@ -1,5 +1,8 @@
-import React from 'react';
-import { ChefHat, Sparkles, ShoppingCart, Heart, ArrowRight, Camera, Package, Upload, Apple, Users, SlidersHorizontal } from 'lucide-react';
+import React, { useState } from 'react';
+import { ChefHat, Sparkles, ShoppingCart, Heart, ArrowRight, Camera, Package, Upload, Apple, Users, SlidersHorizontal, Video, Mic } from 'lucide-react';
+import LegalPages from './LegalPages';
+
+type LegalPageType = 'privacy' | 'terms' | 'data' | null;
 
 interface LandingPageProps {
   onGetStarted: () => void;
@@ -7,6 +10,8 @@ interface LandingPageProps {
 }
 
 const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin }) => {
+  const [showLegalPage, setShowLegalPage] = useState<LegalPageType>(null);
+
   const foodImages = [
     'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=300&fit=crop',
     'https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?w=400&h=300&fit=crop',
@@ -141,16 +146,24 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin }) => {
                   </div>
                   <h3 className="text-xl font-bold text-slate-800 mb-2">Scan Your Kitchen</h3>
                   <p className="text-slate-600 mb-3">
-                    Snap photos of your fridge, pantry, and freezer. Our AI identifies what you have and creates recipes using those ingredients first - minimizing waste and shopping trips.
+                    Snap photos, record a video walkthrough, or just talk to the app and tell us what you have. Our AI identifies your ingredients and creates recipes using them first - minimizing waste and shopping trips.
                   </p>
-                  <div className="flex items-center gap-4 text-sm text-slate-500">
+                  <div className="flex flex-wrap items-center gap-3 text-sm text-slate-500">
+                    <span className="flex items-center gap-1">
+                      <Camera size={14} className="text-blue-500" />
+                      Photos
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Video size={14} className="text-blue-500" />
+                      Video
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Mic size={14} className="text-blue-500" />
+                      Voice
+                    </span>
                     <span className="flex items-center gap-1">
                       <Package size={14} className="text-blue-500" />
                       Use what you have
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <ShoppingCart size={14} className="text-blue-500" />
-                      Buy less
                     </span>
                   </div>
                 </div>
@@ -307,26 +320,55 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin }) => {
 
       {/* Footer */}
       <footer className="px-6 py-8 border-t border-slate-200">
-        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2">
-            <div className="bg-emerald-600 p-1.5 rounded-lg text-white">
-              <ChefHat size={18} />
+        <div className="max-w-6xl mx-auto">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-4">
+            <div className="flex items-center gap-2">
+              <div className="bg-emerald-600 p-1.5 rounded-lg text-white">
+                <ChefHat size={18} />
+              </div>
+              <span className="font-semibold text-slate-700">KiwiMealPlanner</span>
             </div>
-            <span className="font-semibold text-slate-700">KiwiMealPlanner</span>
+            <p className="text-sm text-slate-500">
+              © {new Date().getFullYear()} Kiwi Meal Planner. An app by{' '}
+              <a
+                href="https://www.unicloud.co.nz"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-emerald-600 hover:underline"
+              >
+                Unicloud.co.nz
+              </a>
+            </p>
           </div>
-          <p className="text-sm text-slate-500">
-            © {new Date().getFullYear()} Kiwi Meal Planner. An app by{' '}
-            <a
-              href="https://www.unicloud.co.nz"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-emerald-600 hover:underline"
+          <div className="flex flex-wrap items-center justify-center gap-4 text-sm text-slate-500">
+            <button
+              onClick={() => setShowLegalPage('privacy')}
+              className="hover:text-emerald-600 transition-colors"
             >
-              Unicloud.co.nz
-            </a>
-          </p>
+              Privacy Policy
+            </button>
+            <span className="text-slate-300">|</span>
+            <button
+              onClick={() => setShowLegalPage('terms')}
+              className="hover:text-emerald-600 transition-colors"
+            >
+              Terms of Service
+            </button>
+            <span className="text-slate-300">|</span>
+            <button
+              onClick={() => setShowLegalPage('data')}
+              className="hover:text-emerald-600 transition-colors"
+            >
+              Data Handling
+            </button>
+          </div>
         </div>
       </footer>
+
+      {/* Legal Pages Modal */}
+      {showLegalPage && (
+        <LegalPages page={showLegalPage} onClose={() => setShowLegalPage(null)} />
+      )}
     </div>
   );
 };

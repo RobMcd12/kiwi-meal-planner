@@ -231,3 +231,65 @@ export interface SavedMealPlan {
   updatedAt?: string;
   userId?: string;
 }
+
+// ============================================
+// ADMIN INSTRUCTIONS
+// ============================================
+
+export interface AdminInstructionCategory {
+  id: string;
+  name: string;
+  description?: string;
+  createdAt: string;
+}
+
+export type InstructionTag = 'meal_planner' | 'recipe_generation' | 'pantry_scanning';
+
+export interface AdminInstruction {
+  id: string;
+  categoryId: string;
+  categoryName?: string; // Joined from category table
+  title: string;
+  instructionText: string;
+  tags: InstructionTag[];
+  isActive: boolean;
+  priority: number;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+// ============================================
+// MEDIA UPLOADS
+// ============================================
+
+export interface MediaUpload {
+  id: string;
+  userId: string;
+  storagePath: string;
+  mediaType: 'video' | 'audio';
+  originalFilename: string;
+  fileSizeBytes?: number;
+  mimeType?: string;
+  durationSeconds?: number;
+  processingStatus: 'pending' | 'processing' | 'complete' | 'failed';
+  processedItems?: ScannedPantryResult;
+  errorMessage?: string;
+  expiresAt: string;
+  createdAt: string;
+}
+
+export interface ScannedPantryResult {
+  items: string[];
+  categories?: {
+    produce?: string[];
+    dairy?: string[];
+    meat?: string[];
+    pantryStaples?: string[];
+    frozen?: string[];
+    beverages?: string[];
+    condiments?: string[];
+    other?: string[];
+  };
+}
+
+export type PantryUploadMode = 'replace' | 'add_new';
