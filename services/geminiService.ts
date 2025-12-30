@@ -145,12 +145,20 @@ export const generateMealPlan = async (
   const meatServing = preferences.meatServingGrams || 175;
   const calorieTarget = preferences.calorieTarget || 2000;
 
+  // Build mode-specific instructions
+  const useWhatIHaveMode = config.useWhatIHave && pantryItems.length > 0;
+  const modeInstructions = useWhatIHaveMode
+    ? `PRIORITY MODE - USE WHAT I HAVE: You MUST prioritize using these pantry/fridge/freezer items as PRIMARY ingredients: ${pantryListString}.
+Design meals that use as many of these items as possible. Minimize shopping list by building recipes around available ingredients.
+Only add items to shopping list if absolutely necessary to complete recipes. Goal: reduce food waste and shopping.`
+    : `Pantry (exclude from list): ${pantryListString || "none"}.`;
+
   // Concise prompt for faster generation
   const prompt = `${config.days}-day meal plan, ${config.peopleCount} people. Meals: ${requestedMeals.join(", ")} only.
 Diet: ${preferences.dietaryRestrictions || "None"}. Likes: ${preferences.likes || "Any"}. Dislikes: ${preferences.dislikes || "None"}.
 Units: ${preferences.unitSystem}. Temps: ${preferences.temperatureScale}.
 Portions: Meat/protein ${meatServing}g per person. Target ~${calorieTarget} kcal/day per person.
-Pantry (exclude from list): ${pantryListString || "none"}.
+${modeInstructions}
 Each meal = complete dish with sides (e.g. "Grilled Salmon with Rice and Vegetables"). Include all ingredients/instructions for full meal.
 IMPORTANT: Shopping list MUST include ingredients from ALL ${config.days * requestedMeals.length} meals. Combine quantities, organize by aisle, scale for ${config.peopleCount} people.`;
 
@@ -662,7 +670,8 @@ export const generateSingleRecipe = async (
   recipeDescription: string,
   preferences: UserPreferences,
   pantryItems: PantryItem[],
-  peopleCount: number = 2
+  peopleCount: number = 2,
+  useWhatIHave: boolean = false
 ): Promise<Meal> => {
   const apiKey = process.env.API_KEY;
   if (!apiKey) throw new Error("API Key is missing.");
@@ -670,6 +679,16 @@ export const generateSingleRecipe = async (
   const ai = new GoogleGenAI({ apiKey });
 
   const pantryListString = pantryItems.map((p) => p.name).join(", ");
+
+  // Build mode-specific instructions
+  const useWhatIHaveMode = useWhatIHave && pantryItems.length > 0;
+  const pantryInstructions = useWhatIHaveMode
+    ? `PRIORITY MODE - USE WHAT I HAVE:
+You MUST create this recipe using primarily these available ingredients: ${pantryListString}.
+The recipe should maximize use of these items while still matching the user's request.
+Only include additional ingredients that are absolutely necessary to complete the dish.
+Goal: minimize extra shopping and reduce food waste.`
+    : `Available pantry items to use: ${pantryListString || "none specified"}`;
 
   const prompt = `Create a detailed recipe based on this request: "${recipeDescription}"
 
@@ -680,7 +699,7 @@ Dislikes: ${preferences.dislikes || "None"}
 Units: ${preferences.unitSystem}
 Temperature: ${preferences.temperatureScale}
 
-Available pantry items to use: ${pantryListString || "none specified"}
+${pantryInstructions}
 
 Create a complete, delicious recipe with:
 - A descriptive name

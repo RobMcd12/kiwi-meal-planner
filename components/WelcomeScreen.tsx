@@ -1,18 +1,22 @@
 import React from 'react';
-import { BookHeart, CalendarPlus, FolderHeart, ArrowRight, ChefHat } from 'lucide-react';
+import { BookHeart, CalendarPlus, FolderHeart, ArrowRight, ChefHat, Package, Camera, Sparkles } from 'lucide-react';
 
 interface WelcomeScreenProps {
   onStartNew: () => void;
   onViewFavorites: () => void;
   onViewSavedPlans?: () => void;
   onGenerateSingleRecipe?: () => void;
+  onUseWhatIHave?: () => void;
+  hasPantryItems?: boolean;
 }
 
 const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
   onStartNew,
   onViewFavorites,
   onViewSavedPlans,
-  onGenerateSingleRecipe
+  onGenerateSingleRecipe,
+  onUseWhatIHave,
+  hasPantryItems = false
 }) => {
   const foodImages = [
     'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=300&fit=crop',
@@ -52,6 +56,35 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Featured: Use What I Have */}
+      {hasPantryItems && onUseWhatIHave && (
+        <button
+          onClick={onUseWhatIHave}
+          className="group w-full bg-gradient-to-r from-blue-50 to-cyan-50 p-5 rounded-2xl shadow-sm border border-blue-200 hover:shadow-md hover:border-blue-300 transition-all text-left mb-6"
+        >
+          <div className="flex items-start gap-4">
+            <div className="bg-blue-100 w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+              <Package className="text-blue-600" size={24} />
+            </div>
+            <div className="flex-1">
+              <div className="flex items-center gap-2 mb-1">
+                <h3 className="text-lg font-bold text-slate-800">Use What I Have</h3>
+                <span className="inline-flex items-center gap-1 bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-xs font-medium">
+                  <Sparkles size={10} />
+                  Smart
+                </span>
+              </div>
+              <p className="text-sm text-slate-600 mb-2">
+                Create meals prioritizing ingredients from your pantry, fridge, and freezer - minimizing shopping and reducing waste.
+              </p>
+              <span className="inline-flex items-center gap-1 text-sm font-medium text-blue-600 group-hover:gap-2 transition-all">
+                Start cooking <ArrowRight size={14} />
+              </span>
+            </div>
+          </div>
+        </button>
+      )}
 
       {/* Action Cards */}
       <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">

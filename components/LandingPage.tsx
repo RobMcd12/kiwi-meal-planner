@@ -1,5 +1,5 @@
 import React from 'react';
-import { ChefHat, Sparkles, ShoppingCart, Heart, ArrowRight } from 'lucide-react';
+import { ChefHat, Sparkles, ShoppingCart, Heart, ArrowRight, Camera, Package, Upload, Apple, Users, SlidersHorizontal } from 'lucide-react';
 
 interface LandingPageProps {
   onGetStarted: () => void;
@@ -148,52 +148,177 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin }) => {
             Everything you need for meal planning
           </h2>
 
-          <div className="grid md:grid-cols-3 gap-8">
-            <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow">
-              <div className="bg-emerald-100 w-14 h-14 rounded-xl flex items-center justify-center mb-6">
-                <Sparkles className="text-emerald-600" size={28} />
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {/* Pantry Scanning - Featured */}
+            <div className="bg-gradient-to-br from-blue-50 to-cyan-50 p-6 rounded-2xl shadow-sm border border-blue-100 hover:shadow-md transition-shadow md:col-span-2 lg:col-span-2">
+              <div className="flex items-start gap-4">
+                <div className="bg-blue-100 w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0">
+                  <Camera className="text-blue-600" size={28} />
+                </div>
+                <div>
+                  <div className="inline-flex items-center gap-1 bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-xs font-medium mb-2">
+                    <Sparkles size={12} />
+                    New Feature
+                  </div>
+                  <h3 className="text-xl font-bold text-slate-800 mb-2">Scan Your Kitchen</h3>
+                  <p className="text-slate-600 mb-3">
+                    Snap photos of your fridge, pantry, and freezer. Our AI identifies what you have and creates recipes using those ingredients first - minimizing waste and shopping trips.
+                  </p>
+                  <div className="flex items-center gap-4 text-sm text-slate-500">
+                    <span className="flex items-center gap-1">
+                      <Package size={14} className="text-blue-500" />
+                      Use what you have
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <ShoppingCart size={14} className="text-blue-500" />
+                      Buy less
+                    </span>
+                  </div>
+                </div>
               </div>
-              <h3 className="text-xl font-bold text-slate-800 mb-3">AI-Powered Plans</h3>
-              <p className="text-slate-600">
-                Our AI creates personalized meal plans based on your preferences, dietary needs, and what's in your pantry.
+            </div>
+
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow">
+              <div className="bg-emerald-100 w-12 h-12 rounded-xl flex items-center justify-center mb-4">
+                <Sparkles className="text-emerald-600" size={24} />
+              </div>
+              <h3 className="text-lg font-bold text-slate-800 mb-2">AI-Powered Plans</h3>
+              <p className="text-slate-600 text-sm">
+                Personalized meal plans based on your preferences and dietary needs.
               </p>
             </div>
 
-            <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow">
-              <div className="bg-orange-100 w-14 h-14 rounded-xl flex items-center justify-center mb-6">
-                <ShoppingCart className="text-orange-600" size={28} />
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow">
+              <div className="bg-orange-100 w-12 h-12 rounded-xl flex items-center justify-center mb-4">
+                <ShoppingCart className="text-orange-600" size={24} />
               </div>
-              <h3 className="text-xl font-bold text-slate-800 mb-3">Smart Shopping</h3>
-              <p className="text-slate-600">
-                Automatically generate shopping lists from your meal plan. Export to your favorite store or reminders app.
+              <h3 className="text-lg font-bold text-slate-800 mb-2">Smart Shopping</h3>
+              <p className="text-slate-600 text-sm">
+                Auto-generated lists that exclude what you already have.
               </p>
             </div>
 
-            <div className="bg-white p-8 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow">
-              <div className="bg-rose-100 w-14 h-14 rounded-xl flex items-center justify-center mb-6">
-                <Heart className="text-rose-600" size={28} />
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow">
+              <div className="bg-rose-100 w-12 h-12 rounded-xl flex items-center justify-center mb-4">
+                <Heart className="text-rose-600" size={24} />
               </div>
-              <h3 className="text-xl font-bold text-slate-800 mb-3">Save Favorites</h3>
-              <p className="text-slate-600">
-                Love a meal? Save it to your cookbook and quickly generate shopping lists from your favorite recipes.
+              <h3 className="text-lg font-bold text-slate-800 mb-2">Save Favorites</h3>
+              <p className="text-slate-600 text-sm">
+                Build your personal cookbook with recipes you love.
+              </p>
+            </div>
+
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow">
+              <div className="bg-purple-100 w-12 h-12 rounded-xl flex items-center justify-center mb-4">
+                <Package className="text-purple-600" size={24} />
+              </div>
+              <h3 className="text-lg font-bold text-slate-800 mb-2">Use What I Have</h3>
+              <p className="text-slate-600 text-sm">
+                Generate recipes that prioritize your existing ingredients.
               </p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* CTA Section */}
+      {/* Recipe Upload & Nutrition Section */}
       <section className="px-6 py-16">
+        <div className="max-w-6xl mx-auto">
+          <div className="grid md:grid-cols-2 gap-8 items-center">
+            <div className="space-y-6">
+              <div className="inline-flex items-center gap-2 bg-green-100 text-green-700 px-4 py-2 rounded-full text-sm font-medium">
+                <Upload size={16} />
+                Your Recipes, Supercharged
+              </div>
+              <h2 className="text-3xl md:text-4xl font-bold text-slate-800">
+                Upload any recipe, let AI do the rest
+              </h2>
+              <p className="text-lg text-slate-600">
+                Scan a recipe card, paste text from a website, or upload a PDF. Our AI extracts the details and adds powerful features to your personal cookbook.
+              </p>
+              <div className="space-y-4">
+                <div className="flex items-start gap-3">
+                  <div className="bg-purple-100 p-2 rounded-lg">
+                    <Users className="text-purple-600" size={20} />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-slate-800">Smart Serving Adjustments</h4>
+                    <p className="text-sm text-slate-600">Scale any recipe from 2 to 12 servings with automatically recalculated ingredients.</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="bg-green-100 p-2 rounded-lg">
+                    <Apple className="text-green-600" size={20} />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-slate-800">Nutritional Breakdown</h4>
+                    <p className="text-sm text-slate-600">Get instant calories, protein, carbs, and fat per serving for any recipe.</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3">
+                  <div className="bg-amber-100 p-2 rounded-lg">
+                    <SlidersHorizontal className="text-amber-600" size={20} />
+                  </div>
+                  <div>
+                    <h4 className="font-semibold text-slate-800">AI Recipe Adjustments</h4>
+                    <p className="text-sm text-slate-600">Increase protein, reduce carbs, or adapt recipes to your dietary needs.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="bg-gradient-to-br from-green-50 to-emerald-100 rounded-2xl p-8 shadow-lg">
+              <div className="bg-white rounded-xl shadow-sm p-6 space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold text-slate-800">Your Recipe</span>
+                  <span className="text-xs bg-emerald-100 text-emerald-700 px-2 py-1 rounded">Uploaded</span>
+                </div>
+                <div className="h-32 bg-gradient-to-r from-orange-100 to-amber-100 rounded-lg flex items-center justify-center">
+                  <ChefHat size={48} className="text-orange-300" />
+                </div>
+                <div className="grid grid-cols-4 gap-2 text-center">
+                  <div className="bg-slate-50 rounded-lg p-2">
+                    <div className="text-lg font-bold text-orange-600">450</div>
+                    <div className="text-xs text-slate-500">kcal</div>
+                  </div>
+                  <div className="bg-slate-50 rounded-lg p-2">
+                    <div className="text-lg font-bold text-red-600">32g</div>
+                    <div className="text-xs text-slate-500">protein</div>
+                  </div>
+                  <div className="bg-slate-50 rounded-lg p-2">
+                    <div className="text-lg font-bold text-amber-600">45g</div>
+                    <div className="text-xs text-slate-500">carbs</div>
+                  </div>
+                  <div className="bg-slate-50 rounded-lg p-2">
+                    <div className="text-lg font-bold text-yellow-600">18g</div>
+                    <div className="text-xs text-slate-500">fat</div>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <button className="flex-1 flex items-center justify-center gap-1 py-2 bg-purple-100 text-purple-700 rounded-lg text-sm font-medium">
+                    <Users size={14} /> Adjust Servings
+                  </button>
+                  <button className="flex-1 flex items-center justify-center gap-1 py-2 bg-amber-100 text-amber-700 rounded-lg text-sm font-medium">
+                    <SlidersHorizontal size={14} /> Modify
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      <section className="px-6 py-16 bg-gradient-to-r from-emerald-600 to-teal-600">
         <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-3xl md:text-4xl font-bold text-slate-800 mb-6">
+          <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">
             Ready to simplify your meal planning?
           </h2>
-          <p className="text-lg text-slate-600 mb-8">
+          <p className="text-lg text-emerald-100 mb-8">
             Join Kiwi Meal Planner today and start creating delicious weekly meal plans in minutes.
           </p>
           <button
             onClick={onGetStarted}
-            className="inline-flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-10 py-4 rounded-xl font-semibold text-lg transition-all shadow-lg shadow-emerald-200"
+            className="inline-flex items-center gap-2 bg-white hover:bg-slate-50 text-emerald-700 px-10 py-4 rounded-xl font-semibold text-lg transition-all shadow-lg"
           >
             Start Planning Now
             <ArrowRight size={20} />

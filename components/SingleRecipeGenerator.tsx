@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowLeft, Sparkles, ChefHat, Loader2, Heart, Printer, Users, Check, Apple, SlidersHorizontal, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Sparkles, ChefHat, Loader2, Heart, Printer, Users, Check, Apple, SlidersHorizontal, AlertCircle, Package, ShoppingCart } from 'lucide-react';
 import type { Meal, UserPreferences, PantryItem } from '../types';
 import { generateSingleRecipe, generateDishImage } from '../services/geminiService';
 import { saveFavoriteMeal } from '../services/storageService';
@@ -22,6 +22,7 @@ const SingleRecipeGenerator: React.FC<SingleRecipeGeneratorProps> = ({
 }) => {
   const [description, setDescription] = useState('');
   const [servings, setServings] = useState(peopleCount);
+  const [useWhatIHave, setUseWhatIHave] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generatedRecipe, setGeneratedRecipe] = useState<Meal | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -31,6 +32,8 @@ const SingleRecipeGenerator: React.FC<SingleRecipeGeneratorProps> = ({
   const [showPrintView, setShowPrintView] = useState(false);
   const [showNutrition, setShowNutrition] = useState(false);
   const [showAdjuster, setShowAdjuster] = useState(false);
+
+  const hasPantryItems = pantryItems.length > 0;
 
   const examplePrompts = [
     "A quick weeknight pasta dish",
@@ -54,7 +57,8 @@ const SingleRecipeGenerator: React.FC<SingleRecipeGeneratorProps> = ({
         description,
         preferences,
         pantryItems,
-        servings
+        servings,
+        useWhatIHave
       );
       setGeneratedRecipe(recipe);
 
@@ -208,19 +212,65 @@ const SingleRecipeGenerator: React.FC<SingleRecipeGeneratorProps> = ({
             </div>
           </div>
 
+          {/* Recipe Mode Toggle */}
+          {hasPantryItems && (
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">
+                <Package size={16} className="inline mr-1" />
+                Recipe Mode
+              </label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setUseWhatIHave(false)}
+                  disabled={isGenerating}
+                  className={`p-3 rounded-xl border-2 flex flex-col items-center gap-1 transition-all ${
+                    !useWhatIHave
+                      ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
+                      : 'border-slate-200 hover:border-slate-300 text-slate-500'
+                  }`}
+                >
+                  <ShoppingCart size={20} />
+                  <span className="font-medium text-xs">Standard</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setUseWhatIHave(true)}
+                  disabled={isGenerating}
+                  className={`p-3 rounded-xl border-2 flex flex-col items-center gap-1 transition-all ${
+                    useWhatIHave
+                      ? 'border-blue-500 bg-blue-50 text-blue-700'
+                      : 'border-slate-200 hover:border-slate-300 text-slate-500'
+                  }`}
+                >
+                  <div className="relative">
+                    <Package size={20} />
+                    <Sparkles size={10} className="absolute -top-1 -right-1 text-blue-500" />
+                  </div>
+                  <span className="font-medium text-xs">Use What I Have</span>
+                </button>
+              </div>
+              {useWhatIHave && (
+                <p className="text-xs text-blue-600 mt-2">
+                  Recipe will prioritize your {pantryItems.length} pantry items
+                </p>
+              )}
+            </div>
+          )}
+
           {/* Info about preferences */}
           <div className="bg-slate-50 rounded-xl p-4">
             <p className="text-sm text-slate-500">
-              Your dietary preferences and pantry items will be used to create a personalized recipe.
+              Your dietary preferences{hasPantryItems ? ' and pantry items' : ''} will be used to create a personalized recipe.
             </p>
             {preferences.dietaryRestrictions && (
               <p className="text-xs text-slate-400 mt-1">
                 Diet: {preferences.dietaryRestrictions}
               </p>
             )}
-            {pantryItems.length > 0 && (
+            {hasPantryItems && !useWhatIHave && (
               <p className="text-xs text-slate-400 mt-1">
-                Using {pantryItems.length} pantry items
+                {pantryItems.length} pantry items available
               </p>
             )}
           </div>

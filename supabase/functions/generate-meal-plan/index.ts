@@ -87,6 +87,18 @@ serve(async (req) => {
     if (config.includeLunch) requestedMeals.push('Lunch');
     if (config.includeDinner) requestedMeals.push('Dinner');
 
+    // Build mode-specific instructions
+    const useWhatIHaveMode = config.useWhatIHave && pantryItems.length > 0;
+    const pantryInstructions = useWhatIHaveMode
+      ? `PRIORITY MODE - USE WHAT I HAVE:
+      You MUST prioritize using these pantry/fridge/freezer items as PRIMARY ingredients: [${pantryListString}].
+      Design meals that use as many of these items as possible.
+      Minimize the shopping list by building recipes around available ingredients.
+      Only add items to shopping list if absolutely necessary to complete recipes.
+      Goal: reduce food waste and minimize shopping.`
+      : `Pantry (Exclude these from shopping list):
+      [${pantryListString}]`;
+
     const prompt = `
       Create a ${config.days}-day meal plan for ${config.peopleCount} people.
 
@@ -100,8 +112,7 @@ serve(async (req) => {
       - Unit System: ${preferences.unitSystem.toUpperCase()}
       - Temperature Scale: ${preferences.temperatureScale.toUpperCase()}
 
-      Pantry (Exclude these from shopping list):
-      [${pantryListString}]
+      ${pantryInstructions}
 
       CRITICAL INSTRUCTION FOR MEALS:
       - Each "Meal" must be a COMPLETE meal, not just a single dish.

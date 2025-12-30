@@ -273,6 +273,12 @@ const AppContent: React.FC = () => {
             onViewFavorites={() => setStep(AppStep.FAVORITES)}
             onViewSavedPlans={() => setStep(AppStep.SAVED_PLANS)}
             onGenerateSingleRecipe={() => setStep(AppStep.SINGLE_RECIPE)}
+            onUseWhatIHave={() => {
+              // Enable "Use What I Have" mode and go to config
+              setConfig(prev => ({ ...prev, useWhatIHave: true }));
+              setStep(AppStep.CONFIG);
+            }}
+            hasPantryItems={pantryItems.length > 0}
           />
         );
 
@@ -299,6 +305,7 @@ const AppContent: React.FC = () => {
             config={config}
             setConfig={setConfig}
             onNext={() => setStep(AppStep.PANTRY)}
+            hasPantryItems={pantryItems.length > 0}
           />
         );
 

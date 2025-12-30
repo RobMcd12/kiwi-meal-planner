@@ -1,15 +1,16 @@
 import React from 'react';
 import { MealConfig } from '../types';
-import { Users, Calendar, Coffee, Sun, Moon } from 'lucide-react';
+import { Users, Calendar, Coffee, Sun, Moon, Package, ShoppingCart, Sparkles } from 'lucide-react';
 
 interface ConfigFormProps {
   config: MealConfig;
   setConfig: React.Dispatch<React.SetStateAction<MealConfig>>;
   onNext?: () => void;
   isSettingsMode?: boolean;
+  hasPantryItems?: boolean;
 }
 
-const ConfigForm: React.FC<ConfigFormProps> = ({ config, setConfig, onNext, isSettingsMode = false }) => {
+const ConfigForm: React.FC<ConfigFormProps> = ({ config, setConfig, onNext, isSettingsMode = false, hasPantryItems = false }) => {
   const updateConfig = (key: keyof MealConfig, value: any) => {
     setConfig(prev => ({ ...prev, [key]: value }));
   };
@@ -114,6 +115,56 @@ const ConfigForm: React.FC<ConfigFormProps> = ({ config, setConfig, onNext, isSe
           </div>
           {!config.includeBreakfast && !config.includeLunch && !config.includeDinner && (
              <p className="text-red-500 text-xs mt-2 text-center">Please select at least one meal.</p>
+          )}
+        </div>
+
+        {/* Use What I Have Mode */}
+        <div>
+          <label className="flex items-center gap-2 text-sm font-semibold text-slate-700 mb-4">
+            <Package size={18} className="text-blue-500" />
+            Recipe Mode
+          </label>
+          <div className="grid grid-cols-2 gap-4">
+            <button
+              onClick={() => updateConfig('useWhatIHave', false)}
+              className={`p-4 rounded-xl border-2 flex flex-col items-center gap-2 transition-all ${
+                !config.useWhatIHave
+                  ? 'border-emerald-500 bg-emerald-50 text-emerald-700'
+                  : 'border-slate-200 hover:border-slate-300 text-slate-500'
+              }`}
+            >
+              <ShoppingCart size={24} />
+              <span className="font-medium text-sm">Standard</span>
+              <span className="text-xs text-center opacity-75">Best recipes, then shop</span>
+            </button>
+
+            <button
+              onClick={() => updateConfig('useWhatIHave', true)}
+              disabled={!hasPantryItems}
+              className={`p-4 rounded-xl border-2 flex flex-col items-center gap-2 transition-all ${
+                config.useWhatIHave
+                  ? 'border-blue-500 bg-blue-50 text-blue-700'
+                  : hasPantryItems
+                    ? 'border-slate-200 hover:border-slate-300 text-slate-500'
+                    : 'border-slate-100 bg-slate-50 text-slate-400 cursor-not-allowed'
+              }`}
+            >
+              <div className="relative">
+                <Package size={24} />
+                <Sparkles size={12} className="absolute -top-1 -right-1 text-blue-500" />
+              </div>
+              <span className="font-medium text-sm">Use What I Have</span>
+              <span className="text-xs text-center opacity-75">
+                {hasPantryItems ? 'Prioritize pantry items' : 'Add pantry items first'}
+              </span>
+            </button>
+          </div>
+          {config.useWhatIHave && hasPantryItems && (
+            <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-xl">
+              <p className="text-xs text-blue-700">
+                <strong>Smart Mode:</strong> Recipes will prioritize using ingredients from your pantry, fridge, and freezer to minimize shopping and reduce food waste.
+              </p>
+            </div>
           )}
         </div>
       </div>

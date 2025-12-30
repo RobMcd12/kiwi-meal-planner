@@ -25,6 +25,7 @@ export interface MealConfig {
   includeBreakfast: boolean;
   includeLunch: boolean;
   includeDinner: boolean;
+  useWhatIHave?: boolean; // Prioritize pantry items to minimize shopping
 }
 
 export interface UserPreferences {
