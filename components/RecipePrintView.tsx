@@ -40,7 +40,7 @@ const RecipePrintView: React.FC<RecipePrintViewProps> = ({ meal, onClose }) => {
               font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
               color: #1e293b;
               line-height: 1.6;
-              padding: 40px;
+              padding: 24px 32px;
               max-width: 800px;
               margin: 0 auto;
             }
@@ -49,8 +49,8 @@ const RecipePrintView: React.FC<RecipePrintViewProps> = ({ meal, onClose }) => {
               display: flex;
               align-items: center;
               gap: 12px;
-              margin-bottom: 24px;
-              padding-bottom: 16px;
+              margin-bottom: 20px;
+              padding-bottom: 12px;
               border-bottom: 2px solid #059669;
             }
 
@@ -151,18 +151,34 @@ const RecipePrintView: React.FC<RecipePrintViewProps> = ({ meal, onClose }) => {
               line-height: 1.8;
             }
 
+            .disclaimer {
+              margin-top: 32px;
+              padding: 12px 16px;
+              background: #f8fafc;
+              border-radius: 8px;
+              border-left: 3px solid #94a3b8;
+              font-size: 11px;
+              color: #64748b;
+              line-height: 1.5;
+            }
+
             .footer {
-              margin-top: 40px;
+              margin-top: 24px;
               padding-top: 16px;
               border-top: 1px solid #e2e8f0;
               text-align: center;
-              color: #94a3b8;
-              font-size: 12px;
+              color: #64748b;
+              font-size: 13px;
             }
 
             .footer a {
               color: #059669;
               text-decoration: none;
+              font-weight: 600;
+            }
+
+            .footer a:hover {
+              text-decoration: underline;
             }
 
             @media print {
@@ -270,7 +286,7 @@ const RecipePrintView: React.FC<RecipePrintViewProps> = ({ meal, onClose }) => {
         <div className="flex-1 overflow-y-auto p-6 bg-slate-50">
           <div
             ref={printRef}
-            className="bg-white rounded-xl shadow-lg p-8 max-w-2xl mx-auto"
+            className="bg-white rounded-xl shadow-lg p-6 max-w-2xl mx-auto"
           >
             {/* Branding Header */}
             <div className="header">
@@ -320,13 +336,17 @@ const RecipePrintView: React.FC<RecipePrintViewProps> = ({ meal, onClose }) => {
               <div className="instructions">{meal.instructions}</div>
             </div>
 
+            {/* Disclaimer */}
+            <div className="disclaimer">
+              <strong>Disclaimer:</strong> This recipe is provided for informational purposes only.
+              Please check all ingredients for potential allergens and adjust portions as needed.
+              Cooking times may vary. Always ensure food is properly cooked before consuming.
+            </div>
+
             {/* Footer */}
             <div className="footer">
               <p>
-                Recipe from <a href="https://kiwimealplanner.com">kiwimealplanner.com</a>
-              </p>
-              <p style={{ marginTop: '4px' }}>
-                Powered by AI. Made in New Zealand.
+                Powered by <a href="https://kiwimealplanner.com">Kiwi Meal Planner</a>
               </p>
             </div>
           </div>
