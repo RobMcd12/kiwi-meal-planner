@@ -141,12 +141,18 @@ export const generateMealPlan = async (
   if (config.includeLunch) requestedMeals.push("Lunch");
   if (config.includeDinner) requestedMeals.push("Dinner");
 
+  // Build portion/nutrition guidance
+  const meatServing = preferences.meatServingGrams || 175;
+  const calorieTarget = preferences.calorieTarget || 2000;
+
   // Concise prompt for faster generation
   const prompt = `${config.days}-day meal plan, ${config.peopleCount} people. Meals: ${requestedMeals.join(", ")} only.
 Diet: ${preferences.dietaryRestrictions || "None"}. Likes: ${preferences.likes || "Any"}. Dislikes: ${preferences.dislikes || "None"}.
 Units: ${preferences.unitSystem}. Temps: ${preferences.temperatureScale}.
+Portions: Meat/protein ${meatServing}g per person. Target ~${calorieTarget} kcal/day per person.
 Pantry (exclude from list): ${pantryListString || "none"}.
-Each meal = complete dish with sides (e.g. "Grilled Salmon with Rice and Vegetables"). Include all ingredients/instructions for full meal. Shopping list by aisle, quantities for ${config.peopleCount}.`;
+Each meal = complete dish with sides (e.g. "Grilled Salmon with Rice and Vegetables"). Include all ingredients/instructions for full meal.
+IMPORTANT: Shopping list MUST include ingredients from ALL ${config.days * requestedMeals.length} meals. Combine quantities, organize by aisle, scale for ${config.peopleCount} people.`;
 
   try {
     const response = await ai.models.generateContent({
@@ -912,19 +918,22 @@ export const calculateNutrition = async (
   const prompt = `Calculate the nutritional information for this recipe:
 
 Recipe: ${recipeName}
-Servings: ${servings}
+Total servings the recipe makes: ${servings}
 
-Ingredients:
+Ingredients (quantities are for the ENTIRE recipe, not per serving):
 ${ingredients.map(i => `- ${i}`).join('\n')}
 
-Provide accurate nutritional estimates PER SERVING based on the ingredients listed.
-Include:
-- Calories
-- Macronutrients (protein, carbs, fat, fiber, sugar, saturated fat)
-- Key micronutrients (sodium, cholesterol, potassium, vitamins A & C, calcium, iron)
-- 2-3 brief health notes about this dish
+IMPORTANT: The ingredient quantities above are for the COMPLETE recipe (${servings} servings total).
+Calculate and return nutritional values PER SINGLE SERVING by dividing the total by ${servings}.
 
-Use standard nutritional databases as reference. Be as accurate as possible based on typical ingredient quantities.`;
+Include:
+- Calories per serving
+- Macronutrients per serving (protein, carbs, fat, fiber, sugar, saturated fat in grams)
+- Key micronutrients per serving (sodium, cholesterol, potassium in mg; vitamins A & C, calcium, iron as % daily value)
+- 2-3 brief health notes about this dish
+- Set servingsPerRecipe to ${servings}
+
+Use standard nutritional databases as reference. All values MUST be per single serving, not for the whole recipe.`;
 
   try {
     const response = await ai.models.generateContent({

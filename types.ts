@@ -33,6 +33,9 @@ export interface UserPreferences {
   dislikes: string;
   unitSystem: 'metric' | 'imperial';
   temperatureScale: 'celsius' | 'fahrenheit';
+  // Portion/nutrition settings
+  meatServingGrams?: number; // Default 150-200g per person
+  calorieTarget?: number; // Daily calorie target (e.g., 2000)
 }
 
 export interface Ingredient {

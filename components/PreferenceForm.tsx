@@ -1,6 +1,6 @@
 import React from 'react';
 import { UserPreferences } from '../types';
-import { Utensils, Heart, ThumbsDown, Scale, Thermometer } from 'lucide-react';
+import { Utensils, Heart, ThumbsDown, Scale, Thermometer, Beef, Flame } from 'lucide-react';
 
 interface PreferenceFormProps {
   preferences: UserPreferences;
@@ -128,6 +128,55 @@ const PreferenceForm: React.FC<PreferenceFormProps> = ({ preferences, setPrefere
                 </button>
               </div>
            </div>
+        </div>
+
+        {/* Portion & Nutrition Settings */}
+        <div className="pt-4 border-t border-slate-100">
+          <h3 className="text-sm font-semibold text-slate-700 mb-4 flex items-center gap-2">
+            <Beef size={18} className="text-red-500" />
+            Portion & Nutrition
+          </h3>
+
+          <div className="grid grid-cols-2 gap-4">
+            {/* Meat Serving Size */}
+            <div>
+              <label className="block text-sm font-medium text-slate-600 mb-2">
+                Meat per person (g)
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  min={50}
+                  max={500}
+                  step={10}
+                  value={preferences.meatServingGrams || 175}
+                  onChange={(e) => handleChange('meatServingGrams', parseInt(e.target.value) || 175)}
+                  className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none text-center"
+                />
+              </div>
+              <p className="text-xs text-slate-400 mt-1">Default: 150-200g</p>
+            </div>
+
+            {/* Daily Calorie Target */}
+            <div>
+              <label className="flex items-center gap-1 text-sm font-medium text-slate-600 mb-2">
+                <Flame size={14} className="text-orange-500" />
+                Calorie target
+              </label>
+              <div className="flex items-center gap-2">
+                <input
+                  type="number"
+                  min={1000}
+                  max={5000}
+                  step={50}
+                  value={preferences.calorieTarget || 2000}
+                  onChange={(e) => handleChange('calorieTarget', parseInt(e.target.value) || 2000)}
+                  className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none text-center"
+                />
+              </div>
+              <p className="text-xs text-slate-400 mt-1">Daily kcal goal</p>
+            </div>
+          </div>
         </div>
 
       </div>
