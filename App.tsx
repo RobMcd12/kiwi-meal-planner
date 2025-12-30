@@ -225,7 +225,7 @@ const AppContent: React.FC = () => {
     try {
       await signOut();
       success('Signed out successfully');
-      setStep(AppStep.WELCOME);
+      setStep(AppStep.LANDING);
     } catch (err) {
       showError('Failed to sign out');
     }
@@ -239,7 +239,7 @@ const AppContent: React.FC = () => {
   // Show loading while auth is initializing
   if (authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-emerald-50 via-white to-orange-50">
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-emerald-100 via-emerald-50/50 to-orange-50">
         <div className="text-center">
           <div className="w-12 h-12 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
           <p className="text-slate-500">Loading...</p>
@@ -392,7 +392,7 @@ const AppContent: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-emerald-50 via-white to-orange-50 flex flex-col">
+    <div className="min-h-screen bg-gradient-to-br from-emerald-100 via-emerald-50/50 to-orange-50 flex flex-col">
       {/* Header */}
       <header className="bg-white/80 backdrop-blur-sm border-b border-slate-200 py-4 px-6 sticky top-0 z-20">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
