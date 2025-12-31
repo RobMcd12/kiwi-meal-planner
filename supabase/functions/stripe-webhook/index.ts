@@ -93,25 +93,68 @@ async function handleCheckoutCompleted(session: any): Promise<void> {
   console.log('Processing checkout for user:', userId);
 
   // Get subscription details from Stripe
-  const subscription = await stripeGet(`/subscriptions/${subscriptionId}`);
+  let subscription;
+  try {
+    subscription = await stripeGet(`/subscriptions/${subscriptionId}`);
+    console.log('Stripe subscription retrieved:', subscription.id, 'status:', subscription.status);
+  } catch (stripeError) {
+    console.error('Error fetching subscription from Stripe:', stripeError);
+    throw stripeError;
+  }
 
-  const { error } = await supabaseAdmin
+  // Prepare the update data
+  const updateData = {
+    tier: 'pro',
+    status: 'active',
+    stripe_customer_id: customerId,
+    stripe_subscription_id: subscriptionId,
+    stripe_price_id: subscription.items?.data?.[0]?.price?.id || null,
+    stripe_current_period_end: subscription.current_period_end
+      ? new Date(subscription.current_period_end * 1000).toISOString()
+      : null,
+    cancel_at_period_end: subscription.cancel_at_period_end || false,
+    trial_ends_at: null,
+    updated_at: new Date().toISOString(),
+  };
+
+  console.log('Update data:', JSON.stringify(updateData, null, 2));
+
+  // First try to update existing record
+  const { data: updateResult, error: updateError } = await supabaseAdmin
     .from('user_subscriptions')
-    .update({
-      tier: 'pro',
-      status: 'active',
-      stripe_customer_id: customerId,
-      stripe_subscription_id: subscriptionId,
-      stripe_price_id: subscription.items?.data?.[0]?.price?.id,
-      stripe_current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
-      cancel_at_period_end: subscription.cancel_at_period_end || false,
-      trial_ends_at: null,
-    })
-    .eq('user_id', userId);
+    .update(updateData)
+    .eq('user_id', userId)
+    .select();
 
-  if (error) {
-    console.error('Error updating subscription after checkout:', error);
-    throw error;
+  console.log('Update result:', updateResult);
+
+  if (updateError) {
+    console.error('Error updating subscription after checkout:', updateError);
+    throw updateError;
+  }
+
+  // If no rows were updated, try to insert (user might not have a subscription row yet)
+  if (!updateResult || updateResult.length === 0) {
+    console.log('No existing subscription row found, attempting upsert...');
+
+    const { error: upsertError } = await supabaseAdmin
+      .from('user_subscriptions')
+      .upsert({
+        user_id: userId,
+        ...updateData,
+        created_at: new Date().toISOString(),
+      }, {
+        onConflict: 'user_id',
+      });
+
+    if (upsertError) {
+      console.error('Error upserting subscription:', upsertError);
+      throw upsertError;
+    }
+
+    console.log(`Subscription created via upsert for user ${userId}`);
+  } else {
+    console.log(`Subscription updated for user ${userId}`);
   }
 
   console.log(`Subscription activated for user ${userId}`);

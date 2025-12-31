@@ -390,6 +390,34 @@ export const createCheckoutSession = async (
 };
 
 /**
+ * Sync subscription from Stripe (fallback for webhook failures)
+ */
+export const syncSubscription = async (): Promise<{
+  synced: boolean;
+  tier?: string;
+  status?: string;
+  message?: string;
+} | null> => {
+  if (!isSupabaseConfigured()) return null;
+
+  try {
+    const { data, error } = await supabase.functions.invoke('sync-subscription', {
+      body: {},
+    });
+
+    if (error) {
+      console.error('Error syncing subscription:', error);
+      return null;
+    }
+
+    return data;
+  } catch (err) {
+    console.error('Error syncing subscription:', err);
+    return null;
+  }
+};
+
+/**
  * Create a Stripe customer portal session
  */
 export const createPortalSession = async (): Promise<{ url: string } | null> => {

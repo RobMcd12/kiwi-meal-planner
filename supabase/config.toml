@@ -62,3 +62,7 @@ verify_jwt = true
 
 [functions.generate-dish-image]
 verify_jwt = true
+
+# Stripe webhook needs to accept unauthenticated requests (uses Stripe signature verification instead)
+[functions.stripe-webhook]
+verify_jwt = false

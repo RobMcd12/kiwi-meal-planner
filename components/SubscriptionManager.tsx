@@ -32,7 +32,8 @@ import {
   acceptCancelOffer,
   cancelSubscription,
   cancelTrial,
-  resetToFreeTier
+  resetToFreeTier,
+  syncSubscription
 } from '../services/subscriptionService';
 import type { SubscriptionState, SubscriptionConfig, BillingInterval } from '../types';
 
@@ -68,8 +69,54 @@ const SubscriptionManager: React.FC<SubscriptionManagerProps> = ({ onRefresh }) 
   const [cancelling, setCancelling] = useState(false);
   const [acceptingOffer, setAcceptingOffer] = useState(false);
   const [resetting, setResetting] = useState(false);
+  const [syncing, setSyncing] = useState(false);
 
+  // Check for checkout success on mount and sync subscription
   useEffect(() => {
+    const checkCheckoutSuccess = async () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const subscriptionParam = urlParams.get('subscription');
+
+      if (subscriptionParam === 'success') {
+        console.log('Checkout success detected, syncing subscription...');
+        setSyncing(true);
+        setSuccessMessage('Payment successful! Activating your subscription...');
+
+        // Clear the URL parameter
+        const newUrl = window.location.pathname + window.location.hash;
+        window.history.replaceState({}, '', newUrl);
+
+        // Try to sync subscription from Stripe (fallback for webhook)
+        try {
+          const syncResult = await syncSubscription();
+          console.log('Sync result:', syncResult);
+
+          if (syncResult?.synced && syncResult.tier === 'pro') {
+            setSuccessMessage('Welcome to Pro! Your subscription is now active.');
+          } else {
+            // Webhook might have already processed it, or there was an issue
+            // Either way, reload the subscription state
+            setSuccessMessage('Your subscription has been processed.');
+          }
+        } catch (err) {
+          console.error('Error syncing subscription:', err);
+          // Don't show error - the webhook may have already processed it
+        } finally {
+          setSyncing(false);
+        }
+
+        // Reload subscription state after sync
+        await loadSubscription();
+        onRefresh?.();
+      } else if (subscriptionParam === 'cancelled') {
+        setError('Checkout was cancelled. You can try again anytime.');
+        // Clear the URL parameter
+        const newUrl = window.location.pathname + window.location.hash;
+        window.history.replaceState({}, '', newUrl);
+      }
+    };
+
+    checkCheckoutSuccess();
     loadSubscription();
   }, []);
 
@@ -289,10 +336,13 @@ const SubscriptionManager: React.FC<SubscriptionManagerProps> = ({ onRefresh }) 
     }
   }, [successMessage]);
 
-  if (loading) {
+  if (loading || syncing) {
     return (
-      <div className="flex items-center justify-center py-12">
+      <div className="flex flex-col items-center justify-center py-12 gap-3">
         <Loader2 size={32} className="animate-spin text-emerald-600" />
+        {syncing && (
+          <p className="text-sm text-emerald-600 font-medium">Activating your subscription...</p>
+        )}
       </div>
     );
   }
