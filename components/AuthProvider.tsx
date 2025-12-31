@@ -4,6 +4,24 @@ import { supabase, onAuthStateChange, isSupabaseConfigured } from '../services/a
 import { checkIsAdmin, isSuperAdmin } from '../services/adminService';
 import { recordLogin } from '../services/loginHistoryService';
 
+// Check if current URL is an OAuth callback that needs processing
+const isOAuthCallback = (): boolean => {
+  const hash = window.location.hash;
+  const search = window.location.search;
+
+  // Check for OAuth tokens in hash (implicit flow)
+  if (hash && (hash.includes('access_token=') || hash.includes('error='))) {
+    return true;
+  }
+
+  // Check for PKCE code in query params
+  if (search && search.includes('code=')) {
+    return true;
+  }
+
+  return false;
+};
+
 interface AuthContextType {
   user: User | null;
   session: Session | null;
@@ -101,6 +119,36 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       return;
     }
 
+    // Track if we're processing an OAuth callback
+    const processingOAuth = isOAuthCallback();
+    let authStateReceived = false;
+
+    // Subscribe to auth changes FIRST (before getSession)
+    // This ensures we catch the SIGNED_IN event from OAuth callback processing
+    const unsubscribe = onAuthStateChange(async (newSession) => {
+      authStateReceived = true;
+      setSession(newSession);
+      setUser(newSession?.user ?? null);
+
+      // Check admin status when auth changes
+      if (newSession?.user) {
+        const adminStatus = await checkIsAdmin(newSession.user.id, newSession.user.email ?? undefined);
+        setIsAdmin(adminStatus);
+
+        // Record login when user signs in (new session)
+        handleLoginRecord(newSession.user);
+      } else {
+        setIsAdmin(false);
+        // Clear the login recorded ref when user signs out
+        loginRecordedRef.current = false;
+      }
+
+      // If we were processing OAuth, now we can set loading to false
+      if (processingOAuth) {
+        setLoading(false);
+      }
+    });
+
     // Get initial session
     const initAuth = async () => {
       try {
@@ -119,30 +167,24 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       } catch (error) {
         console.error('Error getting session:', error);
       } finally {
-        setLoading(false);
+        // Only set loading to false here if NOT processing OAuth
+        // If processing OAuth, wait for the auth state change event
+        if (!processingOAuth) {
+          setLoading(false);
+        } else {
+          // If processing OAuth, set a timeout to avoid infinite loading
+          // In case the OAuth callback fails silently
+          setTimeout(() => {
+            if (!authStateReceived) {
+              console.log('OAuth callback timeout - no auth state received');
+              setLoading(false);
+            }
+          }, 10000); // 10 second timeout
+        }
       }
     };
 
     initAuth();
-
-    // Subscribe to auth changes
-    const unsubscribe = onAuthStateChange(async (newSession) => {
-      setSession(newSession);
-      setUser(newSession?.user ?? null);
-
-      // Check admin status when auth changes
-      if (newSession?.user) {
-        const adminStatus = await checkIsAdmin(newSession.user.id, newSession.user.email ?? undefined);
-        setIsAdmin(adminStatus);
-
-        // Record login when user signs in (new session)
-        handleLoginRecord(newSession.user);
-      } else {
-        setIsAdmin(false);
-        // Clear the login recorded ref when user signs out
-        loginRecordedRef.current = false;
-      }
-    });
 
     return () => {
       unsubscribe();

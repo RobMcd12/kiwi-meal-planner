@@ -81,12 +81,25 @@ const AppContent: React.FC = () => {
 
   // Handle OAuth callback - clear the callback URL once auth is detected
   useEffect(() => {
-    if (isOAuthCallback() && isAuthenticated) {
+    // Only process if we're on an OAuth callback URL
+    if (!isOAuthCallback()) return;
+
+    // Wait for auth loading to complete
+    if (authLoading) return;
+
+    if (isAuthenticated) {
       // OAuth completed successfully, redirect to welcome
+      console.log('OAuth callback complete, redirecting to welcome');
       window.history.replaceState({ step: AppStep.WELCOME }, '', '/home');
       setStep(AppStep.WELCOME);
+    } else {
+      // OAuth callback but not authenticated - something went wrong
+      // Clear the URL params and go back to auth screen
+      console.log('OAuth callback detected but not authenticated, returning to auth');
+      window.history.replaceState({ step: AppStep.AUTH }, '', '/auth');
+      setStep(AppStep.AUTH);
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, authLoading]);
 
   // Set up browser history navigation
   useNavigationHistory({
