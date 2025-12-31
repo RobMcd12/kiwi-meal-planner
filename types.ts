@@ -340,6 +340,11 @@ export interface SubscriptionConfig {
   stripeWeeklyPriceId: string | null;
   stripeMonthlyPriceId: string | null;
   stripeYearlyPriceId: string | null;
+  // Cancel offer settings
+  cancelOfferEnabled: boolean;
+  cancelOfferDiscountPercent: number;
+  cancelOfferDurationMonths: number;
+  cancelOfferMessage: string;
 }
 
 export interface UserSubscription {
@@ -357,6 +362,9 @@ export interface UserSubscription {
   adminGrantedBy: string | null;
   adminGrantExpiresAt: string | null;
   adminGrantNote: string | null;
+  // Pause fields
+  pausedAt: string | null;
+  pauseResumesAt: string | null;
   createdAt: string;
   updatedAt: string;
 }

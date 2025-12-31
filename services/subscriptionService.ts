@@ -51,6 +51,10 @@ export const updateSubscriptionConfig = async (
     stripeWeeklyPriceId: string;
     stripeMonthlyPriceId: string;
     stripeYearlyPriceId: string;
+    cancelOfferEnabled: boolean;
+    cancelOfferDiscountPercent: number;
+    cancelOfferDurationMonths: number;
+    cancelOfferMessage: string;
   }>
 ): Promise<boolean> => {
   if (!isSupabaseConfigured()) return false;
@@ -68,6 +72,10 @@ export const updateSubscriptionConfig = async (
         stripe_weekly_price_id: updates.stripeWeeklyPriceId,
         stripe_monthly_price_id: updates.stripeMonthlyPriceId,
         stripe_yearly_price_id: updates.stripeYearlyPriceId,
+        cancel_offer_enabled: updates.cancelOfferEnabled,
+        cancel_offer_discount_percent: updates.cancelOfferDiscountPercent,
+        cancel_offer_duration_months: updates.cancelOfferDurationMonths,
+        cancel_offer_message: updates.cancelOfferMessage,
       })
       .eq('id', '00000000-0000-0000-0000-000000000001');
 
@@ -405,6 +413,130 @@ export const createPortalSession = async (): Promise<{ url: string } | null> => 
 };
 
 // ============================================
+// PAUSE/CANCEL SUBSCRIPTION
+// ============================================
+
+/**
+ * Pause subscription until a specified date
+ */
+export const pauseSubscription = async (resumeDate: string): Promise<{ success: boolean; message?: string }> => {
+  if (!isSupabaseConfigured()) return { success: false, message: 'Not configured' };
+
+  try {
+    const { data, error } = await supabase.functions.invoke('pause-subscription', {
+      body: { action: 'pause', resumeDate },
+    });
+
+    if (error) {
+      console.error('Error pausing subscription:', error);
+      return { success: false, message: error.message };
+    }
+
+    return data;
+  } catch (err) {
+    console.error('Error pausing subscription:', err);
+    return { success: false, message: 'Failed to pause subscription' };
+  }
+};
+
+/**
+ * Resume a paused subscription
+ */
+export const resumeSubscription = async (): Promise<{ success: boolean; message?: string }> => {
+  if (!isSupabaseConfigured()) return { success: false, message: 'Not configured' };
+
+  try {
+    const { data, error } = await supabase.functions.invoke('pause-subscription', {
+      body: { action: 'resume' },
+    });
+
+    if (error) {
+      console.error('Error resuming subscription:', error);
+      return { success: false, message: error.message };
+    }
+
+    return data;
+  } catch (err) {
+    console.error('Error resuming subscription:', err);
+    return { success: false, message: 'Failed to resume subscription' };
+  }
+};
+
+/**
+ * Get the cancel offer details
+ */
+export const getCancelOffer = async (): Promise<{
+  offerAvailable: boolean;
+  discountPercent?: number;
+  durationMonths?: number;
+  message?: string;
+} | null> => {
+  if (!isSupabaseConfigured()) return null;
+
+  try {
+    const { data, error } = await supabase.functions.invoke('cancel-subscription', {
+      body: { action: 'get-offer' },
+    });
+
+    if (error) {
+      console.error('Error getting cancel offer:', error);
+      return null;
+    }
+
+    return data;
+  } catch (err) {
+    console.error('Error getting cancel offer:', err);
+    return null;
+  }
+};
+
+/**
+ * Accept the cancel offer discount
+ */
+export const acceptCancelOffer = async (): Promise<{ success: boolean; message?: string }> => {
+  if (!isSupabaseConfigured()) return { success: false, message: 'Not configured' };
+
+  try {
+    const { data, error } = await supabase.functions.invoke('cancel-subscription', {
+      body: { action: 'accept-offer' },
+    });
+
+    if (error) {
+      console.error('Error accepting cancel offer:', error);
+      return { success: false, message: error.message };
+    }
+
+    return data;
+  } catch (err) {
+    console.error('Error accepting cancel offer:', err);
+    return { success: false, message: 'Failed to accept offer' };
+  }
+};
+
+/**
+ * Cancel subscription at end of period
+ */
+export const cancelSubscription = async (reason?: string): Promise<{ success: boolean; message?: string }> => {
+  if (!isSupabaseConfigured()) return { success: false, message: 'Not configured' };
+
+  try {
+    const { data, error } = await supabase.functions.invoke('cancel-subscription', {
+      body: { action: 'cancel', reason },
+    });
+
+    if (error) {
+      console.error('Error cancelling subscription:', error);
+      return { success: false, message: error.message };
+    }
+
+    return data;
+  } catch (err) {
+    console.error('Error cancelling subscription:', err);
+    return { success: false, message: 'Failed to cancel subscription' };
+  }
+};
+
+// ============================================
 // HELPERS
 // ============================================
 
@@ -420,6 +552,10 @@ function mapConfigRow(row: any): SubscriptionConfig {
     stripeWeeklyPriceId: row.stripe_weekly_price_id,
     stripeMonthlyPriceId: row.stripe_monthly_price_id,
     stripeYearlyPriceId: row.stripe_yearly_price_id,
+    cancelOfferEnabled: row.cancel_offer_enabled ?? true,
+    cancelOfferDiscountPercent: row.cancel_offer_discount_percent || 50,
+    cancelOfferDurationMonths: row.cancel_offer_duration_months || 3,
+    cancelOfferMessage: row.cancel_offer_message || 'Before you go, we\'d like to offer you a special discount!',
   };
 }
 
@@ -439,6 +575,8 @@ function mapSubscriptionRow(row: any): UserSubscription {
     adminGrantedBy: row.admin_granted_by,
     adminGrantExpiresAt: row.admin_grant_expires_at,
     adminGrantNote: row.admin_grant_note,
+    pausedAt: row.paused_at,
+    pauseResumesAt: row.pause_resumes_at,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };

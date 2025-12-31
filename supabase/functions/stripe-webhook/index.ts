@@ -1,10 +1,5 @@
+// Stripe Webhook Handler - Uses REST API (no SDK)
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.47.0';
-import Stripe from 'https://esm.sh/stripe@14.14.0?target=deno';
-
-const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY') ?? '', {
-  apiVersion: '2023-10-16',
-  httpClient: Stripe.createFetchHttpClient(),
-});
 
 const supabaseAdmin = createClient(
   Deno.env.get('SUPABASE_URL') ?? '',
@@ -12,18 +7,52 @@ const supabaseAdmin = createClient(
 );
 
 const webhookSecret = Deno.env.get('STRIPE_WEBHOOK_SECRET') ?? '';
+const stripeSecretKey = Deno.env.get('STRIPE_SECRET_KEY') ?? '';
 
-// Verify Stripe webhook signature
-async function verifySignature(req: Request, body: string): Promise<Stripe.Event | null> {
-  const signature = req.headers.get('stripe-signature');
-  if (!signature) return null;
+// Stripe REST API helper
+async function stripeGet(endpoint: string): Promise<any> {
+  const response = await fetch(`https://api.stripe.com/v1${endpoint}`, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${stripeSecretKey}`,
+    },
+  });
+  return response.json();
+}
 
-  try {
-    return stripe.webhooks.constructEvent(body, signature, webhookSecret);
-  } catch (err) {
-    console.error('Webhook signature verification failed:', err);
-    return null;
+// Verify webhook signature using crypto
+async function verifySignature(payload: string, signature: string): Promise<boolean> {
+  if (!webhookSecret || !signature) return false;
+
+  const parts = signature.split(',');
+  const timestamp = parts.find(p => p.startsWith('t='))?.split('=')[1];
+  const sig = parts.find(p => p.startsWith('v1='))?.split('=')[1];
+
+  if (!timestamp || !sig) return false;
+
+  // Check timestamp is within 5 minutes
+  const now = Math.floor(Date.now() / 1000);
+  if (Math.abs(now - parseInt(timestamp)) > 300) {
+    console.log('Webhook timestamp too old');
+    return false;
   }
+
+  // Compute expected signature
+  const signedPayload = `${timestamp}.${payload}`;
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(webhookSecret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+  const signatureBytes = await crypto.subtle.sign('HMAC', key, encoder.encode(signedPayload));
+  const expectedSig = Array.from(new Uint8Array(signatureBytes))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
+
+  return expectedSig === sig;
 }
 
 // Update subscription in database
@@ -43,18 +72,20 @@ async function updateSubscription(
 }
 
 // Handle checkout.session.completed
-async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promise<void> {
+async function handleCheckoutCompleted(session: any): Promise<void> {
   const userId = session.client_reference_id;
-  const customerId = session.customer as string;
-  const subscriptionId = session.subscription as string;
+  const customerId = session.customer;
+  const subscriptionId = session.subscription;
 
   if (!userId || !subscriptionId) {
     console.error('Missing userId or subscriptionId in checkout session');
     return;
   }
 
+  console.log('Processing checkout for user:', userId);
+
   // Get subscription details from Stripe
-  const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+  const subscription = await stripeGet(`/subscriptions/${subscriptionId}`);
 
   const { error } = await supabaseAdmin
     .from('user_subscriptions')
@@ -63,10 +94,9 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promis
       status: 'active',
       stripe_customer_id: customerId,
       stripe_subscription_id: subscriptionId,
-      stripe_price_id: subscription.items.data[0]?.price.id,
+      stripe_price_id: subscription.items?.data?.[0]?.price?.id,
       stripe_current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
-      cancel_at_period_end: subscription.cancel_at_period_end,
-      // Clear trial if switching from trial
+      cancel_at_period_end: subscription.cancel_at_period_end || false,
       trial_ends_at: null,
     })
     .eq('user_id', userId);
@@ -80,14 +110,14 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session): Promis
 }
 
 // Handle customer.subscription.updated
-async function handleSubscriptionUpdated(subscription: Stripe.Subscription): Promise<void> {
+async function handleSubscriptionUpdated(subscription: any): Promise<void> {
   const status = mapStripeStatus(subscription.status);
 
   await updateSubscription(subscription.id, {
     status,
-    stripe_price_id: subscription.items.data[0]?.price.id,
+    stripe_price_id: subscription.items?.data?.[0]?.price?.id,
     stripe_current_period_end: new Date(subscription.current_period_end * 1000).toISOString(),
-    cancel_at_period_end: subscription.cancel_at_period_end,
+    cancel_at_period_end: subscription.cancel_at_period_end || false,
     tier: status === 'cancelled' || status === 'expired' ? 'free' : 'pro',
   });
 
@@ -95,7 +125,7 @@ async function handleSubscriptionUpdated(subscription: Stripe.Subscription): Pro
 }
 
 // Handle customer.subscription.deleted
-async function handleSubscriptionDeleted(subscription: Stripe.Subscription): Promise<void> {
+async function handleSubscriptionDeleted(subscription: any): Promise<void> {
   await updateSubscription(subscription.id, {
     status: 'cancelled',
     tier: 'free',
@@ -108,16 +138,6 @@ async function handleSubscriptionDeleted(subscription: Stripe.Subscription): Pro
   console.log(`Subscription ${subscription.id} deleted`);
 }
 
-// Handle invoice.payment_failed
-async function handlePaymentFailed(invoice: Stripe.Invoice): Promise<void> {
-  const subscriptionId = invoice.subscription as string;
-  if (!subscriptionId) return;
-
-  // Log the failure but don't immediately cancel
-  // Stripe will handle retries and eventual cancellation
-  console.log(`Payment failed for subscription ${subscriptionId}`);
-}
-
 // Map Stripe subscription status to our status
 function mapStripeStatus(stripeStatus: string): string {
   switch (stripeStatus) {
@@ -126,7 +146,7 @@ function mapStripeStatus(stripeStatus: string): string {
       return 'active';
     case 'past_due':
     case 'unpaid':
-      return 'active'; // Keep active during grace period
+      return 'active';
     case 'canceled':
     case 'incomplete_expired':
       return 'cancelled';
@@ -136,37 +156,40 @@ function mapStripeStatus(stripeStatus: string): string {
 }
 
 Deno.serve(async (req) => {
-  // Only allow POST requests
   if (req.method !== 'POST') {
     return new Response('Method not allowed', { status: 405 });
   }
 
   try {
     const body = await req.text();
-    const event = await verifySignature(req, body);
+    const signature = req.headers.get('stripe-signature') || '';
 
-    if (!event) {
+    // Verify signature
+    const isValid = await verifySignature(body, signature);
+    if (!isValid) {
+      console.error('Invalid webhook signature');
       return new Response('Invalid signature', { status: 400 });
     }
 
+    const event = JSON.parse(body);
     console.log(`Processing webhook event: ${event.type}`);
 
     switch (event.type) {
       case 'checkout.session.completed':
-        await handleCheckoutCompleted(event.data.object as Stripe.Checkout.Session);
+        await handleCheckoutCompleted(event.data.object);
         break;
 
       case 'customer.subscription.created':
       case 'customer.subscription.updated':
-        await handleSubscriptionUpdated(event.data.object as Stripe.Subscription);
+        await handleSubscriptionUpdated(event.data.object);
         break;
 
       case 'customer.subscription.deleted':
-        await handleSubscriptionDeleted(event.data.object as Stripe.Subscription);
+        await handleSubscriptionDeleted(event.data.object);
         break;
 
       case 'invoice.payment_failed':
-        await handlePaymentFailed(event.data.object as Stripe.Invoice);
+        console.log(`Payment failed for subscription ${event.data.object.subscription}`);
         break;
 
       default:

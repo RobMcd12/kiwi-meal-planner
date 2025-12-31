@@ -13,14 +13,24 @@ import {
   Mic,
   FileAudio,
   Infinity,
-  Gift
+  Gift,
+  Pause,
+  Play,
+  X,
+  Percent,
+  AlertTriangle
 } from 'lucide-react';
 import {
   getSubscriptionState,
   getSubscriptionConfig,
   createCheckoutSession,
   createPortalSession,
-  formatPrice
+  formatPrice,
+  pauseSubscription,
+  resumeSubscription,
+  getCancelOffer,
+  acceptCancelOffer,
+  cancelSubscription
 } from '../services/subscriptionService';
 import type { SubscriptionState, SubscriptionConfig, BillingInterval } from '../types';
 
@@ -35,6 +45,26 @@ const SubscriptionManager: React.FC<SubscriptionManagerProps> = ({ onRefresh }) 
   const [checkingOut, setCheckingOut] = useState(false);
   const [openingPortal, setOpeningPortal] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  // Pause modal state
+  const [showPauseModal, setShowPauseModal] = useState(false);
+  const [pauseResumeDate, setPauseResumeDate] = useState('');
+  const [pausing, setPausing] = useState(false);
+  const [resuming, setResuming] = useState(false);
+
+  // Cancel modal state
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancelStep, setCancelStep] = useState<'reason' | 'offer' | 'confirm'>('reason');
+  const [cancelReason, setCancelReason] = useState('');
+  const [cancelOffer, setCancelOffer] = useState<{
+    offerAvailable: boolean;
+    discountPercent?: number;
+    durationMonths?: number;
+    message?: string;
+  } | null>(null);
+  const [cancelling, setCancelling] = useState(false);
+  const [acceptingOffer, setAcceptingOffer] = useState(false);
 
   useEffect(() => {
     loadSubscription();
@@ -94,6 +124,125 @@ const SubscriptionManager: React.FC<SubscriptionManagerProps> = ({ onRefresh }) 
     }
   };
 
+  // Pause handlers
+  const handleOpenPauseModal = () => {
+    const minDate = new Date();
+    minDate.setDate(minDate.getDate() + 1);
+    setPauseResumeDate(minDate.toISOString().split('T')[0]);
+    setShowPauseModal(true);
+  };
+
+  const handlePause = async () => {
+    if (!pauseResumeDate) return;
+    setPausing(true);
+    setError(null);
+    try {
+      const result = await pauseSubscription(pauseResumeDate);
+      if (result.success) {
+        setSuccessMessage('Subscription paused successfully');
+        setShowPauseModal(false);
+        await loadSubscription();
+        onRefresh?.();
+      } else {
+        setError(result.message || 'Failed to pause subscription');
+      }
+    } catch (err) {
+      console.error('Pause error:', err);
+      setError('Failed to pause subscription');
+    } finally {
+      setPausing(false);
+    }
+  };
+
+  const handleResume = async () => {
+    setResuming(true);
+    setError(null);
+    try {
+      const result = await resumeSubscription();
+      if (result.success) {
+        setSuccessMessage('Subscription resumed successfully');
+        await loadSubscription();
+        onRefresh?.();
+      } else {
+        setError(result.message || 'Failed to resume subscription');
+      }
+    } catch (err) {
+      console.error('Resume error:', err);
+      setError('Failed to resume subscription');
+    } finally {
+      setResuming(false);
+    }
+  };
+
+  // Cancel handlers
+  const handleOpenCancelModal = async () => {
+    setCancelStep('reason');
+    setCancelReason('');
+    setShowCancelModal(true);
+
+    // Pre-fetch the cancel offer
+    const offer = await getCancelOffer();
+    setCancelOffer(offer);
+  };
+
+  const handleCancelNext = () => {
+    if (cancelOffer?.offerAvailable) {
+      setCancelStep('offer');
+    } else {
+      setCancelStep('confirm');
+    }
+  };
+
+  const handleAcceptOffer = async () => {
+    setAcceptingOffer(true);
+    setError(null);
+    try {
+      const result = await acceptCancelOffer();
+      if (result.success) {
+        setSuccessMessage(result.message || 'Discount applied successfully!');
+        setShowCancelModal(false);
+        await loadSubscription();
+        onRefresh?.();
+      } else {
+        setError(result.message || 'Failed to apply discount');
+      }
+    } catch (err) {
+      console.error('Accept offer error:', err);
+      setError('Failed to apply discount');
+    } finally {
+      setAcceptingOffer(false);
+    }
+  };
+
+  const handleConfirmCancel = async () => {
+    setCancelling(true);
+    setError(null);
+    try {
+      const result = await cancelSubscription(cancelReason);
+      if (result.success) {
+        setSuccessMessage('Subscription cancelled. You will retain access until the end of your billing period.');
+        setShowCancelModal(false);
+        await loadSubscription();
+        onRefresh?.();
+      } else {
+        setError(result.message || 'Failed to cancel subscription');
+      }
+    } catch (err) {
+      console.error('Cancel error:', err);
+      setError('Failed to cancel subscription');
+    } finally {
+      setCancelling(false);
+    }
+  };
+
+  // Clear success message after 5 seconds
+  useEffect(() => {
+    if (successMessage) {
+      const timer = setTimeout(() => setSuccessMessage(null), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [successMessage]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
@@ -105,7 +254,7 @@ const SubscriptionManager: React.FC<SubscriptionManagerProps> = ({ onRefresh }) 
   if (!subscriptionState || !config) {
     return (
       <div className="bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3">
-        <AlertCircle className="text-red-500 flex-shrink-0 mt-0.5\" size={20} />
+        <AlertCircle className="text-red-500 flex-shrink-0 mt-0.5" size={20} />
         <div>
           <p className="text-red-800 font-medium">Unable to load subscription</p>
           <button
@@ -120,6 +269,8 @@ const SubscriptionManager: React.FC<SubscriptionManagerProps> = ({ onRefresh }) 
   }
 
   const { subscription, hasPro, isTrialing, daysLeftInTrial, recipeCount, recipeLimit } = subscriptionState;
+  const isPaused = !!subscription?.pausedAt;
+  const hasStripeSubscription = !!subscription?.stripeSubscriptionId;
 
   // Pro features list
   const proFeatures = [
@@ -132,12 +283,20 @@ const SubscriptionManager: React.FC<SubscriptionManagerProps> = ({ onRefresh }) 
 
   return (
     <div className="space-y-6">
+      {/* Success message */}
+      {successMessage && (
+        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-4 flex items-start gap-3">
+          <Check className="text-emerald-500 flex-shrink-0 mt-0.5" size={20} />
+          <p className="text-emerald-800 font-medium">{successMessage}</p>
+        </div>
+      )}
+
       {/* Current Plan */}
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
         <div className={`p-6 ${hasPro ? 'bg-gradient-to-r from-amber-50 to-orange-50' : 'bg-slate-50'}`}>
           <div className="flex items-start justify-between">
             <div>
-              <div className="flex items-center gap-2 mb-1">
+              <div className="flex items-center gap-2 mb-1 flex-wrap">
                 {hasPro ? (
                   <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-sm font-bold rounded-full">
                     <Crown size={16} />
@@ -154,6 +313,12 @@ const SubscriptionManager: React.FC<SubscriptionManagerProps> = ({ onRefresh }) 
                     {daysLeftInTrial} days left in trial
                   </span>
                 )}
+                {isPaused && (
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-amber-100 text-amber-700 text-xs font-medium rounded-full">
+                    <Pause size={12} />
+                    Paused
+                  </span>
+                )}
               </div>
               {subscription?.adminGrantedPro && (
                 <p className="text-sm text-amber-600 flex items-center gap-1 mt-1">
@@ -168,7 +333,7 @@ const SubscriptionManager: React.FC<SubscriptionManagerProps> = ({ onRefresh }) 
               )}
             </div>
 
-            {hasPro && subscription?.stripeSubscriptionId && (
+            {hasPro && hasStripeSubscription && (
               <button
                 onClick={handleManageSubscription}
                 disabled={openingPortal}
@@ -214,8 +379,26 @@ const SubscriptionManager: React.FC<SubscriptionManagerProps> = ({ onRefresh }) 
             </div>
           )}
 
+          {/* Paused status */}
+          {isPaused && subscription?.pauseResumesAt && (
+            <div className="mt-4 p-4 bg-amber-50 rounded-lg border border-amber-200">
+              <p className="text-sm text-amber-800 flex items-center gap-2">
+                <Pause size={16} />
+                Subscription paused until {new Date(subscription.pauseResumesAt).toLocaleDateString()}
+              </p>
+              <button
+                onClick={handleResume}
+                disabled={resuming}
+                className="mt-2 flex items-center gap-2 px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+              >
+                {resuming ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
+                Resume Now
+              </button>
+            </div>
+          )}
+
           {/* Stripe subscription details */}
-          {hasPro && subscription?.stripeCurrentPeriodEnd && (
+          {hasPro && subscription?.stripeCurrentPeriodEnd && !isPaused && (
             <div className="mt-4 flex items-center gap-4 text-sm text-slate-600">
               <span className="flex items-center gap-1.5">
                 <Calendar size={14} />
@@ -227,6 +410,26 @@ const SubscriptionManager: React.FC<SubscriptionManagerProps> = ({ onRefresh }) 
                   (Cancelled - access until end of period)
                 </span>
               )}
+            </div>
+          )}
+
+          {/* Pause and Cancel buttons for Pro users with active Stripe subscription */}
+          {hasPro && hasStripeSubscription && !subscription?.cancelAtPeriodEnd && !isPaused && (
+            <div className="mt-4 pt-4 border-t border-slate-200 flex gap-3">
+              <button
+                onClick={handleOpenPauseModal}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-800 border border-slate-200 hover:border-slate-300 rounded-lg transition-colors"
+              >
+                <Pause size={16} />
+                Pause Subscription
+              </button>
+              <button
+                onClick={handleOpenCancelModal}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-600 hover:text-red-700 border border-red-200 hover:border-red-300 rounded-lg transition-colors"
+              >
+                <X size={16} />
+                Cancel Subscription
+              </button>
             </div>
           )}
         </div>
@@ -338,6 +541,200 @@ const SubscriptionManager: React.FC<SubscriptionManagerProps> = ({ onRefresh }) 
         <CreditCard size={14} />
         Secure payment processed by Stripe
       </div>
+
+      {/* Pause Modal */}
+      {showPauseModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2 bg-amber-100 rounded-lg">
+                <Pause size={24} className="text-amber-600" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-lg text-slate-800">Pause Subscription</h3>
+                <p className="text-sm text-slate-500">Take a break, we'll be here when you get back</p>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">
+                  Resume Date
+                </label>
+                <input
+                  type="date"
+                  value={pauseResumeDate}
+                  onChange={(e) => setPauseResumeDate(e.target.value)}
+                  min={new Date(Date.now() + 86400000).toISOString().split('T')[0]}
+                  max={new Date(Date.now() + 90 * 86400000).toISOString().split('T')[0]}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                />
+                <p className="text-xs text-slate-400 mt-1">Maximum pause: 90 days</p>
+              </div>
+
+              <div className="bg-slate-50 rounded-lg p-3">
+                <p className="text-sm text-slate-600">
+                  You won't be charged while paused. Your subscription will automatically resume on the selected date.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => setShowPauseModal(false)}
+                className="flex-1 px-4 py-2 border border-slate-200 rounded-lg text-slate-700 font-medium hover:bg-slate-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handlePause}
+                disabled={pausing || !pauseResumeDate}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
+              >
+                {pausing ? <Loader2 size={16} className="animate-spin" /> : <Pause size={16} />}
+                Pause
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Cancel Modal */}
+      {showCancelModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-xl">
+            {cancelStep === 'reason' && (
+              <>
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="p-2 bg-red-100 rounded-lg">
+                    <AlertTriangle size={24} className="text-red-600" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-lg text-slate-800">Cancel Subscription</h3>
+                    <p className="text-sm text-slate-500">We're sorry to see you go</p>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">
+                      Why are you cancelling? (optional)
+                    </label>
+                    <textarea
+                      value={cancelReason}
+                      onChange={(e) => setCancelReason(e.target.value)}
+                      placeholder="Let us know how we can improve..."
+                      rows={3}
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none resize-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-3 mt-6">
+                  <button
+                    onClick={() => setShowCancelModal(false)}
+                    className="flex-1 px-4 py-2 border border-slate-200 rounded-lg text-slate-700 font-medium hover:bg-slate-50 transition-colors"
+                  >
+                    Keep Subscription
+                  </button>
+                  <button
+                    onClick={handleCancelNext}
+                    className="flex-1 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-colors"
+                  >
+                    Continue
+                  </button>
+                </div>
+              </>
+            )}
+
+            {cancelStep === 'offer' && cancelOffer?.offerAvailable && (
+              <>
+                <div className="text-center mb-6">
+                  <div className="inline-flex p-3 bg-emerald-100 rounded-full mb-4">
+                    <Percent size={32} className="text-emerald-600" />
+                  </div>
+                  <h3 className="font-semibold text-xl text-slate-800 mb-2">Wait! Special Offer</h3>
+                  <p className="text-slate-600">{cancelOffer.message}</p>
+                </div>
+
+                <div className="bg-gradient-to-r from-emerald-50 to-emerald-100 rounded-xl p-6 border border-emerald-200 text-center mb-6">
+                  <div className="text-4xl font-bold text-emerald-600 mb-1">
+                    {cancelOffer.discountPercent}% OFF
+                  </div>
+                  <div className="text-slate-600">
+                    for the next {cancelOffer.durationMonths} months
+                  </div>
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setCancelStep('confirm')}
+                    className="flex-1 px-4 py-2 border border-slate-200 rounded-lg text-slate-700 font-medium hover:bg-slate-50 transition-colors"
+                  >
+                    No Thanks
+                  </button>
+                  <button
+                    onClick={handleAcceptOffer}
+                    disabled={acceptingOffer}
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
+                  >
+                    {acceptingOffer ? (
+                      <Loader2 size={16} className="animate-spin" />
+                    ) : (
+                      <Check size={16} />
+                    )}
+                    Accept Offer
+                  </button>
+                </div>
+              </>
+            )}
+
+            {cancelStep === 'confirm' && (
+              <>
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="p-2 bg-red-100 rounded-lg">
+                    <X size={24} className="text-red-600" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-lg text-slate-800">Confirm Cancellation</h3>
+                    <p className="text-sm text-slate-500">This action cannot be undone</p>
+                  </div>
+                </div>
+
+                <div className="bg-slate-50 rounded-lg p-4 mb-6">
+                  <p className="text-sm text-slate-600 mb-2">
+                    Your subscription will be cancelled at the end of your current billing period.
+                  </p>
+                  <p className="text-sm text-slate-600">
+                    You will continue to have access to Pro features until then.
+                  </p>
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setShowCancelModal(false)}
+                    className="flex-1 px-4 py-2 border border-slate-200 rounded-lg text-slate-700 font-medium hover:bg-slate-50 transition-colors"
+                  >
+                    Keep Subscription
+                  </button>
+                  <button
+                    onClick={handleConfirmCancel}
+                    disabled={cancelling}
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
+                  >
+                    {cancelling ? (
+                      <Loader2 size={16} className="animate-spin" />
+                    ) : (
+                      <X size={16} />
+                    )}
+                    Cancel Subscription
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -12,7 +12,9 @@ import {
   Calendar,
   Search,
   Check,
-  X
+  X,
+  Percent,
+  MessageSquare
 } from 'lucide-react';
 import {
   getSubscriptionConfig,
@@ -91,6 +93,10 @@ const SubscriptionSettings: React.FC<SubscriptionSettingsProps> = ({ onMessage }
         stripeWeeklyPriceId: config.stripeWeeklyPriceId || undefined,
         stripeMonthlyPriceId: config.stripeMonthlyPriceId || undefined,
         stripeYearlyPriceId: config.stripeYearlyPriceId || undefined,
+        cancelOfferEnabled: config.cancelOfferEnabled,
+        cancelOfferDiscountPercent: config.cancelOfferDiscountPercent,
+        cancelOfferDurationMonths: config.cancelOfferDurationMonths,
+        cancelOfferMessage: config.cancelOfferMessage,
       });
 
       if (success) {
@@ -374,6 +380,83 @@ const SubscriptionSettings: React.FC<SubscriptionSettingsProps> = ({ onMessage }
                 min="0"
                 className="w-32 px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
               />
+            </div>
+          </div>
+
+          {/* Cancel Offer Settings */}
+          <div>
+            <h4 className="text-sm font-semibold text-slate-700 uppercase tracking-wider mb-4 flex items-center gap-2">
+              <Percent size={16} />
+              Cancellation Retention Offer
+            </h4>
+            <div className="space-y-4">
+              <div className="flex items-center gap-3">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={config.cancelOfferEnabled}
+                    onChange={(e) => setConfig({ ...config, cancelOfferEnabled: e.target.checked })}
+                    className="w-4 h-4 text-emerald-600 rounded"
+                  />
+                  <span className="text-sm font-medium text-slate-700">Enable retention offer when users try to cancel</span>
+                </label>
+              </div>
+
+              {config.cancelOfferEnabled && (
+                <>
+                  <div className="grid gap-4 md:grid-cols-2">
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">
+                        Discount (%)
+                      </label>
+                      <input
+                        type="number"
+                        value={config.cancelOfferDiscountPercent}
+                        onChange={(e) => setConfig({ ...config, cancelOfferDiscountPercent: parseInt(e.target.value) || 0 })}
+                        min="1"
+                        max="100"
+                        className="w-32 px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                      />
+                      <p className="text-xs text-slate-400 mt-1">e.g., 50 for 50% off</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-1">
+                        Duration (months)
+                      </label>
+                      <input
+                        type="number"
+                        value={config.cancelOfferDurationMonths}
+                        onChange={(e) => setConfig({ ...config, cancelOfferDurationMonths: parseInt(e.target.value) || 0 })}
+                        min="1"
+                        max="12"
+                        className="w-32 px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                      />
+                      <p className="text-xs text-slate-400 mt-1">How long the discount applies</p>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1 flex items-center gap-2">
+                      <MessageSquare size={14} />
+                      Offer Message
+                    </label>
+                    <textarea
+                      value={config.cancelOfferMessage}
+                      onChange={(e) => setConfig({ ...config, cancelOfferMessage: e.target.value })}
+                      placeholder="Before you go, we'd like to offer you a special discount!"
+                      rows={2}
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none resize-none"
+                    />
+                    <p className="text-xs text-slate-400 mt-1">Shown to users when they try to cancel</p>
+                  </div>
+
+                  <div className="bg-emerald-50 rounded-lg p-4 border border-emerald-200">
+                    <p className="text-sm text-emerald-800">
+                      <strong>Preview:</strong> Users will see "{config.cancelOfferDiscountPercent}% OFF for {config.cancelOfferDurationMonths} months" when they try to cancel.
+                    </p>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>
