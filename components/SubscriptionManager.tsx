@@ -31,7 +31,8 @@ import {
   getCancelOffer,
   acceptCancelOffer,
   cancelSubscription,
-  cancelTrial
+  cancelTrial,
+  resetToFreeTier
 } from '../services/subscriptionService';
 import type { SubscriptionState, SubscriptionConfig, BillingInterval } from '../types';
 
@@ -66,6 +67,7 @@ const SubscriptionManager: React.FC<SubscriptionManagerProps> = ({ onRefresh }) 
   } | null>(null);
   const [cancelling, setCancelling] = useState(false);
   const [acceptingOffer, setAcceptingOffer] = useState(false);
+  const [resetting, setResetting] = useState(false);
 
   useEffect(() => {
     loadSubscription();
@@ -255,6 +257,30 @@ const SubscriptionManager: React.FC<SubscriptionManagerProps> = ({ onRefresh }) 
     }
   };
 
+  // Reset to free tier handler
+  const handleResetToFree = async () => {
+    if (!confirm('Are you sure you want to reset to the free tier? This will remove all Pro access.')) {
+      return;
+    }
+    setResetting(true);
+    setError(null);
+    try {
+      const result = await resetToFreeTier();
+      if (result.success) {
+        setSuccessMessage(result.message || 'Reset to free tier successfully');
+        await loadSubscription();
+        onRefresh?.();
+      } else {
+        setError(result.message || 'Failed to reset');
+      }
+    } catch (err) {
+      console.error('Reset error:', err);
+      setError('Failed to reset subscription');
+    } finally {
+      setResetting(false);
+    }
+  };
+
   // Clear success message after 5 seconds
   useEffect(() => {
     if (successMessage) {
@@ -291,18 +317,6 @@ const SubscriptionManager: React.FC<SubscriptionManagerProps> = ({ onRefresh }) 
   const { subscription, hasPro, isTrialing, daysLeftInTrial, recipeCount, recipeLimit } = subscriptionState;
   const isPaused = !!subscription?.pausedAt;
   const hasStripeSubscription = !!subscription?.stripeSubscriptionId;
-
-  // Debug logging - remove after fixing
-  console.log('SubscriptionManager state:', {
-    hasPro,
-    isTrialing,
-    hasStripeSubscription,
-    isPaused,
-    cancelAtPeriodEnd: subscription?.cancelAtPeriodEnd,
-    tier: subscription?.tier,
-    status: subscription?.status,
-    stripeSubscriptionId: subscription?.stripeSubscriptionId,
-  });
 
   // Pro features list
   const proFeatures = [
@@ -475,6 +489,36 @@ const SubscriptionManager: React.FC<SubscriptionManagerProps> = ({ onRefresh }) 
                 <X size={16} />
                 Cancel Trial
               </button>
+            </div>
+          )}
+
+          {/* Info for admin-granted Pro users without Stripe subscription */}
+          {hasPro && subscription?.adminGrantedPro && !hasStripeSubscription && (
+            <div className="mt-4 p-4 bg-amber-50 rounded-lg border border-amber-200">
+              <p className="text-sm text-amber-800">
+                Your Pro access was granted by an administrator. To modify your subscription, please contact support.
+              </p>
+            </div>
+          )}
+
+          {/* Reset option for Pro users without Stripe subscription (for fixing issues) */}
+          {hasPro && !hasStripeSubscription && !isTrialing && (
+            <div className="mt-4 pt-4 border-t border-slate-200">
+              <button
+                onClick={handleResetToFree}
+                disabled={resetting}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-slate-500 hover:text-slate-700 border border-slate-200 hover:border-slate-300 rounded-lg transition-colors disabled:opacity-50"
+              >
+                {resetting ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : (
+                  <X size={16} />
+                )}
+                Reset to Free Tier
+              </button>
+              <p className="mt-2 text-xs text-slate-400">
+                Use this to fix subscription issues or to re-subscribe through Stripe
+              </p>
             </div>
           )}
         </div>

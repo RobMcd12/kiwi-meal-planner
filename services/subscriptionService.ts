@@ -570,6 +570,51 @@ export const cancelTrial = async (reason?: string): Promise<{ success: boolean; 
   }
 };
 
+/**
+ * Reset subscription to free tier (for testing/fixing issues)
+ */
+export const resetToFreeTier = async (): Promise<{ success: boolean; message?: string }> => {
+  if (!isSupabaseConfigured()) return { success: false, message: 'Not configured' };
+
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { success: false, message: 'Not authenticated' };
+
+    // Reset all subscription fields to free tier defaults
+    const { error } = await supabase
+      .from('user_subscriptions')
+      .update({
+        tier: 'free',
+        status: 'active',
+        trial_started_at: null,
+        trial_ends_at: null,
+        stripe_customer_id: null,
+        stripe_subscription_id: null,
+        stripe_price_id: null,
+        stripe_current_period_end: null,
+        cancel_at_period_end: false,
+        admin_granted_pro: false,
+        admin_granted_by: null,
+        admin_grant_expires_at: null,
+        admin_grant_note: null,
+        paused_at: null,
+        pause_resumes_at: null,
+      })
+      .eq('user_id', user.id);
+
+    if (error) {
+      console.error('Error resetting to free tier:', error);
+      return { success: false, message: error.message };
+    }
+
+    console.log(`User ${user.id} reset to free tier`);
+    return { success: true, message: 'Subscription reset to free tier. You can now upgrade through Stripe.' };
+  } catch (err) {
+    console.error('Error resetting to free tier:', err);
+    return { success: false, message: 'Failed to reset subscription' };
+  }
+};
+
 // ============================================
 // HELPERS
 // ============================================
