@@ -54,7 +54,7 @@ import UserLoginHistory from './admin/UserLoginHistory';
 import SubscriptionSettings from './admin/SubscriptionSettings';
 import { getAllUsersWithDetails } from '../services/loginHistoryService';
 import { grantProAccess, revokeProAccess } from '../services/subscriptionService';
-import { Crown, BookOpen, HardDrive, Calendar } from 'lucide-react';
+import { Crown, BookOpen, HardDrive, Calendar, ArrowUpDown, ChevronDown } from 'lucide-react';
 
 interface AdminDashboardProps {
   onBack: () => void;
@@ -153,6 +153,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
   const [feedbackLoading, setFeedbackLoading] = useState(false);
   const [newFeedbackCount, setNewFeedbackCount] = useState(0);
   const [feedbackFilter, setFeedbackFilter] = useState<'all' | FeedbackStatus>('all');
+  const [feedbackSearch, setFeedbackSearch] = useState('');
   const [selectedFeedback, setSelectedFeedback] = useState<FeedbackItem | null>(null);
   const [responseText, setResponseText] = useState('');
   const [responseStatus, setResponseStatus] = useState<FeedbackStatus>('reviewed');
@@ -160,6 +161,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
 
   // Users state
   const [usersList, setUsersList] = useState<AdminUserWithDetails[]>([]);
+  const [userSearch, setUserSearch] = useState('');
+  const [userSortBy, setUserSortBy] = useState<'name' | 'logins' | 'recipes' | 'plans' | 'storage'>('name');
+  const [userSortOrder, setUserSortOrder] = useState<'asc' | 'desc'>('asc');
   const [grantingProUserId, setGrantingProUserId] = useState<string | null>(null);
   const [showGrantProModal, setShowGrantProModal] = useState(false);
   const [grantProTarget, setGrantProTarget] = useState<{ userId: string; email: string } | null>(null);
@@ -614,9 +618,54 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
   };
 
   const filteredFeedback = feedbackList.filter((f) => {
-    if (feedbackFilter === 'all') return true;
-    return f.status === feedbackFilter;
+    // Status filter
+    if (feedbackFilter !== 'all' && f.status !== feedbackFilter) return false;
+
+    // Search filter
+    if (feedbackSearch.trim()) {
+      const searchLower = feedbackSearch.toLowerCase();
+      const matchesSubject = f.subject.toLowerCase().includes(searchLower);
+      const matchesMessage = f.message.toLowerCase().includes(searchLower);
+      const matchesUserName = f.user_name.toLowerCase().includes(searchLower);
+      const matchesUserEmail = f.user_email?.toLowerCase().includes(searchLower) || false;
+      if (!matchesSubject && !matchesMessage && !matchesUserName && !matchesUserEmail) return false;
+    }
+
+    return true;
   });
+
+  // Filtered and sorted users
+  const filteredAndSortedUsers = usersList
+    .filter((u) => {
+      if (!userSearch.trim()) return true;
+      const searchLower = userSearch.toLowerCase();
+      const matchesName = u.fullName?.toLowerCase().includes(searchLower) || false;
+      const matchesEmail = u.email.toLowerCase().includes(searchLower);
+      return matchesName || matchesEmail;
+    })
+    .sort((a, b) => {
+      let comparison = 0;
+
+      switch (userSortBy) {
+        case 'name':
+          comparison = (a.fullName || a.email).localeCompare(b.fullName || b.email);
+          break;
+        case 'logins':
+          comparison = (a.loginSummary?.totalLogins || 0) - (b.loginSummary?.totalLogins || 0);
+          break;
+        case 'recipes':
+          comparison = (a.stats?.recipeCount || 0) - (b.stats?.recipeCount || 0);
+          break;
+        case 'plans':
+          comparison = (a.stats?.mealPlanCount || 0) - (b.stats?.mealPlanCount || 0);
+          break;
+        case 'storage':
+          comparison = (a.stats?.storageUsedBytes || 0) - (b.stats?.storageUsedBytes || 0);
+          break;
+      }
+
+      return userSortOrder === 'asc' ? comparison : -comparison;
+    });
 
   const getStatusColor = (status: FeedbackStatus) => {
     switch (status) {
@@ -871,9 +920,18 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
       {/* Feedback Tab */}
       {activeTab === 'feedback' && (
         <div className="space-y-6">
-          {/* Filter buttons */}
-          <div className="flex items-center justify-between flex-wrap gap-4">
-            <h2 className="text-lg font-semibold text-slate-800">User Feedback</h2>
+          {/* Search and Filter */}
+          <div className="flex flex-col sm:flex-row gap-4">
+            <div className="relative flex-1">
+              <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <input
+                type="text"
+                value={feedbackSearch}
+                onChange={(e) => setFeedbackSearch(e.target.value)}
+                placeholder="Search by title, content, or user..."
+                className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+              />
+            </div>
             <div className="flex gap-2 flex-wrap">
               {(['all', 'new', 'reviewed', 'in-progress', 'resolved'] as const).map((f) => (
                 <button
@@ -1558,24 +1616,64 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
       {/* Users Tab */}
       {activeTab === 'users' && (
         <div className="space-y-6">
-          <div className="flex items-center justify-between flex-wrap gap-4">
-            <h2 className="text-lg font-semibold text-slate-800">User Management</h2>
-            <div className="flex items-center gap-3">
-              {currentUserIsSuperAdmin && (
+          {/* Search, Sort, and Actions */}
+          <div className="flex flex-col gap-4">
+            <div className="flex items-center justify-between flex-wrap gap-4">
+              <h2 className="text-lg font-semibold text-slate-800">User Management</h2>
+              <div className="flex items-center gap-3">
+                {currentUserIsSuperAdmin && (
+                  <button
+                    onClick={() => setShowAddUserModal(true)}
+                    className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg transition-colors"
+                  >
+                    <UserPlus size={16} />
+                    Add User
+                  </button>
+                )}
                 <button
-                  onClick={() => setShowAddUserModal(true)}
-                  className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg transition-colors"
+                  onClick={loadUsers}
+                  className="text-sm text-emerald-600 hover:text-emerald-700 font-medium"
                 >
-                  <UserPlus size={16} />
-                  Add User
+                  Refresh
                 </button>
-              )}
-              <button
-                onClick={loadUsers}
-                className="text-sm text-emerald-600 hover:text-emerald-700 font-medium"
-              >
-                Refresh
-              </button>
+              </div>
+            </div>
+
+            {/* Search and Sort Controls */}
+            <div className="flex flex-col sm:flex-row gap-4">
+              <div className="relative flex-1">
+                <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  value={userSearch}
+                  onChange={(e) => setUserSearch(e.target.value)}
+                  placeholder="Search by name or email..."
+                  className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-slate-500 whitespace-nowrap">Sort by:</span>
+                <select
+                  value={userSortBy}
+                  onChange={(e) => setUserSortBy(e.target.value as typeof userSortBy)}
+                  className="px-3 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none text-sm bg-white"
+                >
+                  <option value="name">Name</option>
+                  <option value="logins">Login Count</option>
+                  <option value="recipes">Recipes</option>
+                  <option value="plans">Plans</option>
+                  <option value="storage">Storage</option>
+                </select>
+                <button
+                  onClick={() => setUserSortOrder(userSortOrder === 'asc' ? 'desc' : 'asc')}
+                  className={`p-2.5 border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors ${
+                    userSortOrder === 'desc' ? 'bg-slate-100' : ''
+                  }`}
+                  title={userSortOrder === 'asc' ? 'Ascending' : 'Descending'}
+                >
+                  <ArrowUpDown size={16} className={`text-slate-600 ${userSortOrder === 'desc' ? 'rotate-180' : ''}`} />
+                </button>
+              </div>
             </div>
           </div>
 
@@ -1593,14 +1691,20 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
             <div className="flex items-center justify-center py-16">
               <Loader2 size={32} className="animate-spin text-emerald-600" />
             </div>
-          ) : usersList.length === 0 ? (
+          ) : filteredAndSortedUsers.length === 0 ? (
             <div className="bg-white rounded-xl border border-slate-200 p-8 text-center">
               <Users className="mx-auto text-slate-300 mb-4" size={48} />
-              <p className="text-slate-500">No users found.</p>
+              <p className="text-slate-500">
+                {userSearch.trim() ? 'No users match your search.' : 'No users found.'}
+              </p>
             </div>
           ) : (
             <div className="space-y-3">
-              {usersList.map((userItem) => {
+              {/* Results count */}
+              <div className="text-sm text-slate-500">
+                Showing {filteredAndSortedUsers.length} of {usersList.length} users
+              </div>
+              {filteredAndSortedUsers.map((userItem) => {
                 const isUserSuperAdmin = isSuperAdmin(userItem.email);
                 const subDisplay = getSubscriptionDisplay(userItem.subscription);
                 const hasAdminGrant = userItem.subscription?.adminGrantedPro;
