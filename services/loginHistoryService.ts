@@ -290,6 +290,8 @@ function mapSubscriptionRow(row: any): UserSubscription {
     adminGrantedBy: row.admin_granted_by,
     adminGrantExpiresAt: row.admin_grant_expires_at,
     adminGrantNote: row.admin_grant_note,
+    pausedAt: row.paused_at,
+    pauseResumesAt: row.pause_resumes_at,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
