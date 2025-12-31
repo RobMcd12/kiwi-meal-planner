@@ -47,16 +47,25 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
--- Add RLS policy for admins to view all profiles
-CREATE POLICY "Admins can view all profiles" ON public.profiles
+-- Drop existing admin policies if they exist (to avoid duplicate policy errors)
+DROP POLICY IF EXISTS "Admins can view all profiles" ON public.profiles;
+DROP POLICY IF EXISTS "Admins can update all profiles" ON public.profiles;
+DROP POLICY IF EXISTS "Super admin can view all profiles" ON public.profiles;
+DROP POLICY IF EXISTS "Super admin can update all profiles" ON public.profiles;
+
+-- Add RLS policy for super admin (rob@unicloud.co.nz) to always have access
+-- This uses a direct email check which doesn't require querying the profiles table
+CREATE POLICY "Super admin can view all profiles" ON public.profiles
     FOR SELECT USING (
-        EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND is_admin = true)
+        (SELECT email FROM auth.users WHERE id = auth.uid()) = 'rob@unicloud.co.nz'
+        OR EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND is_admin = true)
     );
 
--- Add RLS policy for admins to update all profiles (for setting admin status)
-CREATE POLICY "Admins can update all profiles" ON public.profiles
+-- Add RLS policy for super admin and admins to update all profiles
+CREATE POLICY "Super admin can update all profiles" ON public.profiles
     FOR UPDATE USING (
-        EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND is_admin = true)
+        (SELECT email FROM auth.users WHERE id = auth.uid()) = 'rob@unicloud.co.nz'
+        OR EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND is_admin = true)
     );
 
 -- Create index on email for faster lookups
@@ -89,14 +98,20 @@ CREATE TABLE IF NOT EXISTS public.login_history (
 -- Enable RLS
 ALTER TABLE public.login_history ENABLE ROW LEVEL SECURITY;
 
+-- Drop existing policies if they exist
+DROP POLICY IF EXISTS "Users view own login history" ON public.login_history;
+DROP POLICY IF EXISTS "Admins view all login history" ON public.login_history;
+DROP POLICY IF EXISTS "Service can insert login history" ON public.login_history;
+
 -- Users can view their own login history
 CREATE POLICY "Users view own login history" ON public.login_history
     FOR SELECT USING (auth.uid() = user_id);
 
--- Admins can view all login history
+-- Admins can view all login history (including super admin by email)
 CREATE POLICY "Admins view all login history" ON public.login_history
     FOR SELECT USING (
-        EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND is_admin = true)
+        (SELECT email FROM auth.users WHERE id = auth.uid()) = 'rob@unicloud.co.nz'
+        OR EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND is_admin = true)
     );
 
 -- Service role can insert login history (for Edge Function)

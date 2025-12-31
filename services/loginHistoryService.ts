@@ -60,23 +60,66 @@ export const getUserLoginSummary = async (userId: string): Promise<UserLoginSumm
   if (!isSupabaseConfigured()) return null;
 
   try {
-    // Get summary using the database function
-    const { data: summaryData, error: summaryError } = await supabase
-      .rpc('get_user_login_summary', { target_user_id: userId });
+    // Try to get summary using the database function first
+    let summary: any = null;
 
-    if (summaryError) {
-      console.error('Error fetching login summary:', summaryError);
-      return null;
+    try {
+      const { data: summaryData, error: summaryError } = await supabase
+        .rpc('get_user_login_summary', { target_user_id: userId });
+
+      if (!summaryError && summaryData?.[0]) {
+        summary = summaryData[0];
+      }
+    } catch (rpcErr) {
+      // RPC function might not exist yet, fall back to direct query
+      console.warn('RPC get_user_login_summary not available, using direct query');
     }
 
-    const summary = summaryData?.[0];
+    // If RPC failed or returned no data, query login_history directly
     if (!summary) {
+      const { data: loginData, error: loginError } = await supabase
+        .from('login_history')
+        .select('login_at, city, country, device_type')
+        .eq('user_id', userId)
+        .eq('success', true)
+        .order('login_at', { ascending: false })
+        .limit(50);
+
+      if (loginError) {
+        // login_history table might not exist yet
+        console.warn('login_history query failed:', loginError.message);
+        return {
+          totalLogins: 0,
+          lastLoginAt: null,
+          lastLoginLocation: null,
+          devices: [],
+          countries: [],
+        };
+      }
+
+      if (!loginData || loginData.length === 0) {
+        return {
+          totalLogins: 0,
+          lastLoginAt: null,
+          lastLoginLocation: null,
+          devices: [],
+          countries: [],
+        };
+      }
+
+      const lastLogin = loginData[0];
+      const devices = [...new Set(loginData.map(l => l.device_type).filter(Boolean))];
+      const countries = [...new Set(loginData.map(l => l.country).filter(Boolean))];
+      const lastLocation = lastLogin.city && lastLogin.country
+        ? `${lastLogin.city}, ${lastLogin.country}`
+        : lastLogin.country || null;
+
       return {
-        totalLogins: 0,
-        lastLoginAt: null,
-        lastLoginLocation: null,
-        devices: [],
-        countries: [],
+        totalLogins: loginData.length,
+        lastLoginAt: lastLogin.login_at || null,
+        lastLoginLocation: lastLocation,
+        devices,
+        countries,
       };
     }
 
@@ -124,25 +167,56 @@ export const getAllUsersWithLoginSummary = async (): Promise<Array<{
   if (!isSupabaseConfigured()) return [];
 
   try {
-    // Get all users
-    const { data: users, error: usersError } = await supabase
+    // Get all users - try with all columns first, fallback to basic columns if some don't exist
+    let users: any[] | null = null;
+    let usersError: any = null;
+
+    // Try full query first
+    const fullResult = await supabase
       .from('profiles')
-      .select('id, email, full_name, avatar_url, is_admin, created_at')
+      .select('id, email, full_name, display_name, avatar_url, is_admin, created_at')
       .order('created_at', { ascending: false });
 
-    if (usersError) {
-      console.error('Error fetching users:', usersError);
+    if (fullResult.error) {
+      console.warn('Full profiles query failed, trying basic query:', fullResult.error.message);
+
+      // Fallback to basic columns that definitely exist
+      const basicResult = await supabase
+        .from('profiles')
+        .select('id, display_name, avatar_url, created_at')
+        .order('created_at', { ascending: false });
+
+      if (basicResult.error) {
+        console.error('Error fetching users (basic):', basicResult.error);
+        return [];
+      }
+
+      users = basicResult.data;
+    } else {
+      users = fullResult.data;
+    }
+
+    if (!users || users.length === 0) {
+      console.log('No users found in profiles table');
       return [];
     }
 
+    console.log(`Found ${users.length} users in profiles table`);
+
     // Get login summaries for all users in parallel
     const usersWithSummaries = await Promise.all(
-      (users || []).map(async (user) => {
-        const loginSummary = await getUserLoginSummary(user.id);
+      users.map(async (user) => {
+        let loginSummary: UserLoginSummary | null = null;
+        try {
+          loginSummary = await getUserLoginSummary(user.id);
+        } catch (err) {
+          console.warn(`Failed to get login summary for user ${user.id}:`, err);
+        }
+
         return {
           userId: user.id,
           email: user.email || '',
-          fullName: user.full_name,
+          fullName: user.full_name || user.display_name || null,
           avatarUrl: user.avatar_url,
           isAdmin: user.is_admin || false,
           createdAt: user.created_at,
