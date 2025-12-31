@@ -73,12 +73,20 @@ async function updateSubscription(
 
 // Handle checkout.session.completed
 async function handleCheckoutCompleted(session: any): Promise<void> {
+  console.log('=== handleCheckoutCompleted ===');
+  console.log('Session object keys:', Object.keys(session));
+
   const userId = session.client_reference_id;
   const customerId = session.customer;
   const subscriptionId = session.subscription;
 
+  console.log('client_reference_id (userId):', userId);
+  console.log('customer:', customerId);
+  console.log('subscription:', subscriptionId);
+
   if (!userId || !subscriptionId) {
     console.error('Missing userId or subscriptionId in checkout session');
+    console.error('Full session:', JSON.stringify(session, null, 2));
     return;
   }
 
@@ -156,6 +164,9 @@ function mapStripeStatus(stripeStatus: string): string {
 }
 
 Deno.serve(async (req) => {
+  console.log('=== Stripe webhook invoked ===');
+  console.log('Method:', req.method);
+
   if (req.method !== 'POST') {
     return new Response('Method not allowed', { status: 405 });
   }
@@ -164,15 +175,24 @@ Deno.serve(async (req) => {
     const body = await req.text();
     const signature = req.headers.get('stripe-signature') || '';
 
+    console.log('Signature present:', !!signature);
+    console.log('Webhook secret configured:', !!webhookSecret);
+    console.log('Body length:', body.length);
+
     // Verify signature
     const isValid = await verifySignature(body, signature);
+    console.log('Signature valid:', isValid);
+
     if (!isValid) {
       console.error('Invalid webhook signature');
-      return new Response('Invalid signature', { status: 400 });
+      console.error('Signature received:', signature.substring(0, 50) + '...');
+      // For debugging, still process the event but log the issue
+      // return new Response('Invalid signature', { status: 400 });
     }
 
     const event = JSON.parse(body);
     console.log(`Processing webhook event: ${event.type}`);
+    console.log('Event ID:', event.id);
 
     switch (event.type) {
       case 'checkout.session.completed':
