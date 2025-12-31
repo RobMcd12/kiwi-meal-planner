@@ -1,5 +1,5 @@
 import { supabase, isSupabaseConfigured } from './authService';
-import type { LoginHistoryEntry, UserLoginSummary } from '../types';
+import type { LoginHistoryEntry, UserLoginSummary, UserSubscription, UserStats, AdminUserWithDetails } from '../types';
 
 /**
  * Parse user agent to extract basic device info
@@ -215,46 +215,102 @@ export const getUserLoginSummary = async (userId: string): Promise<UserLoginSumm
 
 /**
  * Get all users with their login summaries (admin only)
+ * @deprecated Use getAllUsersWithDetails for more complete data
  */
-export const getAllUsersWithLoginSummary = async (): Promise<Array<{
-  userId: string;
-  email: string;
-  fullName: string | null;
-  avatarUrl: string | null;
-  isAdmin: boolean;
-  createdAt: string;
-  loginSummary: UserLoginSummary | null;
-}>> => {
+export const getAllUsersWithLoginSummary = async (): Promise<AdminUserWithDetails[]> => {
+  return getAllUsersWithDetails();
+};
+
+/**
+ * Get user stats (recipes, uploads, storage)
+ */
+const getUserStats = async (userId: string): Promise<UserStats> => {
+  try {
+    // Get recipe counts
+    const [favoritesResult, uploadedResult, mealPlansResult, mediaResult] = await Promise.all([
+      supabase
+        .from('favorite_meals')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId),
+      supabase
+        .from('favorite_meals')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .eq('source', 'uploaded'),
+      supabase
+        .from('saved_meal_plans')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId),
+      supabase
+        .from('media_uploads')
+        .select('id, file_size_bytes', { count: 'exact' })
+        .eq('user_id', userId),
+    ]);
+
+    const storageUsed = (mediaResult.data || []).reduce(
+      (sum, m) => sum + (m.file_size_bytes || 0),
+      0
+    );
+
+    return {
+      recipeCount: favoritesResult.count || 0,
+      uploadedRecipeCount: uploadedResult.count || 0,
+      mealPlanCount: mealPlansResult.count || 0,
+      mediaUploadCount: mediaResult.count || 0,
+      storageUsedBytes: storageUsed,
+    };
+  } catch (err) {
+    console.warn('Error fetching user stats:', err);
+    return {
+      recipeCount: 0,
+      uploadedRecipeCount: 0,
+      mealPlanCount: 0,
+      mediaUploadCount: 0,
+      storageUsedBytes: 0,
+    };
+  }
+};
+
+/**
+ * Map subscription row to UserSubscription
+ */
+function mapSubscriptionRow(row: any): UserSubscription {
+  return {
+    userId: row.user_id,
+    tier: row.tier || 'free',
+    status: row.status || 'active',
+    trialStartedAt: row.trial_started_at,
+    trialEndsAt: row.trial_ends_at,
+    stripeCustomerId: row.stripe_customer_id,
+    stripeSubscriptionId: row.stripe_subscription_id,
+    stripePriceId: row.stripe_price_id,
+    stripeCurrentPeriodEnd: row.stripe_current_period_end,
+    cancelAtPeriodEnd: row.cancel_at_period_end || false,
+    adminGrantedPro: row.admin_granted_pro || false,
+    adminGrantedBy: row.admin_granted_by,
+    adminGrantExpiresAt: row.admin_grant_expires_at,
+    adminGrantNote: row.admin_grant_note,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+}
+
+/**
+ * Get all users with full details including subscriptions and stats (admin only)
+ */
+export const getAllUsersWithDetails = async (): Promise<AdminUserWithDetails[]> => {
   if (!isSupabaseConfigured()) return [];
 
   try {
-    // Get all users - try with all columns first, fallback to basic columns if some don't exist
-    let users: any[] | null = null;
-    let usersError: any = null;
-
-    // Try full query first
-    const fullResult = await supabase
+    // Get all users
+    const { data: users, error: usersError } = await supabase
       .from('profiles')
       .select('id, email, full_name, display_name, avatar_url, is_admin, created_at')
       .order('created_at', { ascending: false });
 
-    if (fullResult.error) {
-      console.warn('Full profiles query failed, trying basic query:', fullResult.error.message);
-
-      // Fallback to basic columns that definitely exist
-      const basicResult = await supabase
-        .from('profiles')
-        .select('id, display_name, avatar_url, created_at')
-        .order('created_at', { ascending: false });
-
-      if (basicResult.error) {
-        console.error('Error fetching users (basic):', basicResult.error);
-        return [];
-      }
-
-      users = basicResult.data;
-    } else {
-      users = fullResult.data;
+    if (usersError) {
+      console.error('Error fetching users:', usersError);
+      return [];
     }
 
     if (!users || users.length === 0) {
@@ -262,17 +318,25 @@ export const getAllUsersWithLoginSummary = async (): Promise<Array<{
       return [];
     }
 
+    // Get all subscriptions in one query
+    const { data: subscriptions } = await supabase
+      .from('user_subscriptions')
+      .select('*');
+
+    const subscriptionMap = new Map<string, UserSubscription>();
+    (subscriptions || []).forEach((sub) => {
+      subscriptionMap.set(sub.user_id, mapSubscriptionRow(sub));
+    });
+
     console.log(`Found ${users.length} users in profiles table`);
 
-    // Get login summaries for all users in parallel
-    const usersWithSummaries = await Promise.all(
+    // Get login summaries and stats for all users in parallel
+    const usersWithDetails = await Promise.all(
       users.map(async (user) => {
-        let loginSummary: UserLoginSummary | null = null;
-        try {
-          loginSummary = await getUserLoginSummary(user.id);
-        } catch (err) {
-          console.warn(`Failed to get login summary for user ${user.id}:`, err);
-        }
+        const [loginSummary, stats] = await Promise.all([
+          getUserLoginSummary(user.id).catch(() => null),
+          getUserStats(user.id).catch(() => null),
+        ]);
 
         return {
           userId: user.id,
@@ -282,13 +346,15 @@ export const getAllUsersWithLoginSummary = async (): Promise<Array<{
           isAdmin: user.is_admin || false,
           createdAt: user.created_at,
           loginSummary,
+          subscription: subscriptionMap.get(user.id) || null,
+          stats,
         };
       })
     );
 
-    return usersWithSummaries;
+    return usersWithDetails;
   } catch (err) {
-    console.error('Error fetching users with login summary:', err);
+    console.error('Error fetching users with details:', err);
     return [];
   }
 };

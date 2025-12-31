@@ -125,6 +125,7 @@ ALTER TABLE public.login_history ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "Users view own login history" ON public.login_history;
 DROP POLICY IF EXISTS "Admins view all login history" ON public.login_history;
 DROP POLICY IF EXISTS "Service can insert login history" ON public.login_history;
+DROP POLICY IF EXISTS "Users can insert own login history" ON public.login_history;
 
 -- Users can view their own login history
 CREATE POLICY "Users view own login history" ON public.login_history
@@ -137,8 +138,11 @@ CREATE POLICY "Admins view all login history" ON public.login_history
         public.is_admin_user(auth.uid())
     );
 
--- Service role can insert login history (for Edge Function)
--- Note: Using permissive insert policy - the Edge Function uses service role key
+-- Users can insert their own login history
+CREATE POLICY "Users can insert own login history" ON public.login_history
+    FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+-- Service role can also insert (for Edge Function with service key)
 CREATE POLICY "Service can insert login history" ON public.login_history
     FOR INSERT WITH CHECK (true);
 

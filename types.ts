@@ -377,3 +377,27 @@ export interface AdminSubscriptionGrant {
   expiresAt: string | null;
   note: string | null;
 }
+
+// ============================================
+// ADMIN USER STATS
+// ============================================
+
+export interface UserStats {
+  recipeCount: number;
+  uploadedRecipeCount: number;
+  mealPlanCount: number;
+  mediaUploadCount: number;
+  storageUsedBytes: number;
+}
+
+export interface AdminUserWithDetails {
+  userId: string;
+  email: string;
+  fullName: string | null;
+  avatarUrl: string | null;
+  isAdmin: boolean;
+  createdAt: string;
+  loginSummary: UserLoginSummary | null;
+  subscription: UserSubscription | null;
+  stats: UserStats | null;
+}

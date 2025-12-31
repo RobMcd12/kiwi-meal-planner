@@ -49,11 +49,12 @@ import {
   createCategory,
   deleteCategory
 } from '../services/adminInstructionsService';
-import type { FeedbackItem, FeedbackStatus, AdminInstruction, AdminInstructionCategory, InstructionTag, UserLoginSummary } from '../types';
+import type { FeedbackItem, FeedbackStatus, AdminInstruction, AdminInstructionCategory, InstructionTag, UserLoginSummary, AdminUserWithDetails, UserSubscription } from '../types';
 import UserLoginHistory from './admin/UserLoginHistory';
 import SubscriptionSettings from './admin/SubscriptionSettings';
-import { getAllUsersWithLoginSummary } from '../services/loginHistoryService';
-import { Crown } from 'lucide-react';
+import { getAllUsersWithDetails } from '../services/loginHistoryService';
+import { grantProAccess, revokeProAccess } from '../services/subscriptionService';
+import { Crown, BookOpen, HardDrive, Calendar } from 'lucide-react';
 
 interface AdminDashboardProps {
   onBack: () => void;
@@ -65,15 +66,57 @@ interface Stats {
   totalFavorites: number;
 }
 
-interface UserWithLoginSummary {
-  userId: string;
-  email: string;
-  fullName: string | null;
-  avatarUrl: string | null;
-  isAdmin: boolean;
-  createdAt: string;
-  loginSummary: UserLoginSummary | null;
-}
+// Helper to format bytes
+const formatBytes = (bytes: number): string => {
+  if (bytes === 0) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
+};
+
+// Helper to get subscription status display
+const getSubscriptionDisplay = (subscription: UserSubscription | null): { label: string; color: string; icon?: React.ReactNode } => {
+  if (!subscription) {
+    return { label: 'No Sub', color: 'bg-slate-100 text-slate-600' };
+  }
+
+  if (subscription.adminGrantedPro) {
+    const isExpired = subscription.adminGrantExpiresAt && new Date(subscription.adminGrantExpiresAt) < new Date();
+    if (isExpired) {
+      return { label: 'Grant Expired', color: 'bg-amber-100 text-amber-700' };
+    }
+    return {
+      label: subscription.adminGrantExpiresAt ? 'Pro (Granted)' : 'Pro (Permanent)',
+      color: 'bg-purple-100 text-purple-700',
+      icon: <Crown size={12} />
+    };
+  }
+
+  if (subscription.status === 'trialing') {
+    const daysLeft = subscription.trialEndsAt
+      ? Math.max(0, Math.ceil((new Date(subscription.trialEndsAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)))
+      : 0;
+    if (daysLeft <= 0) {
+      return { label: 'Trial Expired', color: 'bg-red-100 text-red-700' };
+    }
+    return { label: `Trial (${daysLeft}d)`, color: 'bg-blue-100 text-blue-700' };
+  }
+
+  if (subscription.tier === 'pro' && subscription.status === 'active') {
+    return {
+      label: 'Pro',
+      color: 'bg-emerald-100 text-emerald-700',
+      icon: <Crown size={12} />
+    };
+  }
+
+  if (subscription.status === 'cancelled') {
+    return { label: 'Cancelled', color: 'bg-red-100 text-red-700' };
+  }
+
+  return { label: 'Free', color: 'bg-slate-100 text-slate-600' };
+};
 
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
   const { user, isAdmin, refreshAdminStatus } = useAuth();
@@ -116,7 +159,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
   const [isResponding, setIsResponding] = useState(false);
 
   // Users state
-  const [usersList, setUsersList] = useState<UserWithLoginSummary[]>([]);
+  const [usersList, setUsersList] = useState<AdminUserWithDetails[]>([]);
+  const [grantingProUserId, setGrantingProUserId] = useState<string | null>(null);
+  const [showGrantProModal, setShowGrantProModal] = useState(false);
+  const [grantProTarget, setGrantProTarget] = useState<{ userId: string; email: string } | null>(null);
+  const [grantProExpiry, setGrantProExpiry] = useState<string>('');
+  const [grantProNote, setGrantProNote] = useState<string>('');
+  const [grantProPermanent, setGrantProPermanent] = useState(true);
   const [usersLoading, setUsersLoading] = useState(false);
   const [updatingUserId, setUpdatingUserId] = useState<string | null>(null);
   const [showAddUserModal, setShowAddUserModal] = useState(false);
@@ -329,13 +378,62 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
   const loadUsers = async () => {
     setUsersLoading(true);
     try {
-      const users = await getAllUsersWithLoginSummary();
+      const users = await getAllUsersWithDetails();
       setUsersList(users);
     } catch (err) {
       console.error('Failed to load users:', err);
       setMessage({ type: 'error', text: 'Failed to load users.' });
     } finally {
       setUsersLoading(false);
+    }
+  };
+
+  const handleGrantPro = async () => {
+    if (!grantProTarget) return;
+
+    setGrantingProUserId(grantProTarget.userId);
+    try {
+      const expiresAt = grantProPermanent ? null : grantProExpiry || null;
+      const success = await grantProAccess(
+        grantProTarget.userId,
+        expiresAt,
+        grantProNote || null
+      );
+
+      if (success) {
+        setMessage({ type: 'success', text: `Pro access granted to ${grantProTarget.email}` });
+        setShowGrantProModal(false);
+        setGrantProTarget(null);
+        setGrantProExpiry('');
+        setGrantProNote('');
+        setGrantProPermanent(true);
+        await loadUsers();
+      } else {
+        setMessage({ type: 'error', text: 'Failed to grant Pro access.' });
+      }
+    } catch (err) {
+      setMessage({ type: 'error', text: 'Failed to grant Pro access.' });
+    } finally {
+      setGrantingProUserId(null);
+    }
+  };
+
+  const handleRevokePro = async (userId: string, email: string) => {
+    if (!confirm(`Revoke Pro access from ${email}?`)) return;
+
+    setGrantingProUserId(userId);
+    try {
+      const success = await revokeProAccess(userId);
+      if (success) {
+        setMessage({ type: 'success', text: `Pro access revoked from ${email}` });
+        await loadUsers();
+      } else {
+        setMessage({ type: 'error', text: 'Failed to revoke Pro access.' });
+      }
+    } catch (err) {
+      setMessage({ type: 'error', text: 'Failed to revoke Pro access.' });
+    } finally {
+      setGrantingProUserId(null);
     }
   };
 
@@ -1504,6 +1602,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
             <div className="space-y-3">
               {usersList.map((userItem) => {
                 const isUserSuperAdmin = isSuperAdmin(userItem.email);
+                const subDisplay = getSubscriptionDisplay(userItem.subscription);
+                const hasAdminGrant = userItem.subscription?.adminGrantedPro;
                 return (
                   <div key={userItem.userId} className="bg-white rounded-xl border border-slate-200 p-4">
                     {/* User header row */}
@@ -1524,6 +1624,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
                           <div className="flex items-center gap-2 flex-wrap">
                             <span className="font-medium text-slate-800 truncate">
                               {userItem.fullName || 'Unknown'}
+                            </span>
+                            {/* Subscription Badge */}
+                            <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full ${subDisplay.color}`}>
+                              {subDisplay.icon}
+                              {subDisplay.label}
                             </span>
                             {userItem.isAdmin || isUserSuperAdmin ? (
                               <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-emerald-100 text-emerald-700 text-xs font-medium rounded-full">
@@ -1550,6 +1655,35 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
 
                       {/* Actions */}
                       <div className="flex items-center gap-2 flex-shrink-0">
+                        {/* Grant/Revoke Pro Button */}
+                        {currentUserIsSuperAdmin && (
+                          hasAdminGrant ? (
+                            <button
+                              onClick={() => handleRevokePro(userItem.userId, userItem.email)}
+                              disabled={grantingProUserId === userItem.userId}
+                              className="p-1.5 text-purple-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                              title="Revoke Pro access"
+                            >
+                              {grantingProUserId === userItem.userId ? (
+                                <Loader2 size={16} className="animate-spin" />
+                              ) : (
+                                <Crown size={16} />
+                              )}
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => {
+                                setGrantProTarget({ userId: userItem.userId, email: userItem.email });
+                                setShowGrantProModal(true);
+                              }}
+                              className="p-1.5 text-slate-400 hover:text-purple-600 hover:bg-purple-50 rounded-lg transition-colors"
+                              title="Grant Pro access"
+                            >
+                              <Crown size={16} />
+                            </button>
+                          )
+                        )}
+
                         {/* Reset Password Button */}
                         <button
                           onClick={() => handleResetPassword(userItem.email, userItem.userId)}
@@ -1608,6 +1742,28 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
                         )}
                       </div>
                     </div>
+
+                    {/* User Stats Row */}
+                    {userItem.stats && (
+                      <div className="flex items-center gap-4 mt-3 pt-3 border-t border-slate-100 text-xs text-slate-500">
+                        <span className="flex items-center gap-1">
+                          <BookOpen size={12} />
+                          {userItem.stats.recipeCount} recipes
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Calendar size={12} />
+                          {userItem.stats.mealPlanCount} plans
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Upload size={12} />
+                          {userItem.stats.mediaUploadCount} uploads
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <HardDrive size={12} />
+                          {formatBytes(userItem.stats.storageUsedBytes)}
+                        </span>
+                      </div>
+                    )}
 
                     {/* Login History */}
                     <UserLoginHistory
@@ -1746,6 +1902,127 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
                       <>
                         <UserPlus size={18} />
                         Create User
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Grant Pro Modal */}
+          {showGrantProModal && grantProTarget && (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-2xl max-w-md w-full shadow-xl">
+                <div className="flex items-center justify-between p-6 border-b border-slate-200">
+                  <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                    <Crown size={20} className="text-purple-600" />
+                    Grant Pro Access
+                  </h3>
+                  <button
+                    onClick={() => {
+                      setShowGrantProModal(false);
+                      setGrantProTarget(null);
+                      setGrantProExpiry('');
+                      setGrantProNote('');
+                      setGrantProPermanent(true);
+                    }}
+                    className="p-2 hover:bg-slate-100 rounded-full transition-colors"
+                  >
+                    <X size={20} className="text-slate-400" />
+                  </button>
+                </div>
+
+                <div className="p-6 space-y-4">
+                  <p className="text-slate-600">
+                    Grant Pro access to <span className="font-medium text-slate-800">{grantProTarget.email}</span>
+                  </p>
+
+                  {/* Duration */}
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      Duration
+                    </label>
+                    <div className="flex gap-4">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          checked={grantProPermanent}
+                          onChange={() => setGrantProPermanent(true)}
+                          className="text-purple-600 focus:ring-purple-500"
+                        />
+                        <span className="text-slate-700">Permanent</span>
+                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          checked={!grantProPermanent}
+                          onChange={() => setGrantProPermanent(false)}
+                          className="text-purple-600 focus:ring-purple-500"
+                        />
+                        <span className="text-slate-700">Until date</span>
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Expiry Date */}
+                  {!grantProPermanent && (
+                    <div>
+                      <label className="block text-sm font-medium text-slate-700 mb-2">
+                        Expires On
+                      </label>
+                      <input
+                        type="date"
+                        value={grantProExpiry}
+                        onChange={(e) => setGrantProExpiry(e.target.value)}
+                        min={new Date().toISOString().split('T')[0]}
+                        className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none"
+                      />
+                    </div>
+                  )}
+
+                  {/* Note */}
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">
+                      Note (optional)
+                    </label>
+                    <input
+                      type="text"
+                      value={grantProNote}
+                      onChange={(e) => setGrantProNote(e.target.value)}
+                      placeholder="e.g., Beta tester, Employee, etc."
+                      className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-purple-500 outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-3 p-6 border-t border-slate-200 bg-slate-50 rounded-b-2xl">
+                  <button
+                    onClick={() => {
+                      setShowGrantProModal(false);
+                      setGrantProTarget(null);
+                      setGrantProExpiry('');
+                      setGrantProNote('');
+                      setGrantProPermanent(true);
+                    }}
+                    className="px-5 py-2.5 text-slate-600 hover:bg-slate-200 rounded-xl font-medium transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleGrantPro}
+                    disabled={grantingProUserId !== null || (!grantProPermanent && !grantProExpiry)}
+                    className="flex items-center gap-2 px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {grantingProUserId ? (
+                      <>
+                        <Loader2 size={18} className="animate-spin" />
+                        Granting...
+                      </>
+                    ) : (
+                      <>
+                        <Crown size={18} />
+                        Grant Pro
                       </>
                     )}
                   </button>
