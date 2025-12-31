@@ -66,3 +66,19 @@ verify_jwt = true
 # Stripe webhook needs to accept unauthenticated requests (uses Stripe signature verification instead)
 [functions.stripe-webhook]
 verify_jwt = false
+
+# Portal/checkout functions do their own auth verification
+[functions.create-portal]
+verify_jwt = false
+
+[functions.create-checkout]
+verify_jwt = false
+
+[functions.sync-subscription]
+verify_jwt = false
+
+[functions.pause-subscription]
+verify_jwt = false
+
+[functions.cancel-subscription]
+verify_jwt = false
