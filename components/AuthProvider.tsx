@@ -4,6 +4,11 @@ import { supabase, onAuthStateChange, isSupabaseConfigured } from '../services/a
 import { checkIsAdmin, isSuperAdmin } from '../services/adminService';
 import { recordLogin } from '../services/loginHistoryService';
 
+// Debug: Log URL immediately when module loads (before any React code runs)
+console.log('[AuthProvider] Module loaded. URL:', window.location.href);
+console.log('[AuthProvider] Search params:', window.location.search);
+console.log('[AuthProvider] Hash:', window.location.hash);
+
 // Check if current URL is an OAuth callback that needs processing
 const isOAuthCallback = (): boolean => {
   const hash = window.location.hash;
@@ -11,14 +16,17 @@ const isOAuthCallback = (): boolean => {
 
   // Check for OAuth tokens in hash (implicit flow)
   if (hash && (hash.includes('access_token=') || hash.includes('error='))) {
+    console.log('[AuthProvider] Detected OAuth callback via hash');
     return true;
   }
 
   // Check for PKCE code in query params
   if (search && search.includes('code=')) {
+    console.log('[AuthProvider] Detected OAuth callback via code param');
     return true;
   }
 
+  console.log('[AuthProvider] Not an OAuth callback');
   return false;
 };
 
