@@ -30,7 +30,8 @@ import {
   resumeSubscription,
   getCancelOffer,
   acceptCancelOffer,
-  cancelSubscription
+  cancelSubscription,
+  cancelTrial
 } from '../services/subscriptionService';
 import type { SubscriptionState, SubscriptionConfig, BillingInterval } from '../types';
 
@@ -180,16 +181,23 @@ const SubscriptionManager: React.FC<SubscriptionManagerProps> = ({ onRefresh }) 
     setCancelReason('');
     setShowCancelModal(true);
 
-    // Pre-fetch the cancel offer
-    const offer = await getCancelOffer();
-    setCancelOffer(offer);
+    // Pre-fetch the cancel offer (only for Stripe subscriptions, not trials)
+    const hasStripe = !!subscriptionState?.subscription?.stripeSubscriptionId;
+    if (hasStripe) {
+      const offer = await getCancelOffer();
+      setCancelOffer(offer);
+    } else {
+      setCancelOffer(null);
+    }
   };
 
   const handleCancelNext = () => {
-    if (cancelOffer?.offerAvailable) {
-      setCancelStep('offer');
-    } else {
+    // Skip offer step for trial users
+    const hasStripe = !!subscriptionState?.subscription?.stripeSubscriptionId;
+    if (!hasStripe || !cancelOffer?.offerAvailable) {
       setCancelStep('confirm');
+    } else {
+      setCancelStep('offer');
     }
   };
 
@@ -218,18 +226,30 @@ const SubscriptionManager: React.FC<SubscriptionManagerProps> = ({ onRefresh }) 
     setCancelling(true);
     setError(null);
     try {
-      const result = await cancelSubscription(cancelReason);
+      const hasStripe = !!subscriptionState?.subscription?.stripeSubscriptionId;
+      const isTrial = subscriptionState?.isTrialing && !hasStripe;
+
+      let result;
+      if (isTrial) {
+        result = await cancelTrial(cancelReason);
+      } else {
+        result = await cancelSubscription(cancelReason);
+      }
+
       if (result.success) {
-        setSuccessMessage('Subscription cancelled. You will retain access until the end of your billing period.');
+        const message = isTrial
+          ? 'Trial cancelled. You are now on the free plan.'
+          : 'Subscription cancelled. You will retain access until the end of your billing period.';
+        setSuccessMessage(message);
         setShowCancelModal(false);
         await loadSubscription();
         onRefresh?.();
       } else {
-        setError(result.message || 'Failed to cancel subscription');
+        setError(result.message || 'Failed to cancel');
       }
     } catch (err) {
       console.error('Cancel error:', err);
-      setError('Failed to cancel subscription');
+      setError('Failed to cancel');
     } finally {
       setCancelling(false);
     }
@@ -429,6 +449,19 @@ const SubscriptionManager: React.FC<SubscriptionManagerProps> = ({ onRefresh }) 
               >
                 <X size={16} />
                 Cancel Subscription
+              </button>
+            </div>
+          )}
+
+          {/* Cancel trial option for trialing users */}
+          {isTrialing && !hasStripeSubscription && (
+            <div className="mt-4 pt-4 border-t border-slate-200">
+              <button
+                onClick={handleOpenCancelModal}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-600 hover:text-red-700 border border-red-200 hover:border-red-300 rounded-lg transition-colors"
+              >
+                <X size={16} />
+                Cancel Trial
               </button>
             </div>
           )}
@@ -689,49 +722,68 @@ const SubscriptionManager: React.FC<SubscriptionManagerProps> = ({ onRefresh }) 
               </>
             )}
 
-            {cancelStep === 'confirm' && (
-              <>
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="p-2 bg-red-100 rounded-lg">
-                    <X size={24} className="text-red-600" />
+            {cancelStep === 'confirm' && (() => {
+              const hasStripe = !!subscriptionState?.subscription?.stripeSubscriptionId;
+              const isTrial = subscriptionState?.isTrialing && !hasStripe;
+              return (
+                <>
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="p-2 bg-red-100 rounded-lg">
+                      <X size={24} className="text-red-600" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-lg text-slate-800">
+                        {isTrial ? 'Cancel Trial' : 'Confirm Cancellation'}
+                      </h3>
+                      <p className="text-sm text-slate-500">This action cannot be undone</p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="font-semibold text-lg text-slate-800">Confirm Cancellation</h3>
-                    <p className="text-sm text-slate-500">This action cannot be undone</p>
-                  </div>
-                </div>
 
-                <div className="bg-slate-50 rounded-lg p-4 mb-6">
-                  <p className="text-sm text-slate-600 mb-2">
-                    Your subscription will be cancelled at the end of your current billing period.
-                  </p>
-                  <p className="text-sm text-slate-600">
-                    You will continue to have access to Pro features until then.
-                  </p>
-                </div>
-
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => setShowCancelModal(false)}
-                    className="flex-1 px-4 py-2 border border-slate-200 rounded-lg text-slate-700 font-medium hover:bg-slate-50 transition-colors"
-                  >
-                    Keep Subscription
-                  </button>
-                  <button
-                    onClick={handleConfirmCancel}
-                    disabled={cancelling}
-                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
-                  >
-                    {cancelling ? (
-                      <Loader2 size={16} className="animate-spin" />
+                  <div className="bg-slate-50 rounded-lg p-4 mb-6">
+                    {isTrial ? (
+                      <>
+                        <p className="text-sm text-slate-600 mb-2">
+                          Your trial will end immediately and you will be moved to the free plan.
+                        </p>
+                        <p className="text-sm text-slate-600">
+                          You can upgrade to Pro at any time to regain access to premium features.
+                        </p>
+                      </>
                     ) : (
-                      <X size={16} />
+                      <>
+                        <p className="text-sm text-slate-600 mb-2">
+                          Your subscription will be cancelled at the end of your current billing period.
+                        </p>
+                        <p className="text-sm text-slate-600">
+                          You will continue to have access to Pro features until then.
+                        </p>
+                      </>
                     )}
-                    Cancel Subscription
-                  </button>
-                </div>
-              </>
-            )}
+                  </div>
+
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => setShowCancelModal(false)}
+                      className="flex-1 px-4 py-2 border border-slate-200 rounded-lg text-slate-700 font-medium hover:bg-slate-50 transition-colors"
+                    >
+                      {isTrial ? 'Keep Trial' : 'Keep Subscription'}
+                    </button>
+                    <button
+                      onClick={handleConfirmCancel}
+                      disabled={cancelling}
+                      className="flex-1 flex items-center justify-center gap-2 px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
+                    >
+                      {cancelling ? (
+                        <Loader2 size={16} className="animate-spin" />
+                      ) : (
+                        <X size={16} />
+                      )}
+                      {isTrial ? 'Cancel Trial' : 'Cancel Subscription'}
+                    </button>
+                  </div>
+                </>
+              );
+            })()}
           </div>
         </div>
       )}

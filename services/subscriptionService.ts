@@ -536,6 +536,40 @@ export const cancelSubscription = async (reason?: string): Promise<{ success: bo
   }
 };
 
+/**
+ * Cancel trial (ends trial immediately, reverts to free tier)
+ */
+export const cancelTrial = async (reason?: string): Promise<{ success: boolean; message?: string }> => {
+  if (!isSupabaseConfigured()) return { success: false, message: 'Not configured' };
+
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return { success: false, message: 'Not authenticated' };
+
+    // Update subscription to free tier
+    const { error } = await supabase
+      .from('user_subscriptions')
+      .update({
+        tier: 'free',
+        status: 'active',
+        trial_started_at: null,
+        trial_ends_at: null,
+      })
+      .eq('user_id', user.id);
+
+    if (error) {
+      console.error('Error cancelling trial:', error);
+      return { success: false, message: error.message };
+    }
+
+    console.log(`User ${user.id} cancelled trial. Reason: ${reason || 'Not provided'}`);
+    return { success: true, message: 'Trial cancelled. You are now on the free plan.' };
+  } catch (err) {
+    console.error('Error cancelling trial:', err);
+    return { success: false, message: 'Failed to cancel trial' };
+  }
+};
+
 // ============================================
 // HELPERS
 // ============================================
