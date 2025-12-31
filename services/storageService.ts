@@ -411,9 +411,13 @@ export const loadConfig = async (fallback: MealConfig): Promise<MealConfig> => {
     .from('meal_configs')
     .select('*')
     .eq('user_id', user.id)
-    .single();
+    .maybeSingle();
 
-  if (error || !data) return loadConfigLocal(fallback);
+  if (error) {
+    console.error('Error loading config:', error);
+    return loadConfigLocal(fallback);
+  }
+  if (!data) return loadConfigLocal(fallback);
 
   return {
     days: data.days,
@@ -460,9 +464,13 @@ export const loadPreferences = async (fallback: UserPreferences): Promise<UserPr
     .from('user_preferences')
     .select('*')
     .eq('user_id', user.id)
-    .single();
+    .maybeSingle();
 
-  if (error || !data) return loadPreferencesLocal(fallback);
+  if (error) {
+    console.error('Error loading preferences:', error);
+    return loadPreferencesLocal(fallback);
+  }
+  if (!data) return loadPreferencesLocal(fallback);
 
   return {
     dietaryRestrictions: data.dietary_restrictions,
@@ -563,9 +571,13 @@ export const loadCheckedItems = async (planId: string | null): Promise<Record<st
     .select('checked_items')
     .eq('user_id', user.id)
     .eq('plan_id', planId)
-    .single();
+    .maybeSingle();
 
-  if (error || !data) return localData;
+  if (error) {
+    console.error('Error loading checked items:', error);
+    return localData;
+  }
+  if (!data) return localData;
   return (data.checked_items as Record<string, boolean>) || {};
 };
 
@@ -576,12 +588,16 @@ export const loadCheckedItems = async (planId: string | null): Promise<Record<st
 export const getCachedImage = async (mealName: string): Promise<string | null> => {
   if (!isSupabaseConfigured()) return null;
 
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from('meal_image_cache')
     .select('image_data')
     .eq('meal_name', mealName)
-    .single();
+    .maybeSingle();
 
+  if (error) {
+    console.error('Error loading cached image:', error);
+    return null;
+  }
   return data?.image_data || null;
 };
 

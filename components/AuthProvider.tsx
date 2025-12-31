@@ -5,34 +5,22 @@ import { checkIsAdmin, isSuperAdmin } from '../services/adminService';
 import { recordLogin } from '../services/loginHistoryService';
 
 // Capture URL state immediately at module load (before Supabase can modify it)
-const INITIAL_URL = window.location.href;
-const INITIAL_SEARCH = window.location.search;
+// This is necessary because Supabase's detectSessionInUrl may process and clear the URL
 const INITIAL_HASH = window.location.hash;
 const INITIAL_CODE = new URLSearchParams(window.location.search).get('code');
 
-console.log('[AuthProvider] Module loaded. URL:', INITIAL_URL);
-console.log('[AuthProvider] Search params:', INITIAL_SEARCH);
-console.log('[AuthProvider] Hash:', INITIAL_HASH);
-console.log('[AuthProvider] Code param:', INITIAL_CODE);
-
 // Check if this was an OAuth callback (using captured initial state)
 const isOAuthCallback = (): boolean => {
-  // Use the captured initial values, not current window.location
-  // Because Supabase may have already processed and cleared the URL
-
   // Check for OAuth tokens in hash (implicit flow)
   if (INITIAL_HASH && (INITIAL_HASH.includes('access_token=') || INITIAL_HASH.includes('error='))) {
-    console.log('[AuthProvider] Detected OAuth callback via hash');
     return true;
   }
 
   // Check for PKCE code in query params
   if (INITIAL_CODE) {
-    console.log('[AuthProvider] Detected OAuth callback via code param:', INITIAL_CODE);
     return true;
   }
 
-  console.log('[AuthProvider] Not an OAuth callback');
   return false;
 };
 
@@ -141,7 +129,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     // Subscribe to auth changes
     const unsubscribe = onAuthStateChange(async (newSession) => {
-      console.log('Auth state changed:', newSession?.user?.id ? 'logged in' : 'logged out');
       setSession(newSession);
       setUser(newSession?.user ?? null);
 
@@ -167,24 +154,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       try {
         // If this is an OAuth callback, explicitly exchange the code
         if (processingOAuth) {
-          console.log('Processing OAuth callback...');
-
           // Use the code captured at module load time
           const code = getInitialOAuthCode();
 
           if (code) {
-            console.log('Exchanging OAuth code for session:', code);
             // exchangeCodeForSession handles the PKCE code exchange
             const { data, error } = await supabase.auth.exchangeCodeForSession(code);
 
             if (error) {
-              console.error('Error exchanging code:', error);
+              console.error('OAuth code exchange failed:', error);
               setLoading(false);
               return;
             }
 
             if (data.session) {
-              console.log('OAuth session established');
               setSession(data.session);
               setUser(data.session.user);
 
@@ -203,7 +186,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
         // Normal session check (not OAuth callback)
         const { data: { session } } = await supabase.auth.getSession();
-        console.log('Initial session check:', session?.user?.id ? 'found' : 'none');
         setSession(session);
         setUser(session?.user ?? null);
 
