@@ -20,8 +20,13 @@ const COMMON_PANTRY_ITEMS = [
   "Salt", "Pepper", "Olive Oil", "Rice", "Pasta", "Flour", "Sugar", "Milk", "Butter", "Eggs", "Garlic", "Onions"
 ];
 
+const COMMON_STAPLE_ITEMS = [
+  "Salt", "Pepper", "Olive Oil", "Flour", "Sugar", "Rice", "Pasta", "Butter", "Soy Sauce", "Vinegar"
+];
+
 const PantryManager: React.FC<PantryManagerProps> = ({ items, setItems, onNext, isSettingsMode = false, hasPro = false, onUpgradeClick }) => {
   const [newItem, setNewItem] = useState('');
+  const [newStapleItem, setNewStapleItem] = useState('');
   const [showScanner, setShowScanner] = useState(false);
   const [showVideoRecorder, setShowVideoRecorder] = useState(false);
   const [showLiveDictation, setShowLiveDictation] = useState(false);
@@ -43,6 +48,25 @@ const PantryManager: React.FC<PantryManagerProps> = ({ items, setItems, onNext, 
   const addCommonItem = (name: string) => {
     if (!items.find(i => i.name === name)) {
       setItems([...items, { id: Date.now().toString(), name }]);
+    }
+  };
+
+  const addStapleItem = () => {
+    if (newStapleItem.trim()) {
+      setItems([...items, { id: Date.now().toString(), name: newStapleItem.trim(), isStaple: true }]);
+      setNewStapleItem('');
+    }
+  };
+
+  const addCommonStaple = (name: string) => {
+    if (!items.find(i => i.name === name)) {
+      setItems([...items, { id: Date.now().toString(), name, isStaple: true }]);
+    }
+  };
+
+  const handleStapleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      addStapleItem();
     }
   };
 
@@ -161,67 +185,90 @@ const PantryManager: React.FC<PantryManagerProps> = ({ items, setItems, onNext, 
             </button>
 
             {/* Additional input methods - Pro features */}
-            <div className="grid grid-cols-2 gap-2 mb-4">
-              {/* Video Scan - Pro */}
-              <button
-                onClick={() => hasPro ? setShowVideoRecorder(true) : onUpgradeClick?.()}
-                className={`py-2.5 rounded-xl font-medium flex items-center justify-center gap-2 transition-colors border relative ${
-                  hasPro
-                    ? 'bg-red-50 hover:bg-red-100 text-red-700 border-red-200'
-                    : 'bg-slate-100 text-slate-400 border-slate-200 cursor-pointer'
-                }`}
-              >
-                <Video size={18} />
-                <span className="text-sm">Video Scan</span>
-                {!hasPro && <Lock size={14} className="ml-1" />}
-                {hasPro && (
-                  <span className="absolute -top-1.5 -right-1.5 px-1 py-0.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[8px] font-bold rounded-full flex items-center gap-0.5">
-                    <Crown size={8} />
-                    PRO
-                  </span>
-                )}
-              </button>
+            {!hasPro && (
+              <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl p-3 mb-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Crown size={16} className="text-amber-600" />
+                  <span className="text-sm font-semibold text-amber-800">Pro Features</span>
+                </div>
+                <p className="text-xs text-amber-700 mb-3">
+                  Upgrade to Pro to unlock video scanning, voice dictation, and audio upload for faster pantry management.
+                </p>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    onClick={() => onUpgradeClick?.()}
+                    className="py-2 px-2 rounded-lg bg-white/60 border border-amber-200 text-amber-700 text-xs font-medium flex flex-col items-center gap-1 hover:bg-white transition-colors"
+                  >
+                    <Video size={16} />
+                    <span>Video</span>
+                  </button>
+                  <button
+                    onClick={() => onUpgradeClick?.()}
+                    className="py-2 px-2 rounded-lg bg-white/60 border border-amber-200 text-amber-700 text-xs font-medium flex flex-col items-center gap-1 hover:bg-white transition-colors"
+                  >
+                    <Mic size={16} />
+                    <span>Voice</span>
+                  </button>
+                  <button
+                    onClick={() => onUpgradeClick?.()}
+                    className="py-2 px-2 rounded-lg bg-white/60 border border-amber-200 text-amber-700 text-xs font-medium flex flex-col items-center gap-1 hover:bg-white transition-colors"
+                  >
+                    <Upload size={16} />
+                    <span>Audio</span>
+                  </button>
+                </div>
+                <button
+                  onClick={() => onUpgradeClick?.()}
+                  className="w-full mt-3 py-2 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white rounded-lg text-sm font-semibold flex items-center justify-center gap-2 transition-colors"
+                >
+                  <Lock size={14} />
+                  Upgrade to Pro
+                </button>
+              </div>
+            )}
 
-              {/* Talk to Add - Pro */}
-              <button
-                onClick={() => hasPro ? setShowLiveDictation(true) : onUpgradeClick?.()}
-                className={`py-2.5 rounded-xl font-medium flex items-center justify-center gap-2 transition-colors border relative ${
-                  hasPro
-                    ? 'bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-200'
-                    : 'bg-slate-100 text-slate-400 border-slate-200 cursor-pointer'
-                }`}
-              >
-                <Mic size={18} />
-                <span className="text-sm">Talk to Add</span>
-                {!hasPro && <Lock size={14} className="ml-1" />}
-                {hasPro && (
+            {hasPro && (
+              <div className="grid grid-cols-2 gap-2 mb-4">
+                {/* Video Scan - Pro */}
+                <button
+                  onClick={() => setShowVideoRecorder(true)}
+                  className="py-2.5 rounded-xl font-medium flex items-center justify-center gap-2 transition-colors border relative bg-red-50 hover:bg-red-100 text-red-700 border-red-200"
+                >
+                  <Video size={18} />
+                  <span className="text-sm">Video Scan</span>
                   <span className="absolute -top-1.5 -right-1.5 px-1 py-0.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[8px] font-bold rounded-full flex items-center gap-0.5">
                     <Crown size={8} />
                     PRO
                   </span>
-                )}
-              </button>
+                </button>
 
-              {/* Upload Audio - Pro */}
-              <button
-                onClick={() => hasPro ? setShowAudioRecorder(true) : onUpgradeClick?.()}
-                className={`col-span-2 py-2.5 rounded-xl font-medium flex items-center justify-center gap-2 transition-colors border relative ${
-                  hasPro
-                    ? 'bg-orange-50 hover:bg-orange-100 text-orange-700 border-orange-200'
-                    : 'bg-slate-100 text-slate-400 border-slate-200 cursor-pointer'
-                }`}
-              >
-                <Upload size={18} />
-                <span className="text-sm">Upload Audio</span>
-                {!hasPro && <Lock size={14} className="ml-1" />}
-                {hasPro && (
+                {/* Talk to Add - Pro */}
+                <button
+                  onClick={() => setShowLiveDictation(true)}
+                  className="py-2.5 rounded-xl font-medium flex items-center justify-center gap-2 transition-colors border relative bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-200"
+                >
+                  <Mic size={18} />
+                  <span className="text-sm">Talk to Add</span>
                   <span className="absolute -top-1.5 -right-1.5 px-1 py-0.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[8px] font-bold rounded-full flex items-center gap-0.5">
                     <Crown size={8} />
                     PRO
                   </span>
-                )}
-              </button>
-            </div>
+                </button>
+
+                {/* Upload Audio - Pro */}
+                <button
+                  onClick={() => setShowAudioRecorder(true)}
+                  className="col-span-2 py-2.5 rounded-xl font-medium flex items-center justify-center gap-2 transition-colors border relative bg-orange-50 hover:bg-orange-100 text-orange-700 border-orange-200"
+                >
+                  <Upload size={18} />
+                  <span className="text-sm">Upload Audio</span>
+                  <span className="absolute -top-1.5 -right-1.5 px-1 py-0.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[8px] font-bold rounded-full flex items-center gap-0.5">
+                    <Crown size={8} />
+                    PRO
+                  </span>
+                </button>
+              </div>
+            )}
 
             <div className="flex gap-2">
               <input
@@ -301,14 +348,54 @@ const PantryManager: React.FC<PantryManagerProps> = ({ items, setItems, onNext, 
           <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">
             <p className="text-amber-800 text-sm">
               <Star size={16} className="inline mr-1" />
-              Staples are items you always keep in stock. Check the box to add them to your shopping list when you need to restock.
+              Staples are items you always keep in stock. Check the box when you need to restock them.
             </p>
+          </div>
+
+          {/* Add Staple Item */}
+          <div className="mb-4">
+            <div className="flex gap-2 mb-3">
+              <input
+                type="text"
+                value={newStapleItem}
+                onChange={(e) => setNewStapleItem(e.target.value)}
+                onKeyDown={handleStapleKeyDown}
+                placeholder="Add a staple item (e.g., Soy Sauce)"
+                className="flex-1 px-4 py-3 rounded-lg border border-slate-300 focus:border-amber-500 focus:ring-2 focus:ring-amber-200 outline-none transition-all"
+              />
+              <button
+                onClick={addStapleItem}
+                className="bg-amber-500 hover:bg-amber-600 text-white px-6 py-3 rounded-lg font-medium transition-colors flex items-center gap-2"
+              >
+                <Plus size={20} />
+                Add
+              </button>
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-2">Quick Add Staples</p>
+              <div className="flex flex-wrap gap-2">
+                {COMMON_STAPLE_ITEMS.map(item => (
+                  <button
+                    key={item}
+                    onClick={() => addCommonStaple(item)}
+                    disabled={items.some(i => i.name === item)}
+                    className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors border ${
+                      items.some(i => i.name === item)
+                        ? 'bg-slate-100 text-slate-400 border-slate-200 cursor-default'
+                        : 'bg-white text-amber-600 border-amber-200 hover:bg-amber-50 hover:border-amber-300'
+                    }`}
+                  >
+                    + {item}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
 
           {/* Shopping List Summary */}
           {staplesNeedingRestock.length > 0 && (
             <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-4">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between flex-wrap gap-3">
                 <div>
                   <h4 className="font-medium text-red-800 flex items-center gap-2">
                     <ShoppingCart size={18} />
@@ -334,7 +421,7 @@ const PantryManager: React.FC<PantryManagerProps> = ({ items, setItems, onNext, 
               <div className="flex flex-col items-center justify-center h-full text-slate-400 py-8">
                 <Star size={40} className="mb-2 opacity-20" />
                 <p>No staples yet.</p>
-                <p className="text-sm mt-1">Click the star icon on pantry items to mark them as staples.</p>
+                <p className="text-sm mt-1">Add items above or click the star on pantry items.</p>
               </div>
             ) : (
               <div className="space-y-2">
@@ -346,6 +433,7 @@ const PantryManager: React.FC<PantryManagerProps> = ({ items, setItems, onNext, 
                         checked={item.needsRestock || false}
                         onChange={() => toggleRestock(item.id, item.needsRestock || false)}
                         className="w-5 h-5 rounded border-slate-300 text-red-600 focus:ring-red-500"
+                        title="Check when you need to restock"
                       />
                       <span className={`text-slate-700 ${item.needsRestock ? 'line-through text-slate-400' : ''}`}>
                         {item.name}
@@ -359,14 +447,15 @@ const PantryManager: React.FC<PantryManagerProps> = ({ items, setItems, onNext, 
                     <div className="flex items-center gap-2">
                       <button
                         onClick={() => toggleStaple(item.id, item.isStaple || false)}
-                        className="text-amber-500 hover:text-amber-600"
-                        title="Remove from staples"
+                        className="text-amber-500 hover:text-slate-400"
+                        title="Move to pantry"
                       >
                         <Star size={16} fill="currentColor" />
                       </button>
                       <button
                         onClick={() => removeItem(item.id)}
                         className="text-slate-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
+                        title="Remove item"
                       >
                         <Trash2 size={16} />
                       </button>
