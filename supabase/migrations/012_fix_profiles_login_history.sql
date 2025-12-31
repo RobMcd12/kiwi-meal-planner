@@ -53,19 +53,42 @@ DROP POLICY IF EXISTS "Admins can update all profiles" ON public.profiles;
 DROP POLICY IF EXISTS "Super admin can view all profiles" ON public.profiles;
 DROP POLICY IF EXISTS "Super admin can update all profiles" ON public.profiles;
 
--- Add RLS policy for super admin (rob@unicloud.co.nz) to always have access
--- This uses a direct email check which doesn't require querying the profiles table
+-- Create a security definer function to check admin status
+-- This bypasses RLS and prevents infinite recursion
+CREATE OR REPLACE FUNCTION public.is_admin_user(user_id UUID)
+RETURNS BOOLEAN AS $$
+DECLARE
+    user_email TEXT;
+    user_is_admin BOOLEAN;
+BEGIN
+    -- Get user email from auth.users
+    SELECT email INTO user_email FROM auth.users WHERE id = user_id;
+
+    -- Super admin always has access
+    IF user_email = 'rob@unicloud.co.nz' THEN
+        RETURN TRUE;
+    END IF;
+
+    -- Check is_admin flag in profiles (direct query, bypasses RLS due to SECURITY DEFINER)
+    SELECT is_admin INTO user_is_admin FROM public.profiles WHERE id = user_id;
+
+    RETURN COALESCE(user_is_admin, FALSE);
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Add RLS policy for admins to view all profiles
+-- Uses the security definer function to avoid infinite recursion
 CREATE POLICY "Super admin can view all profiles" ON public.profiles
     FOR SELECT USING (
-        (SELECT email FROM auth.users WHERE id = auth.uid()) = 'rob@unicloud.co.nz'
-        OR EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND is_admin = true)
+        auth.uid() = id  -- Users can always see their own profile
+        OR public.is_admin_user(auth.uid())  -- Admins can see all profiles
     );
 
--- Add RLS policy for super admin and admins to update all profiles
+-- Add RLS policy for admins to update all profiles
 CREATE POLICY "Super admin can update all profiles" ON public.profiles
     FOR UPDATE USING (
-        (SELECT email FROM auth.users WHERE id = auth.uid()) = 'rob@unicloud.co.nz'
-        OR EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND is_admin = true)
+        auth.uid() = id  -- Users can update their own profile
+        OR public.is_admin_user(auth.uid())  -- Admins can update all profiles
     );
 
 -- Create index on email for faster lookups
@@ -107,11 +130,11 @@ DROP POLICY IF EXISTS "Service can insert login history" ON public.login_history
 CREATE POLICY "Users view own login history" ON public.login_history
     FOR SELECT USING (auth.uid() = user_id);
 
--- Admins can view all login history (including super admin by email)
+-- Admins can view all login history
+-- Uses the security definer function to avoid recursion issues
 CREATE POLICY "Admins view all login history" ON public.login_history
     FOR SELECT USING (
-        (SELECT email FROM auth.users WHERE id = auth.uid()) = 'rob@unicloud.co.nz'
-        OR EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND is_admin = true)
+        public.is_admin_user(auth.uid())
     );
 
 -- Service role can insert login history (for Edge Function)
