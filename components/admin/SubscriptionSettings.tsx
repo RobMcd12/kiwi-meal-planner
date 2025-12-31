@@ -11,10 +11,12 @@ import {
   Gift,
   Calendar,
   Search,
-  Check,
   X,
   Percent,
-  MessageSquare
+  MessageSquare,
+  CreditCard,
+  Shield,
+  Sliders
 } from 'lucide-react';
 import {
   getSubscriptionConfig,
@@ -31,7 +33,12 @@ interface SubscriptionSettingsProps {
   onMessage?: (message: { type: 'success' | 'error'; text: string }) => void;
 }
 
+type TabId = 'pricing' | 'access' | 'tiers';
+
 const SubscriptionSettings: React.FC<SubscriptionSettingsProps> = ({ onMessage }) => {
+  // Tab state
+  const [activeTab, setActiveTab] = useState<TabId>('pricing');
+
   // Config state
   const [config, setConfig] = useState<SubscriptionConfig | null>(null);
   const [configLoading, setConfigLoading] = useState(true);
@@ -52,6 +59,12 @@ const SubscriptionSettings: React.FC<SubscriptionSettingsProps> = ({ onMessage }
 
   // User search
   const [userSearch, setUserSearch] = useState('');
+
+  const tabs = [
+    { id: 'pricing' as TabId, label: 'Pricing', icon: DollarSign },
+    { id: 'access' as TabId, label: 'Access', icon: Shield },
+    { id: 'tiers' as TabId, label: 'Tier Management', icon: Sliders },
+  ];
 
   useEffect(() => {
     loadData();
@@ -133,6 +146,7 @@ const SubscriptionSettings: React.FC<SubscriptionSettingsProps> = ({ onMessage }
         setGrantExpiry('');
         setGrantNote('');
         setIsPermanent(true);
+        setUserSearch('');
       } else {
         onMessage?.({ type: 'error', text: 'Failed to grant Pro access' });
       }
@@ -201,18 +215,18 @@ const SubscriptionSettings: React.FC<SubscriptionSettingsProps> = ({ onMessage }
     );
   }
 
-  return (
-    <div className="space-y-8">
-      {/* Configuration Section */}
+  const renderPricingTab = () => (
+    <div className="space-y-6">
+      {/* Pricing */}
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
         <div className="p-6 border-b border-slate-200 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-slate-100 rounded-lg">
-              <Settings size={20} className="text-slate-600" />
+            <div className="p-2 bg-emerald-100 rounded-lg">
+              <DollarSign size={20} className="text-emerald-600" />
             </div>
             <div>
-              <h3 className="font-semibold text-slate-800">Subscription Configuration</h3>
-              <p className="text-sm text-slate-500">Manage pricing and trial settings</p>
+              <h3 className="font-semibold text-slate-800">Pricing Configuration</h3>
+              <p className="text-sm text-slate-500">Set subscription prices and discount rates</p>
             </div>
           </div>
           <button
@@ -226,101 +240,96 @@ const SubscriptionSettings: React.FC<SubscriptionSettingsProps> = ({ onMessage }
         </div>
 
         <div className="p-6 space-y-6">
-          {/* Trial Settings */}
+          {/* Pricing Grid */}
           <div>
-            <h4 className="text-sm font-semibold text-slate-700 uppercase tracking-wider mb-4 flex items-center gap-2">
-              <Clock size={16} />
-              Trial Settings
+            <h4 className="text-sm font-semibold text-slate-700 uppercase tracking-wider mb-4">
+              Subscription Prices
             </h4>
-            <div className="grid gap-4">
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Trial Period (days)
+            <div className="grid gap-4 md:grid-cols-3">
+              <div className="bg-slate-50 rounded-lg p-4">
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Weekly Price
                 </label>
-                <input
-                  type="number"
-                  value={config.trialPeriodDays}
-                  onChange={(e) => setConfig({ ...config, trialPeriodDays: parseInt(e.target.value) || 0 })}
-                  min="0"
-                  max="365"
-                  className="w-32 px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
-                />
+                <div className="flex items-center gap-2">
+                  <span className="text-slate-400">$</span>
+                  <input
+                    type="number"
+                    value={(config.priceWeeklyCents / 100).toFixed(2)}
+                    onChange={(e) => setConfig({ ...config, priceWeeklyCents: Math.round(parseFloat(e.target.value || '0') * 100) })}
+                    min="0"
+                    step="0.01"
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                  />
+                </div>
+                <p className="text-xs text-slate-400 mt-2">Per week</p>
+              </div>
+              <div className="bg-slate-50 rounded-lg p-4">
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Monthly Price
+                </label>
+                <div className="flex items-center gap-2">
+                  <span className="text-slate-400">$</span>
+                  <input
+                    type="number"
+                    value={(config.priceMonthlyCents / 100).toFixed(2)}
+                    onChange={(e) => setConfig({ ...config, priceMonthlyCents: Math.round(parseFloat(e.target.value || '0') * 100) })}
+                    min="0"
+                    step="0.01"
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                  />
+                </div>
+                <p className="text-xs text-slate-400 mt-2">Per month</p>
+              </div>
+              <div className="bg-slate-50 rounded-lg p-4">
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Yearly Price
+                </label>
+                <div className="flex items-center gap-2">
+                  <span className="text-slate-400">$</span>
+                  <input
+                    type="number"
+                    value={(config.priceYearlyCents / 100).toFixed(2)}
+                    onChange={(e) => setConfig({ ...config, priceYearlyCents: Math.round(parseFloat(e.target.value || '0') * 100) })}
+                    min="0"
+                    step="0.01"
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                  />
+                </div>
+                <p className="text-xs text-slate-400 mt-2">Per year</p>
               </div>
             </div>
           </div>
 
-          {/* Pricing */}
-          <div>
-            <h4 className="text-sm font-semibold text-slate-700 uppercase tracking-wider mb-4 flex items-center gap-2">
-              <DollarSign size={16} />
-              Pricing
-            </h4>
-            <div className="grid gap-4 md:grid-cols-3">
-              <div>
+          {/* Yearly Discount */}
+          <div className="bg-amber-50 rounded-lg p-4 border border-amber-200">
+            <div className="flex items-center gap-3">
+              <Percent size={20} className="text-amber-600" />
+              <div className="flex-1">
                 <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Weekly Price (cents)
+                  Yearly Discount Display
                 </label>
                 <div className="flex items-center gap-2">
                   <input
                     type="number"
-                    value={config.priceWeeklyCents}
-                    onChange={(e) => setConfig({ ...config, priceWeeklyCents: parseInt(e.target.value) || 0 })}
+                    value={config.yearlyDiscountPercent}
+                    onChange={(e) => setConfig({ ...config, yearlyDiscountPercent: parseInt(e.target.value) || 0 })}
                     min="0"
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                    max="100"
+                    className="w-20 px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
                   />
-                  <span className="text-sm text-slate-400">{formatPrice(config.priceWeeklyCents)}</span>
+                  <span className="text-sm text-slate-600">%</span>
                 </div>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Monthly Price (cents)
-                </label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="number"
-                    value={config.priceMonthlyCents}
-                    onChange={(e) => setConfig({ ...config, priceMonthlyCents: parseInt(e.target.value) || 0 })}
-                    min="0"
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
-                  />
-                  <span className="text-sm text-slate-400">{formatPrice(config.priceMonthlyCents)}</span>
-                </div>
+              <div className="bg-amber-100 px-3 py-1.5 rounded-full">
+                <span className="text-sm font-medium text-amber-700">Save {config.yearlyDiscountPercent}%</span>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-slate-700 mb-1">
-                  Yearly Price (cents)
-                </label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="number"
-                    value={config.priceYearlyCents}
-                    onChange={(e) => setConfig({ ...config, priceYearlyCents: parseInt(e.target.value) || 0 })}
-                    min="0"
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
-                  />
-                  <span className="text-sm text-slate-400">{formatPrice(config.priceYearlyCents)}</span>
-                </div>
-              </div>
-            </div>
-            <div className="mt-4">
-              <label className="block text-sm font-medium text-slate-700 mb-1">
-                Yearly Discount (%)
-              </label>
-              <input
-                type="number"
-                value={config.yearlyDiscountPercent}
-                onChange={(e) => setConfig({ ...config, yearlyDiscountPercent: parseInt(e.target.value) || 0 })}
-                min="0"
-                max="100"
-                className="w-32 px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
-              />
-              <p className="text-xs text-slate-400 mt-1">Shown to users as "Save {config.yearlyDiscountPercent}%"</p>
             </div>
           </div>
 
           {/* Stripe Price IDs */}
           <div>
-            <h4 className="text-sm font-semibold text-slate-700 uppercase tracking-wider mb-4">
+            <h4 className="text-sm font-semibold text-slate-700 uppercase tracking-wider mb-4 flex items-center gap-2">
+              <CreditCard size={16} />
               Stripe Price IDs
             </h4>
             <div className="grid gap-4">
@@ -362,107 +371,107 @@ const SubscriptionSettings: React.FC<SubscriptionSettingsProps> = ({ onMessage }
               </div>
             </div>
           </div>
-
-          {/* Free Tier Limits */}
-          <div>
-            <h4 className="text-sm font-semibold text-slate-700 uppercase tracking-wider mb-4 flex items-center gap-2">
-              <Users size={16} />
-              Free Tier Limits
-            </h4>
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
-                Max Recipes (Free Tier)
-              </label>
-              <input
-                type="number"
-                value={config.freeRecipeLimit}
-                onChange={(e) => setConfig({ ...config, freeRecipeLimit: parseInt(e.target.value) || 0 })}
-                min="0"
-                className="w-32 px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
-              />
-            </div>
-          </div>
-
-          {/* Cancel Offer Settings */}
-          <div>
-            <h4 className="text-sm font-semibold text-slate-700 uppercase tracking-wider mb-4 flex items-center gap-2">
-              <Percent size={16} />
-              Cancellation Retention Offer
-            </h4>
-            <div className="space-y-4">
-              <div className="flex items-center gap-3">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={config.cancelOfferEnabled}
-                    onChange={(e) => setConfig({ ...config, cancelOfferEnabled: e.target.checked })}
-                    className="w-4 h-4 text-emerald-600 rounded"
-                  />
-                  <span className="text-sm font-medium text-slate-700">Enable retention offer when users try to cancel</span>
-                </label>
-              </div>
-
-              {config.cancelOfferEnabled && (
-                <>
-                  <div className="grid gap-4 md:grid-cols-2">
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1">
-                        Discount (%)
-                      </label>
-                      <input
-                        type="number"
-                        value={config.cancelOfferDiscountPercent}
-                        onChange={(e) => setConfig({ ...config, cancelOfferDiscountPercent: parseInt(e.target.value) || 0 })}
-                        min="1"
-                        max="100"
-                        className="w-32 px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
-                      />
-                      <p className="text-xs text-slate-400 mt-1">e.g., 50 for 50% off</p>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-slate-700 mb-1">
-                        Duration (months)
-                      </label>
-                      <input
-                        type="number"
-                        value={config.cancelOfferDurationMonths}
-                        onChange={(e) => setConfig({ ...config, cancelOfferDurationMonths: parseInt(e.target.value) || 0 })}
-                        min="1"
-                        max="12"
-                        className="w-32 px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
-                      />
-                      <p className="text-xs text-slate-400 mt-1">How long the discount applies</p>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1 flex items-center gap-2">
-                      <MessageSquare size={14} />
-                      Offer Message
-                    </label>
-                    <textarea
-                      value={config.cancelOfferMessage}
-                      onChange={(e) => setConfig({ ...config, cancelOfferMessage: e.target.value })}
-                      placeholder="Before you go, we'd like to offer you a special discount!"
-                      rows={2}
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none resize-none"
-                    />
-                    <p className="text-xs text-slate-400 mt-1">Shown to users when they try to cancel</p>
-                  </div>
-
-                  <div className="bg-emerald-50 rounded-lg p-4 border border-emerald-200">
-                    <p className="text-sm text-emerald-800">
-                      <strong>Preview:</strong> Users will see "{config.cancelOfferDiscountPercent}% OFF for {config.cancelOfferDurationMonths} months" when they try to cancel.
-                    </p>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
         </div>
       </div>
 
-      {/* Grant Pro Access Section */}
+      {/* Cancel Retention Offer */}
+      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+        <div className="p-6 border-b border-slate-200 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-purple-100 rounded-lg">
+              <Percent size={20} className="text-purple-600" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-slate-800">Cancellation Retention Offer</h3>
+              <p className="text-sm text-slate-500">Offer discounts to users who try to cancel</p>
+            </div>
+          </div>
+          <button
+            onClick={handleSaveConfig}
+            disabled={savingConfig}
+            className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
+          >
+            {savingConfig ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+            Save
+          </button>
+        </div>
+
+        <div className="p-6 space-y-4">
+          <div className="flex items-center gap-3">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={config.cancelOfferEnabled}
+                onChange={(e) => setConfig({ ...config, cancelOfferEnabled: e.target.checked })}
+                className="w-4 h-4 text-emerald-600 rounded"
+              />
+              <span className="text-sm font-medium text-slate-700">Enable retention offer when users try to cancel</span>
+            </label>
+          </div>
+
+          {config.cancelOfferEnabled && (
+            <>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Discount Percentage
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      value={config.cancelOfferDiscountPercent}
+                      onChange={(e) => setConfig({ ...config, cancelOfferDiscountPercent: parseInt(e.target.value) || 0 })}
+                      min="1"
+                      max="100"
+                      className="w-24 px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                    />
+                    <span className="text-slate-500">%</span>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">
+                    Duration (months)
+                  </label>
+                  <input
+                    type="number"
+                    value={config.cancelOfferDurationMonths}
+                    onChange={(e) => setConfig({ ...config, cancelOfferDurationMonths: parseInt(e.target.value) || 0 })}
+                    min="1"
+                    max="12"
+                    className="w-24 px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1 flex items-center gap-2">
+                  <MessageSquare size={14} />
+                  Offer Message
+                </label>
+                <textarea
+                  value={config.cancelOfferMessage}
+                  onChange={(e) => setConfig({ ...config, cancelOfferMessage: e.target.value })}
+                  placeholder="Before you go, we'd like to offer you a special discount!"
+                  rows={2}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none resize-none"
+                />
+              </div>
+
+              <div className="bg-purple-50 rounded-lg p-4 border border-purple-200">
+                <p className="text-sm text-purple-800">
+                  <strong>Preview:</strong> Users will see "{config.cancelOfferDiscountPercent}% OFF for {config.cancelOfferDurationMonths} months" when they try to cancel.
+                </p>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderAccessTab = () => (
+    <div className="space-y-6">
+      {/* Grant Pro Access */}
       <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
         <div className="p-6 border-b border-slate-200">
           <div className="flex items-center gap-3">
@@ -471,7 +480,7 @@ const SubscriptionSettings: React.FC<SubscriptionSettingsProps> = ({ onMessage }
             </div>
             <div>
               <h3 className="font-semibold text-slate-800">Grant Pro Access</h3>
-              <p className="text-sm text-slate-500">Manually grant Pro access to users</p>
+              <p className="text-sm text-slate-500">Manually grant Pro access to specific users</p>
             </div>
           </div>
         </div>
@@ -488,12 +497,12 @@ const SubscriptionSettings: React.FC<SubscriptionSettingsProps> = ({ onMessage }
                 type="text"
                 value={userSearch}
                 onChange={(e) => setUserSearch(e.target.value)}
-                placeholder="Search users..."
+                placeholder="Search users by email or name..."
                 className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
               />
             </div>
             {userSearch && filteredUsers.length > 0 && (
-              <div className="mt-2 max-h-40 overflow-y-auto border border-slate-200 rounded-lg">
+              <div className="mt-2 max-h-48 overflow-y-auto border border-slate-200 rounded-lg shadow-sm">
                 {filteredUsers.slice(0, 10).map((user) => {
                   const sub = getUserSubscription(user.userId);
                   return (
@@ -503,7 +512,7 @@ const SubscriptionSettings: React.FC<SubscriptionSettingsProps> = ({ onMessage }
                         setSelectedUserId(user.userId);
                         setUserSearch(user.email);
                       }}
-                      className={`w-full px-4 py-2 text-left hover:bg-slate-50 flex items-center justify-between ${
+                      className={`w-full px-4 py-3 text-left hover:bg-slate-50 flex items-center justify-between border-b border-slate-100 last:border-b-0 ${
                         selectedUserId === user.userId ? 'bg-emerald-50' : ''
                       }`}
                     >
@@ -511,16 +520,25 @@ const SubscriptionSettings: React.FC<SubscriptionSettingsProps> = ({ onMessage }
                         <div className="font-medium text-sm text-slate-800">{user.email}</div>
                         {user.fullName && <div className="text-xs text-slate-400">{user.fullName}</div>}
                       </div>
-                      {sub?.adminGrantedPro && (
-                        <span className="px-2 py-0.5 bg-amber-100 text-amber-700 text-xs rounded-full">
-                          Pro (Admin)
-                        </span>
-                      )}
-                      {sub?.tier === 'pro' && !sub.adminGrantedPro && (
-                        <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-xs rounded-full">
-                          Pro (Stripe)
-                        </span>
-                      )}
+                      <div className="flex items-center gap-2">
+                        {sub?.adminGrantedPro && (
+                          <span className="px-2 py-0.5 bg-amber-100 text-amber-700 text-xs rounded-full font-medium">
+                            Pro (Admin)
+                          </span>
+                        )}
+                        {sub?.tier === 'pro' && !sub.adminGrantedPro && (
+                          <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-xs rounded-full font-medium">
+                            Pro (Stripe)
+                          </span>
+                        )}
+                        {selectedUserId === user.userId && (
+                          <div className="w-5 h-5 bg-emerald-500 rounded-full flex items-center justify-center">
+                            <svg className="w-3 h-3 text-white" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                            </svg>
+                          </div>
+                        )}
+                      </div>
                     </button>
                   );
                 })}
@@ -529,11 +547,11 @@ const SubscriptionSettings: React.FC<SubscriptionSettingsProps> = ({ onMessage }
           </div>
 
           {/* Duration */}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">
-              Duration
+          <div className="bg-slate-50 rounded-lg p-4">
+            <label className="block text-sm font-medium text-slate-700 mb-3">
+              Access Duration
             </label>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-6">
               <label className="flex items-center gap-2 cursor-pointer">
                 <input
                   type="radio"
@@ -550,7 +568,7 @@ const SubscriptionSettings: React.FC<SubscriptionSettingsProps> = ({ onMessage }
                   onChange={() => setIsPermanent(false)}
                   className="w-4 h-4 text-emerald-600"
                 />
-                <span className="text-sm text-slate-700">Until date</span>
+                <span className="text-sm text-slate-700">Until specific date</span>
               </label>
             </div>
             {!isPermanent && (
@@ -559,7 +577,7 @@ const SubscriptionSettings: React.FC<SubscriptionSettingsProps> = ({ onMessage }
                 value={grantExpiry}
                 onChange={(e) => setGrantExpiry(e.target.value)}
                 min={new Date().toISOString().split('T')[0]}
-                className="mt-2 px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+                className="mt-3 px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
               />
             )}
           </div>
@@ -573,7 +591,7 @@ const SubscriptionSettings: React.FC<SubscriptionSettingsProps> = ({ onMessage }
               type="text"
               value={grantNote}
               onChange={(e) => setGrantNote(e.target.value)}
-              placeholder="e.g., Beta tester, Support case #123"
+              placeholder="e.g., Beta tester, Support case #123, Partner account"
               className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
             />
           </div>
@@ -581,7 +599,7 @@ const SubscriptionSettings: React.FC<SubscriptionSettingsProps> = ({ onMessage }
           <button
             onClick={handleGrantPro}
             disabled={!selectedUserId || granting}
-            className="flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-2 px-5 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {granting ? <Loader2 size={18} className="animate-spin" /> : <Crown size={18} />}
             Grant Pro Access
@@ -589,29 +607,43 @@ const SubscriptionSettings: React.FC<SubscriptionSettingsProps> = ({ onMessage }
         </div>
       </div>
 
-      {/* Admin-Granted Users */}
-      {adminGrantedUsers.length > 0 && (
-        <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
-          <div className="p-6 border-b border-slate-200">
-            <h3 className="font-semibold text-slate-800">Admin-Granted Pro Users</h3>
-            <p className="text-sm text-slate-500">{adminGrantedUsers.length} users with admin-granted Pro access</p>
+      {/* Admin-Granted Users List */}
+      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+        <div className="p-6 border-b border-slate-200">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-slate-100 rounded-lg">
+              <Users size={20} className="text-slate-600" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-slate-800">Admin-Granted Pro Users</h3>
+              <p className="text-sm text-slate-500">{adminGrantedUsers.length} user{adminGrantedUsers.length !== 1 ? 's' : ''} with admin-granted Pro access</p>
+            </div>
           </div>
+        </div>
 
+        {adminGrantedUsers.length === 0 ? (
+          <div className="p-8 text-center">
+            <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-3">
+              <Users size={24} className="text-slate-400" />
+            </div>
+            <p className="text-slate-500 text-sm">No users with admin-granted Pro access</p>
+          </div>
+        ) : (
           <div className="divide-y divide-slate-100">
             {adminGrantedUsers.map((sub) => {
               const user = users.find(u => u.userId === sub.userId);
               return (
-                <div key={sub.userId} className="p-4 flex items-center justify-between">
+                <div key={sub.userId} className="p-4 flex items-center justify-between hover:bg-slate-50">
                   <div>
                     <div className="font-medium text-slate-800">{user?.email || sub.userId}</div>
-                    <div className="text-sm text-slate-500 flex items-center gap-2">
+                    <div className="text-sm text-slate-500 flex items-center gap-2 mt-0.5">
                       {sub.adminGrantExpiresAt ? (
                         <span className="flex items-center gap-1">
                           <Calendar size={12} />
                           Until {new Date(sub.adminGrantExpiresAt).toLocaleDateString()}
                         </span>
                       ) : (
-                        <span>Permanent</span>
+                        <span className="text-emerald-600 font-medium">Permanent</span>
                       )}
                       {sub.adminGrantNote && (
                         <span className="text-slate-400">• {sub.adminGrantNote}</span>
@@ -634,8 +666,252 @@ const SubscriptionSettings: React.FC<SubscriptionSettingsProps> = ({ onMessage }
               );
             })}
           </div>
+        )}
+      </div>
+    </div>
+  );
+
+  const renderTiersTab = () => (
+    <div className="space-y-6">
+      {/* Trial Settings */}
+      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+        <div className="p-6 border-b border-slate-200 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-blue-100 rounded-lg">
+              <Clock size={20} className="text-blue-600" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-slate-800">Trial Settings</h3>
+              <p className="text-sm text-slate-500">Configure the free trial period for new users</p>
+            </div>
+          </div>
+          <button
+            onClick={handleSaveConfig}
+            disabled={savingConfig}
+            className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
+          >
+            {savingConfig ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+            Save
+          </button>
         </div>
-      )}
+
+        <div className="p-6">
+          <div className="max-w-sm">
+            <label className="block text-sm font-medium text-slate-700 mb-2">
+              Trial Period Duration
+            </label>
+            <div className="flex items-center gap-3">
+              <input
+                type="number"
+                value={config.trialPeriodDays}
+                onChange={(e) => setConfig({ ...config, trialPeriodDays: parseInt(e.target.value) || 0 })}
+                min="0"
+                max="365"
+                className="w-24 px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none text-center"
+              />
+              <span className="text-slate-600">days</span>
+            </div>
+            <p className="text-xs text-slate-400 mt-2">
+              New users will have Pro access for {config.trialPeriodDays} days before needing to subscribe.
+              Set to 0 to disable trials.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Free Tier Limits */}
+      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+        <div className="p-6 border-b border-slate-200 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-slate-100 rounded-lg">
+              <Users size={20} className="text-slate-600" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-slate-800">Free Tier Limits</h3>
+              <p className="text-sm text-slate-500">Set restrictions for free tier users</p>
+            </div>
+          </div>
+          <button
+            onClick={handleSaveConfig}
+            disabled={savingConfig}
+            className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
+          >
+            {savingConfig ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+            Save
+          </button>
+        </div>
+
+        <div className="p-6">
+          <div className="max-w-sm">
+            <label className="block text-sm font-medium text-slate-700 mb-2">
+              Maximum Saved Recipes
+            </label>
+            <div className="flex items-center gap-3">
+              <input
+                type="number"
+                value={config.freeRecipeLimit}
+                onChange={(e) => setConfig({ ...config, freeRecipeLimit: parseInt(e.target.value) || 0 })}
+                min="0"
+                max="1000"
+                className="w-24 px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none text-center"
+              />
+              <span className="text-slate-600">recipes</span>
+            </div>
+            <p className="text-xs text-slate-400 mt-2">
+              Free tier users can save up to {config.freeRecipeLimit} recipes. Pro users have unlimited.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Tier Comparison */}
+      <div className="bg-white rounded-xl border border-slate-200 overflow-hidden">
+        <div className="p-6 border-b border-slate-200">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-emerald-100 rounded-lg">
+              <Crown size={20} className="text-emerald-600" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-slate-800">Tier Comparison</h3>
+              <p className="text-sm text-slate-500">Features available in each tier</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="p-6">
+          <div className="grid md:grid-cols-2 gap-6">
+            {/* Free Tier */}
+            <div className="border border-slate-200 rounded-xl p-5">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-8 h-8 bg-slate-100 rounded-lg flex items-center justify-center">
+                  <Users size={18} className="text-slate-600" />
+                </div>
+                <h4 className="font-semibold text-slate-800">Free Tier</h4>
+              </div>
+              <ul className="space-y-2">
+                <li className="flex items-center gap-2 text-sm text-slate-600">
+                  <svg className="w-4 h-4 text-emerald-500" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                  AI meal plans
+                </li>
+                <li className="flex items-center gap-2 text-sm text-slate-600">
+                  <svg className="w-4 h-4 text-emerald-500" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                  Shopping lists
+                </li>
+                <li className="flex items-center gap-2 text-sm text-slate-600">
+                  <svg className="w-4 h-4 text-emerald-500" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                  {config.freeRecipeLimit} saved recipes
+                </li>
+                <li className="flex items-center gap-2 text-sm text-slate-600">
+                  <svg className="w-4 h-4 text-emerald-500" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                  Basic pantry management
+                </li>
+                <li className="flex items-center gap-2 text-sm text-slate-400">
+                  <X size={16} />
+                  Photo scanning
+                </li>
+                <li className="flex items-center gap-2 text-sm text-slate-400">
+                  <X size={16} />
+                  Video scanning
+                </li>
+                <li className="flex items-center gap-2 text-sm text-slate-400">
+                  <X size={16} />
+                  Voice dictation
+                </li>
+              </ul>
+            </div>
+
+            {/* Pro Tier */}
+            <div className="border-2 border-emerald-500 rounded-xl p-5 bg-emerald-50/50">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-8 h-8 bg-emerald-500 rounded-lg flex items-center justify-center">
+                  <Crown size={18} className="text-white" />
+                </div>
+                <h4 className="font-semibold text-slate-800">Pro Tier</h4>
+                <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-xs rounded-full font-medium ml-auto">
+                  {formatPrice(config.priceMonthlyCents)}/mo
+                </span>
+              </div>
+              <ul className="space-y-2">
+                <li className="flex items-center gap-2 text-sm text-slate-600">
+                  <svg className="w-4 h-4 text-emerald-500" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                  Everything in Free
+                </li>
+                <li className="flex items-center gap-2 text-sm text-slate-600 font-medium">
+                  <svg className="w-4 h-4 text-emerald-500" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                  Unlimited recipes
+                </li>
+                <li className="flex items-center gap-2 text-sm text-slate-600 font-medium">
+                  <svg className="w-4 h-4 text-emerald-500" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                  Photo scanning
+                </li>
+                <li className="flex items-center gap-2 text-sm text-slate-600 font-medium">
+                  <svg className="w-4 h-4 text-emerald-500" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                  Video scanning
+                </li>
+                <li className="flex items-center gap-2 text-sm text-slate-600 font-medium">
+                  <svg className="w-4 h-4 text-emerald-500" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                  Voice dictation
+                </li>
+                <li className="flex items-center gap-2 text-sm text-slate-600 font-medium">
+                  <svg className="w-4 h-4 text-emerald-500" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                  </svg>
+                  Audio upload
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="space-y-6">
+      {/* Tab Navigation */}
+      <div className="bg-white rounded-xl border border-slate-200 p-1.5 flex gap-1">
+        {tabs.map((tab) => {
+          const Icon = tab.icon;
+          const isActive = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium text-sm transition-all ${
+                isActive
+                  ? 'bg-emerald-600 text-white shadow-sm'
+                  : 'text-slate-600 hover:bg-slate-100'
+              }`}
+            >
+              <Icon size={18} />
+              {tab.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Tab Content */}
+      {activeTab === 'pricing' && renderPricingTab()}
+      {activeTab === 'access' && renderAccessTab()}
+      {activeTab === 'tiers' && renderTiersTab()}
     </div>
   );
 };
