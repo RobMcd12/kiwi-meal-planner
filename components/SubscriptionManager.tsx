@@ -292,6 +292,18 @@ const SubscriptionManager: React.FC<SubscriptionManagerProps> = ({ onRefresh }) 
   const isPaused = !!subscription?.pausedAt;
   const hasStripeSubscription = !!subscription?.stripeSubscriptionId;
 
+  // Debug logging - remove after fixing
+  console.log('SubscriptionManager state:', {
+    hasPro,
+    isTrialing,
+    hasStripeSubscription,
+    isPaused,
+    cancelAtPeriodEnd: subscription?.cancelAtPeriodEnd,
+    tier: subscription?.tier,
+    status: subscription?.status,
+    stripeSubscriptionId: subscription?.stripeSubscriptionId,
+  });
+
   // Pro features list
   const proFeatures = [
     { icon: Camera, text: 'Scan pantry with photos' },
