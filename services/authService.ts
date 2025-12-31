@@ -11,6 +11,8 @@ export const supabase: SupabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON
   auth: {
     autoRefreshToken: true,
     persistSession: true,
+    detectSessionInUrl: true, // Required for OAuth callback handling
+    flowType: 'pkce', // More secure and works better on mobile
   },
 });
 
@@ -30,10 +32,15 @@ export const signInWithProvider = async (provider: AuthProvider): Promise<void> 
     throw new Error('Supabase is not configured');
   }
 
+  // Use origin root for redirect - works better on mobile browsers/PWAs
+  // The auth tokens will be in the URL hash, which Supabase auto-detects
+  const redirectUrl = window.location.origin;
+
   const { error } = await supabase.auth.signInWithOAuth({
     provider,
     options: {
-      redirectTo: `${window.location.origin}/auth/callback`,
+      redirectTo: redirectUrl,
+      skipBrowserRedirect: false,
     },
   });
 

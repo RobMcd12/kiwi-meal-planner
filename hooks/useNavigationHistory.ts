@@ -19,9 +19,28 @@ const stepToPath: Record<AppStep, string> = {
 };
 
 // Check if current URL is an OAuth callback
+// With PKCE flow, the callback may be at the root with hash params or query params
 export const isOAuthCallback = (): boolean => {
   const path = window.location.pathname;
-  return path === '/auth/callback' || path.startsWith('/auth/callback');
+  const hash = window.location.hash;
+  const search = window.location.search;
+
+  // Check for explicit callback path
+  if (path === '/auth/callback' || path.startsWith('/auth/callback')) {
+    return true;
+  }
+
+  // Check for OAuth tokens in hash (implicit flow fallback)
+  if (hash && (hash.includes('access_token=') || hash.includes('error='))) {
+    return true;
+  }
+
+  // Check for PKCE code in query params
+  if (search && search.includes('code=')) {
+    return true;
+  }
+
+  return false;
 };
 
 // Reverse mapping: URL path to AppStep
