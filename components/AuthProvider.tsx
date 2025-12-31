@@ -4,31 +4,40 @@ import { supabase, onAuthStateChange, isSupabaseConfigured } from '../services/a
 import { checkIsAdmin, isSuperAdmin } from '../services/adminService';
 import { recordLogin } from '../services/loginHistoryService';
 
-// Debug: Log URL immediately when module loads (before any React code runs)
-console.log('[AuthProvider] Module loaded. URL:', window.location.href);
-console.log('[AuthProvider] Search params:', window.location.search);
-console.log('[AuthProvider] Hash:', window.location.hash);
+// Capture URL state immediately at module load (before Supabase can modify it)
+const INITIAL_URL = window.location.href;
+const INITIAL_SEARCH = window.location.search;
+const INITIAL_HASH = window.location.hash;
+const INITIAL_CODE = new URLSearchParams(window.location.search).get('code');
 
-// Check if current URL is an OAuth callback that needs processing
+console.log('[AuthProvider] Module loaded. URL:', INITIAL_URL);
+console.log('[AuthProvider] Search params:', INITIAL_SEARCH);
+console.log('[AuthProvider] Hash:', INITIAL_HASH);
+console.log('[AuthProvider] Code param:', INITIAL_CODE);
+
+// Check if this was an OAuth callback (using captured initial state)
 const isOAuthCallback = (): boolean => {
-  const hash = window.location.hash;
-  const search = window.location.search;
+  // Use the captured initial values, not current window.location
+  // Because Supabase may have already processed and cleared the URL
 
   // Check for OAuth tokens in hash (implicit flow)
-  if (hash && (hash.includes('access_token=') || hash.includes('error='))) {
+  if (INITIAL_HASH && (INITIAL_HASH.includes('access_token=') || INITIAL_HASH.includes('error='))) {
     console.log('[AuthProvider] Detected OAuth callback via hash');
     return true;
   }
 
   // Check for PKCE code in query params
-  if (search && search.includes('code=')) {
-    console.log('[AuthProvider] Detected OAuth callback via code param');
+  if (INITIAL_CODE) {
+    console.log('[AuthProvider] Detected OAuth callback via code param:', INITIAL_CODE);
     return true;
   }
 
   console.log('[AuthProvider] Not an OAuth callback');
   return false;
 };
+
+// Get the initial OAuth code (if present)
+const getInitialOAuthCode = (): string | null => INITIAL_CODE;
 
 interface AuthContextType {
   user: User | null;
@@ -160,12 +169,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         if (processingOAuth) {
           console.log('Processing OAuth callback...');
 
-          // For PKCE flow with code in URL, we need to exchange it
-          const urlParams = new URLSearchParams(window.location.search);
-          const code = urlParams.get('code');
+          // Use the code captured at module load time
+          const code = getInitialOAuthCode();
 
           if (code) {
-            console.log('Exchanging OAuth code for session...');
+            console.log('Exchanging OAuth code for session:', code);
             // exchangeCodeForSession handles the PKCE code exchange
             const { data, error } = await supabase.auth.exchangeCodeForSession(code);
 
