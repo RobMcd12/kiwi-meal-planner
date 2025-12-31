@@ -1849,7 +1849,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
 
                     {/* User Stats Row */}
                     {userItem.stats && (
-                      <div className="flex items-center gap-4 mt-3 pt-3 border-t border-slate-100 text-xs text-slate-500">
+                      <div className="flex items-center gap-4 mt-3 pt-3 border-t border-slate-100 text-xs text-slate-500 flex-wrap">
                         <span className="flex items-center gap-1">
                           <BookOpen size={12} />
                           {userItem.stats.recipeCount} recipes
@@ -1866,6 +1866,30 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
                           <HardDrive size={12} />
                           {formatBytes(userItem.stats.storageUsedBytes)}
                         </span>
+                        {/* Subscription renewal date for Pro users */}
+                        {userItem.subscription?.stripeCurrentPeriodEnd && userItem.subscription.tier === 'pro' && !userItem.subscription.adminGrantedPro && (
+                          <span className="flex items-center gap-1 text-emerald-600">
+                            <Crown size={12} />
+                            {userItem.subscription.cancelAtPeriodEnd ? 'Expires' : 'Renews'}{' '}
+                            {new Date(userItem.subscription.stripeCurrentPeriodEnd).toLocaleDateString('en-NZ', {
+                              day: 'numeric',
+                              month: 'short',
+                              year: 'numeric',
+                            })}
+                          </span>
+                        )}
+                        {/* Admin grant expiry for admin-granted Pro */}
+                        {userItem.subscription?.adminGrantedPro && userItem.subscription.adminGrantExpiresAt && (
+                          <span className="flex items-center gap-1 text-purple-600">
+                            <Crown size={12} />
+                            Grant expires{' '}
+                            {new Date(userItem.subscription.adminGrantExpiresAt).toLocaleDateString('en-NZ', {
+                              day: 'numeric',
+                              month: 'short',
+                              year: 'numeric',
+                            })}
+                          </span>
+                        )}
                       </div>
                     )}
 
