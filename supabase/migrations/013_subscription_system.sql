@@ -119,13 +119,21 @@ CREATE TRIGGER update_subscription_config_updated_at
 ALTER TABLE public.subscription_config ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.user_subscriptions ENABLE ROW LEVEL SECURITY;
 
+-- Drop existing policies if they exist (for re-running migration)
+DROP POLICY IF EXISTS "Anyone can read subscription config" ON public.subscription_config;
+DROP POLICY IF EXISTS "Admins can update subscription config" ON public.subscription_config;
+DROP POLICY IF EXISTS "Users view own subscription" ON public.user_subscriptions;
+DROP POLICY IF EXISTS "Admins view all subscriptions" ON public.user_subscriptions;
+DROP POLICY IF EXISTS "Admins update subscriptions" ON public.user_subscriptions;
+DROP POLICY IF EXISTS "Service can manage subscriptions" ON public.user_subscriptions;
+
 -- Config: Anyone can read, admins can update
 CREATE POLICY "Anyone can read subscription config" ON public.subscription_config
     FOR SELECT USING (true);
 
 CREATE POLICY "Admins can update subscription config" ON public.subscription_config
     FOR UPDATE USING (
-        EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND is_admin = true)
+        public.is_admin_user(auth.uid())
     );
 
 -- User subscriptions: Users see own, admins see all
@@ -134,15 +142,15 @@ CREATE POLICY "Users view own subscription" ON public.user_subscriptions
 
 CREATE POLICY "Admins view all subscriptions" ON public.user_subscriptions
     FOR SELECT USING (
-        EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND is_admin = true)
+        public.is_admin_user(auth.uid())
     );
 
 CREATE POLICY "Admins update subscriptions" ON public.user_subscriptions
     FOR UPDATE USING (
-        EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND is_admin = true)
+        public.is_admin_user(auth.uid())
     );
 
--- Service role can insert/update (for Edge Functions)
+-- Service role can insert/update (for Edge Functions and triggers)
 CREATE POLICY "Service can manage subscriptions" ON public.user_subscriptions
     FOR ALL USING (true);
 

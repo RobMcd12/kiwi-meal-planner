@@ -2,8 +2,42 @@ import { supabase, isSupabaseConfigured } from './authService';
 import type { LoginHistoryEntry, UserLoginSummary } from '../types';
 
 /**
- * Record a login event for the current user via Edge Function
- * This captures IP address, geolocation, and device info
+ * Parse user agent to extract basic device info
+ */
+function parseUserAgent(): { browser: string; os: string; deviceType: 'desktop' | 'mobile' | 'tablet' } {
+  const ua = navigator.userAgent.toLowerCase();
+
+  // Detect device type
+  let deviceType: 'desktop' | 'mobile' | 'tablet' = 'desktop';
+  if (/tablet|ipad|playbook|silk/i.test(ua)) {
+    deviceType = 'tablet';
+  } else if (/mobile|iphone|ipod|android.*mobile|windows phone|blackberry|opera mini|opera mobi/i.test(ua)) {
+    deviceType = 'mobile';
+  }
+
+  // Detect browser
+  let browser = 'Unknown';
+  if (ua.includes('firefox')) browser = 'Firefox';
+  else if (ua.includes('edg')) browser = 'Edge';
+  else if (ua.includes('chrome') && !ua.includes('edg')) browser = 'Chrome';
+  else if (ua.includes('safari') && !ua.includes('chrome')) browser = 'Safari';
+  else if (ua.includes('opera') || ua.includes('opr')) browser = 'Opera';
+
+  // Detect OS
+  let os = 'Unknown';
+  if (ua.includes('windows')) os = 'Windows';
+  else if (ua.includes('mac os') || ua.includes('macos')) os = 'macOS';
+  else if (ua.includes('linux') && !ua.includes('android')) os = 'Linux';
+  else if (ua.includes('android')) os = 'Android';
+  else if (ua.includes('iphone') || ua.includes('ipad') || ua.includes('ipod')) os = 'iOS';
+
+  return { browser, os, deviceType };
+}
+
+/**
+ * Record a login event for the current user
+ * First tries Edge Function for full data (IP, geolocation)
+ * Falls back to direct insert if Edge Function unavailable
  */
 export const recordLogin = async (
   userId: string,
@@ -12,12 +46,39 @@ export const recordLogin = async (
   if (!isSupabaseConfigured()) return;
 
   try {
-    const { error } = await supabase.functions.invoke('record-login', {
+    // Try Edge Function first (for IP/geolocation)
+    const { error: fnError } = await supabase.functions.invoke('record-login', {
       body: { userId, loginMethod },
     });
 
-    if (error) {
-      console.error('Error recording login:', error);
+    // If Edge Function worked, we're done
+    if (!fnError) {
+      console.log('Login recorded via Edge Function');
+      return;
+    }
+
+    console.warn('Edge Function failed, falling back to direct insert:', fnError.message);
+
+    // Fallback: Insert directly into login_history (without IP/geolocation)
+    const { browser, os, deviceType } = parseUserAgent();
+
+    const { error: insertError } = await supabase
+      .from('login_history')
+      .insert({
+        user_id: userId,
+        user_agent: navigator.userAgent.substring(0, 500),
+        device_type: deviceType,
+        browser,
+        os,
+        login_method: loginMethod,
+        success: true,
+        // IP and geolocation will be null without Edge Function
+      });
+
+    if (insertError) {
+      console.error('Error recording login (direct):', insertError);
+    } else {
+      console.log('Login recorded via direct insert');
     }
   } catch (err) {
     console.error('Error recording login:', err);
