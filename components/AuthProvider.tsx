@@ -121,12 +121,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
     // Track if we're processing an OAuth callback
     const processingOAuth = isOAuthCallback();
-    let authStateReceived = false;
 
-    // Subscribe to auth changes FIRST (before getSession)
-    // This ensures we catch the SIGNED_IN event from OAuth callback processing
+    // Subscribe to auth changes
     const unsubscribe = onAuthStateChange(async (newSession) => {
-      authStateReceived = true;
+      console.log('Auth state changed:', newSession?.user?.id ? 'logged in' : 'logged out');
       setSession(newSession);
       setUser(newSession?.user ?? null);
 
@@ -143,16 +141,53 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         loginRecordedRef.current = false;
       }
 
-      // If we were processing OAuth, now we can set loading to false
-      if (processingOAuth) {
-        setLoading(false);
-      }
+      // Always ensure loading is false after auth state change
+      setLoading(false);
     });
 
-    // Get initial session
+    // Initialize auth
     const initAuth = async () => {
       try {
+        // If this is an OAuth callback, explicitly exchange the code
+        if (processingOAuth) {
+          console.log('Processing OAuth callback...');
+
+          // For PKCE flow with code in URL, we need to exchange it
+          const urlParams = new URLSearchParams(window.location.search);
+          const code = urlParams.get('code');
+
+          if (code) {
+            console.log('Exchanging OAuth code for session...');
+            // exchangeCodeForSession handles the PKCE code exchange
+            const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+
+            if (error) {
+              console.error('Error exchanging code:', error);
+              setLoading(false);
+              return;
+            }
+
+            if (data.session) {
+              console.log('OAuth session established');
+              setSession(data.session);
+              setUser(data.session.user);
+
+              // Check admin status
+              const adminStatus = await checkIsAdmin(data.session.user.id, data.session.user.email ?? undefined);
+              setIsAdmin(adminStatus);
+
+              // Record login
+              handleLoginRecord(data.session.user);
+            }
+
+            setLoading(false);
+            return;
+          }
+        }
+
+        // Normal session check (not OAuth callback)
         const { data: { session } } = await supabase.auth.getSession();
+        console.log('Initial session check:', session?.user?.id ? 'found' : 'none');
         setSession(session);
         setUser(session?.user ?? null);
 
@@ -165,22 +200,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           handleLoginRecord(session.user);
         }
       } catch (error) {
-        console.error('Error getting session:', error);
+        console.error('Error during auth init:', error);
       } finally {
-        // Only set loading to false here if NOT processing OAuth
-        // If processing OAuth, wait for the auth state change event
-        if (!processingOAuth) {
-          setLoading(false);
-        } else {
-          // If processing OAuth, set a timeout to avoid infinite loading
-          // In case the OAuth callback fails silently
-          setTimeout(() => {
-            if (!authStateReceived) {
-              console.log('OAuth callback timeout - no auth state received');
-              setLoading(false);
-            }
-          }, 10000); // 10 second timeout
-        }
+        setLoading(false);
       }
     };
 
