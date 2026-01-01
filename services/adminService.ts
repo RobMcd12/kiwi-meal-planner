@@ -234,41 +234,59 @@ export const getAllRecipes = async (): Promise<AdminRecipe[]> => {
   }
 
   try {
-    const { data, error } = await supabase
+    // Fetch recipes
+    const { data: recipes, error: recipesError } = await supabase
       .from('favorite_meals')
-      .select(`
-        id,
-        name,
-        description,
-        image_url,
-        source,
-        is_public,
-        user_id,
-        created_at,
-        profiles:user_id(email, full_name),
-        recipe_videos(id, processing_status)
-      `)
+      .select('id, name, description, image_url, source, is_public, user_id, created_at')
       .order('created_at', { ascending: false });
 
-    if (error) {
-      console.error('Error fetching all recipes:', error);
+    if (recipesError) {
+      console.error('Error fetching all recipes:', recipesError);
       return [];
     }
 
-    return (data || []).map((recipe: any) => ({
-      id: recipe.id,
-      name: recipe.name,
-      description: recipe.description,
-      imageUrl: recipe.image_url,
-      source: recipe.source,
-      isPublic: recipe.is_public ?? false,
-      userId: recipe.user_id,
-      userEmail: recipe.profiles?.email,
-      userName: recipe.profiles?.full_name,
-      hasVideo: recipe.recipe_videos && recipe.recipe_videos.length > 0,
-      videoStatus: recipe.recipe_videos?.[0]?.processing_status,
-      createdAt: recipe.created_at,
-    }));
+    if (!recipes || recipes.length === 0) {
+      return [];
+    }
+
+    // Get unique user IDs
+    const userIds = [...new Set(recipes.map(r => r.user_id).filter(Boolean))];
+    const recipeIds = recipes.map(r => r.id);
+
+    // Fetch profiles for users
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('id, email, full_name')
+      .in('id', userIds);
+
+    // Fetch videos for recipes
+    const { data: videos } = await supabase
+      .from('recipe_videos')
+      .select('id, meal_id, processing_status')
+      .in('meal_id', recipeIds);
+
+    // Create lookup maps
+    const profileMap = new Map((profiles || []).map(p => [p.id, p]));
+    const videoMap = new Map((videos || []).map(v => [v.meal_id, v]));
+
+    return recipes.map((recipe: any) => {
+      const profile = profileMap.get(recipe.user_id);
+      const video = videoMap.get(recipe.id);
+      return {
+        id: recipe.id,
+        name: recipe.name,
+        description: recipe.description,
+        imageUrl: recipe.image_url,
+        source: recipe.source,
+        isPublic: recipe.is_public ?? false,
+        userId: recipe.user_id,
+        userEmail: profile?.email,
+        userName: profile?.full_name,
+        hasVideo: !!video,
+        videoStatus: video?.processing_status,
+        createdAt: recipe.created_at,
+      };
+    });
   } catch (err) {
     console.error('Error fetching all recipes:', err);
     return [];
@@ -298,24 +316,34 @@ export const getAllMealPlans = async (): Promise<AdminMealPlan[]> => {
   }
 
   try {
-    const { data, error } = await supabase
+    // Fetch meal plans
+    const { data: mealPlans, error: plansError } = await supabase
       .from('saved_meal_plans')
-      .select(`
-        id,
-        name,
-        user_id,
-        weekly_plan,
-        created_at,
-        profiles:user_id(email, full_name)
-      `)
+      .select('id, name, user_id, weekly_plan, created_at')
       .order('created_at', { ascending: false });
 
-    if (error) {
-      console.error('Error fetching all meal plans:', error);
+    if (plansError) {
+      console.error('Error fetching all meal plans:', plansError);
       return [];
     }
 
-    return (data || []).map((plan: any) => {
+    if (!mealPlans || mealPlans.length === 0) {
+      return [];
+    }
+
+    // Get unique user IDs
+    const userIds = [...new Set(mealPlans.map(p => p.user_id).filter(Boolean))];
+
+    // Fetch profiles for users
+    const { data: profiles } = await supabase
+      .from('profiles')
+      .select('id, email, full_name')
+      .in('id', userIds);
+
+    // Create lookup map
+    const profileMap = new Map((profiles || []).map(p => [p.id, p]));
+
+    return mealPlans.map((plan: any) => {
       // Count days and meals from weekly_plan JSONB
       const weeklyPlan = plan.weekly_plan || {};
       const days = Object.keys(weeklyPlan);
@@ -327,12 +355,13 @@ export const getAllMealPlans = async (): Promise<AdminMealPlan[]> => {
         }
       });
 
+      const profile = profileMap.get(plan.user_id);
       return {
         id: plan.id,
         name: plan.name,
         userId: plan.user_id,
-        userEmail: plan.profiles?.email,
-        userName: plan.profiles?.full_name,
+        userEmail: profile?.email,
+        userName: profile?.full_name,
         daysCount: days.length,
         mealsCount,
         createdAt: plan.created_at,

@@ -14,11 +14,7 @@ export const getRecipeVideo = async (mealId: string): Promise<RecipeVideo | null
   try {
     const { data, error } = await supabase
       .from('recipe_videos')
-      .select(`
-        *,
-        favorite_meals(name),
-        profiles:created_by(full_name)
-      `)
+      .select('*')
       .eq('meal_id', mealId)
       .single();
 
@@ -27,7 +23,11 @@ export const getRecipeVideo = async (mealId: string): Promise<RecipeVideo | null
       throw error;
     }
 
-    return mapVideoRow(data);
+    // Fetch related data separately
+    const mealName = await getMealName(mealId);
+    const creatorName = data.created_by ? await getProfileName(data.created_by) : undefined;
+
+    return mapVideoRow({ ...data, mealName, creatorName });
   } catch (err) {
     console.error('Error fetching recipe video:', err);
     return null;
@@ -41,18 +41,39 @@ export const getAllRecipeVideos = async (): Promise<RecipeVideo[]> => {
   if (!isSupabaseConfigured()) return [];
 
   try {
-    const { data, error } = await supabase
+    // Fetch videos without FK relationships
+    const { data: videos, error } = await supabase
       .from('recipe_videos')
-      .select(`
-        *,
-        favorite_meals(name),
-        profiles:created_by(full_name)
-      `)
+      .select('*')
       .order('created_at', { ascending: false });
 
     if (error) throw error;
+    if (!videos || videos.length === 0) return [];
 
-    return (data || []).map(mapVideoRow);
+    // Get unique meal IDs and creator IDs
+    const mealIds = [...new Set(videos.map(v => v.meal_id).filter(Boolean))];
+    const creatorIds = [...new Set(videos.map(v => v.created_by).filter(Boolean))];
+
+    // Fetch meals and profiles separately
+    const [mealsResult, profilesResult] = await Promise.all([
+      mealIds.length > 0
+        ? supabase.from('favorite_meals').select('id, name').in('id', mealIds)
+        : { data: [] },
+      creatorIds.length > 0
+        ? supabase.from('profiles').select('id, full_name').in('id', creatorIds)
+        : { data: [] }
+    ]);
+
+    // Create lookup maps
+    const mealMap = new Map((mealsResult.data || []).map(m => [m.id, m.name]));
+    const profileMap = new Map((profilesResult.data || []).map(p => [p.id, p.full_name]));
+
+    // Map videos with looked-up data
+    return videos.map(video => ({
+      ...mapVideoRow(video),
+      mealName: mealMap.get(video.meal_id),
+      createdByName: profileMap.get(video.created_by),
+    }));
   } catch (err) {
     console.error('Error fetching all recipe videos:', err);
     return [];
@@ -66,19 +87,40 @@ export const getVideosByStatus = async (status: VideoProcessingStatus): Promise<
   if (!isSupabaseConfigured()) return [];
 
   try {
-    const { data, error } = await supabase
+    // Fetch videos without FK relationships
+    const { data: videos, error } = await supabase
       .from('recipe_videos')
-      .select(`
-        *,
-        favorite_meals(name),
-        profiles:created_by(full_name)
-      `)
+      .select('*')
       .eq('processing_status', status)
       .order('created_at', { ascending: false });
 
     if (error) throw error;
+    if (!videos || videos.length === 0) return [];
 
-    return (data || []).map(mapVideoRow);
+    // Get unique meal IDs and creator IDs
+    const mealIds = [...new Set(videos.map(v => v.meal_id).filter(Boolean))];
+    const creatorIds = [...new Set(videos.map(v => v.created_by).filter(Boolean))];
+
+    // Fetch meals and profiles separately
+    const [mealsResult, profilesResult] = await Promise.all([
+      mealIds.length > 0
+        ? supabase.from('favorite_meals').select('id, name').in('id', mealIds)
+        : { data: [] },
+      creatorIds.length > 0
+        ? supabase.from('profiles').select('id, full_name').in('id', creatorIds)
+        : { data: [] }
+    ]);
+
+    // Create lookup maps
+    const mealMap = new Map((mealsResult.data || []).map(m => [m.id, m.name]));
+    const profileMap = new Map((profilesResult.data || []).map(p => [p.id, p.full_name]));
+
+    // Map videos with looked-up data
+    return videos.map(video => ({
+      ...mapVideoRow(video),
+      mealName: mealMap.get(video.meal_id),
+      createdByName: profileMap.get(video.created_by),
+    }));
   } catch (err) {
     console.error('Error fetching videos by status:', err);
     return [];
@@ -156,16 +198,20 @@ export const initiateVideoGeneration = async (
         generation_prompt: customPrompt,
         created_by: user.id,
       })
-      .select(`
-        *,
-        favorite_meals(name),
-        profiles:created_by(full_name)
-      `)
+      .select('*')
       .single();
 
     if (error) throw error;
 
-    const video = mapVideoRow(data);
+    // Fetch related data separately
+    const mealName = await getMealName(mealId);
+    const creatorName = await getProfileName(user.id);
+
+    const video: RecipeVideo = {
+      ...mapVideoRow(data),
+      mealName,
+      createdByName: creatorName,
+    };
 
     // Trigger background video generation (fire and forget)
     triggerBackgroundGeneration(video.id, mealId, storageType);
@@ -531,13 +577,46 @@ export const uploadVideoToSupabase = async (
 // ============================================
 
 /**
+ * Get meal name by ID
+ */
+const getMealName = async (mealId: string): Promise<string | undefined> => {
+  try {
+    const { data } = await supabase
+      .from('favorite_meals')
+      .select('name')
+      .eq('id', mealId)
+      .single();
+    return data?.name;
+  } catch {
+    return undefined;
+  }
+};
+
+/**
+ * Get profile name by user ID
+ */
+const getProfileName = async (userId: string): Promise<string | undefined> => {
+  try {
+    const { data } = await supabase
+      .from('profiles')
+      .select('full_name')
+      .eq('id', userId)
+      .single();
+    return data?.full_name;
+  } catch {
+    return undefined;
+  }
+};
+
+/**
  * Map database row to RecipeVideo type
+ * Note: mealName and createdByName should be set separately after calling this
  */
 function mapVideoRow(row: any): RecipeVideo {
   return {
     id: row.id,
     mealId: row.meal_id,
-    mealName: row.favorite_meals?.name,
+    mealName: row.mealName, // Set separately via lookup
     storageType: row.storage_type,
     googleDriveFileId: row.google_drive_file_id,
     googleDriveUrl: row.google_drive_url,
@@ -551,7 +630,7 @@ function mapVideoRow(row: any): RecipeVideo {
     instructionsUsed: row.instructions_used,
     errorMessage: row.error_message,
     createdBy: row.created_by,
-    createdByName: row.profiles?.full_name,
+    createdByName: row.createdByName, // Set separately via lookup
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
