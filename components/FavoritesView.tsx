@@ -22,9 +22,10 @@ import RecipeAdjuster from './RecipeAdjuster';
 import {
   Trash2, Heart, ShoppingCart, ArrowLeft, X, ChefHat, Clock,
   Image as ImageIcon, Loader2, Search, Grid, List, Plus, Upload,
-  Globe, Lock, Tag, User, Sparkles, FileText, Pencil, RefreshCw, Star, Printer, Apple, SlidersHorizontal, Crown, AlertCircle, Video, Play, MoreVertical
+  Globe, Lock, Tag, User, Sparkles, FileText, Pencil, RefreshCw, Star, Printer, Apple, SlidersHorizontal, Crown, AlertCircle, Video, Play, MoreVertical, Mic, MessageCircle
 } from 'lucide-react';
 import RecipeVideoPlayer from './RecipeVideoPlayer';
+import RecipeChatModal from './RecipeChatModal';
 import { getRecipeVideo, initiateVideoGeneration } from '../services/recipeVideoService';
 import type { RecipeVideo } from '../types';
 
@@ -97,6 +98,9 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({
   const [currentVideo, setCurrentVideo] = useState<RecipeVideo | null>(null);
   const [loadingVideo, setLoadingVideo] = useState(false);
   const [generatingVideo, setGeneratingVideo] = useState(false);
+
+  // Recipe chat state
+  const [showRecipeChat, setShowRecipeChat] = useState(false);
 
   // Loading state
   const [isLoadingRecipes, setIsLoadingRecipes] = useState(true);
@@ -1158,6 +1162,13 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({
                           <SlidersHorizontal size={18} />
                           Adjust Recipe
                         </button>
+                        <button
+                          onClick={() => { setShowRecipeChat(true); setShowMobileMenu(false); }}
+                          className="w-full flex items-center gap-3 px-4 py-2.5 text-left text-emerald-700 hover:bg-emerald-50"
+                        >
+                          <Mic size={18} />
+                          Cook Mode
+                        </button>
                         {activeTab === 'uploaded' && openMeal.source === 'uploaded' && (
                           <button
                             onClick={() => { handleTogglePublic(openMeal); setShowMobileMenu(false); }}
@@ -1204,6 +1215,16 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({
                   >
                     <SlidersHorizontal size={14} />
                     Adjust
+                  </button>
+
+                  {/* Cooking Assistant button */}
+                  <button
+                    onClick={() => setShowRecipeChat(true)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
+                    title="Talk to cooking assistant"
+                  >
+                    <Mic size={14} />
+                    Cook Mode
                   </button>
 
                   {/* Public toggle for uploaded recipes */}
@@ -1478,6 +1499,15 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({
           onApply={handleApplyAdjustment}
           userName={userName}
           isPublicRecipe={activeTab === 'public' || openMeal.isPublic}
+        />
+      )}
+
+      {/* Recipe Chat / Cook Mode Modal */}
+      {showRecipeChat && openMeal && (
+        <RecipeChatModal
+          recipe={openMeal}
+          isOpen={showRecipeChat}
+          onClose={() => setShowRecipeChat(false)}
         />
       )}
     </div>

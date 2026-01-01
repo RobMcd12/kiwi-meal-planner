@@ -1,0 +1,491 @@
+import { GoogleGenAI } from "@google/genai";
+import { Meal } from "../types";
+
+// Types for the recipe chat
+export interface ChatMessage {
+  id: string;
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  timestamp: Date;
+}
+
+export interface CookingTimer {
+  id: string;
+  name: string;
+  durationSeconds: number;
+  remainingSeconds: number;
+  isRunning: boolean;
+  createdAt: Date;
+}
+
+export interface RecipeChatState {
+  messages: ChatMessage[];
+  timers: CookingTimer[];
+  currentStep: number;
+  isListening: boolean;
+  isSpeaking: boolean;
+}
+
+// Parse timer commands from user input
+const parseTimerCommand = (text: string): { action: 'start' | 'stop' | 'check' | null; name?: string; minutes?: number } => {
+  const lowerText = text.toLowerCase();
+
+  // Start timer patterns - support various ways to specify names
+  // "Set a 10 minute timer for the pasta"
+  // "Timer 5 minutes for the sauce"
+  // "Start a 15 minute rice timer"
+  // "Set timer for pasta 10 minutes"
+  const startPatterns = [
+    // "set timer for 10 minutes for pasta" or "set a timer for 10 minutes for the pasta"
+    /set\s+(?:a\s+)?timer\s+(?:for\s+)?(\d+)\s*(?:minute|min)s?\s*(?:for\s+)?(?:the\s+)?(.+)?/i,
+    // "start a 10 minute timer for pasta"
+    /start\s+(?:a\s+)?(\d+)\s*(?:minute|min)s?\s+timer\s*(?:for\s+)?(?:the\s+)?(.+)?/i,
+    // "10 minute timer for pasta" or "10 minutes for the pasta"
+    /(\d+)\s*(?:minute|min)s?\s+(?:timer\s+)?(?:for\s+)?(?:the\s+)?(.+)/i,
+    // "timer 10 minutes pasta"
+    /timer\s+(\d+)\s*(?:minute|min)s?\s*(.+)?/i,
+    // "set pasta timer for 10 minutes" or "start the rice timer 15 minutes"
+    /(?:set|start)\s+(?:a\s+|the\s+)?(.+?)\s+timer\s+(?:for\s+)?(\d+)\s*(?:minute|min)s?/i,
+  ];
+
+  for (const pattern of startPatterns) {
+    const match = lowerText.match(pattern);
+    if (match) {
+      // Check if this pattern has name before minutes (last pattern)
+      if (pattern.source.includes('(.+?)\\s+timer')) {
+        return {
+          action: 'start',
+          minutes: parseInt(match[2]),
+          name: match[1]?.trim() || 'Cooking timer'
+        };
+      }
+      return {
+        action: 'start',
+        minutes: parseInt(match[1]),
+        name: match[2]?.trim() || 'Cooking timer'
+      };
+    }
+  }
+
+  // Stop timer patterns - can stop by name
+  // "stop the pasta timer" or "cancel rice timer"
+  const stopNameMatch = lowerText.match(/(?:stop|cancel)\s+(?:the\s+)?(.+?)\s*timer/i);
+  if (stopNameMatch) {
+    return { action: 'stop', name: stopNameMatch[1]?.trim() };
+  }
+  if (/stop\s+(?:the\s+)?timer|cancel\s+(?:the\s+)?timer|timer\s+off/i.test(lowerText)) {
+    return { action: 'stop' };
+  }
+
+  // Check timer patterns - can check specific timer by name
+  // "how much time on the pasta" or "check the rice timer" or "how long for the sauce"
+  const checkNameMatch = lowerText.match(/(?:how\s+(?:much\s+)?time\s+(?:on|for|left\s+on)\s+(?:the\s+)?|check\s+(?:the\s+)?|how\s+long\s+(?:for\s+)?(?:the\s+)?)(.+?)(?:\s+timer)?$/i);
+  if (checkNameMatch && checkNameMatch[1] && !checkNameMatch[1].match(/^(left|remaining|timer)$/i)) {
+    return { action: 'check', name: checkNameMatch[1]?.trim() };
+  }
+  if (/(?:how\s+(?:much\s+)?time|check\s+(?:the\s+)?timer|timer\s+status|time\s+left|how\s+long)/i.test(lowerText)) {
+    return { action: 'check' };
+  }
+
+  return { action: null };
+};
+
+// Generate chat response using Gemini
+export const generateChatResponse = async (
+  recipe: Meal,
+  messages: ChatMessage[],
+  userMessage: string,
+  currentStep: number,
+  timers: CookingTimer[]
+): Promise<{ response: string; suggestedTimer?: { name: string; minutes: number } }> => {
+  const apiKey = process.env.API_KEY;
+  if (!apiKey) throw new Error("API Key is missing.");
+
+  const ai = new GoogleGenAI({ apiKey });
+
+  // Build conversation history
+  const conversationHistory = messages.slice(-10).map(m =>
+    `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`
+  ).join('\n');
+
+  // Parse instructions into steps
+  const steps = recipe.instructions.split(/\d+\.\s+/).filter(s => s.trim());
+  const currentStepText = steps[currentStep] || '';
+
+  // Timer context
+  const timerContext = timers.length > 0
+    ? `\n\nActive timers: ${timers.map(t => `${t.name}: ${Math.floor(t.remainingSeconds / 60)}m ${t.remainingSeconds % 60}s remaining`).join(', ')}`
+    : '';
+
+  const systemPrompt = `You are a friendly, helpful cooking assistant helping someone cook "${recipe.name}".
+
+Recipe Details:
+- Name: ${recipe.name}
+- Description: ${recipe.description}
+- Ingredients: ${recipe.ingredients.join(', ')}
+- Instructions: ${recipe.instructions}
+
+Current cooking step (${currentStep + 1}/${steps.length}): ${currentStepText}
+${timerContext}
+
+Your responsibilities:
+1. Answer questions about the recipe, ingredients, techniques, or substitutions
+2. Read out the current step or any step when asked
+3. Suggest timers when appropriate (respond with TIMER_SUGGESTION: name, minutes if you think a timer would help)
+4. Help with cooking tips and troubleshooting
+5. Be encouraging and conversational
+
+Keep responses concise and clear for voice output. Use natural, conversational language.
+If asked to read the recipe or a step, read it clearly and at a good pace.
+If the user seems confused, offer helpful guidance.`;
+
+  const prompt = `${systemPrompt}
+
+Recent conversation:
+${conversationHistory}
+
+User: ${userMessage}
+
+Respond helpfully and concisely:`;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-2.0-flash",
+      contents: prompt,
+    });
+
+    const responseText = response.text || "I'm sorry, I didn't catch that. Could you repeat?";
+
+    // Check for timer suggestion
+    let suggestedTimer: { name: string; minutes: number } | undefined;
+    const timerMatch = responseText.match(/TIMER_SUGGESTION:\s*([^,]+),\s*(\d+)/i);
+    if (timerMatch) {
+      suggestedTimer = {
+        name: timerMatch[1].trim(),
+        minutes: parseInt(timerMatch[2])
+      };
+    }
+
+    // Clean up response
+    const cleanedResponse = responseText.replace(/TIMER_SUGGESTION:[^\n]+/gi, '').trim();
+
+    return { response: cleanedResponse, suggestedTimer };
+  } catch (error) {
+    console.error("Chat response error:", error);
+    return { response: "I'm having trouble responding right now. Please try again." };
+  }
+};
+
+// Text-to-Speech functionality
+export class RecipeSpeaker {
+  private synth: SpeechSynthesis;
+  private utterance: SpeechSynthesisUtterance | null = null;
+  private onStateChange: (speaking: boolean) => void;
+
+  constructor(onStateChange: (speaking: boolean) => void) {
+    this.synth = window.speechSynthesis;
+    this.onStateChange = onStateChange;
+  }
+
+  speak(text: string, rate: number = 0.9): Promise<void> {
+    return new Promise((resolve, reject) => {
+      // Cancel any ongoing speech
+      this.stop();
+
+      this.utterance = new SpeechSynthesisUtterance(text);
+      this.utterance.rate = rate;
+      this.utterance.pitch = 1;
+      this.utterance.volume = 1;
+
+      // Try to use a natural voice
+      const voices = this.synth.getVoices();
+      const preferredVoice = voices.find(v =>
+        v.name.includes('Google') || v.name.includes('Natural') || v.name.includes('Samantha')
+      ) || voices.find(v => v.lang.startsWith('en'));
+
+      if (preferredVoice) {
+        this.utterance.voice = preferredVoice;
+      }
+
+      this.utterance.onstart = () => this.onStateChange(true);
+      this.utterance.onend = () => {
+        this.onStateChange(false);
+        resolve();
+      };
+      this.utterance.onerror = (e) => {
+        this.onStateChange(false);
+        reject(e);
+      };
+
+      this.synth.speak(this.utterance);
+    });
+  }
+
+  stop() {
+    if (this.synth.speaking) {
+      this.synth.cancel();
+    }
+    this.onStateChange(false);
+  }
+
+  get isSpeaking(): boolean {
+    return this.synth.speaking;
+  }
+}
+
+// Speech Recognition functionality
+export class RecipeListener {
+  private recognition: SpeechRecognition | null = null;
+  private onResult: (transcript: string, isFinal: boolean) => void;
+  private onStateChange: (listening: boolean) => void;
+  private onError: (error: string) => void;
+
+  constructor(
+    onResult: (transcript: string, isFinal: boolean) => void,
+    onStateChange: (listening: boolean) => void,
+    onError: (error: string) => void
+  ) {
+    this.onResult = onResult;
+    this.onStateChange = onStateChange;
+    this.onError = onError;
+    this.initRecognition();
+  }
+
+  private initRecognition() {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+      this.onError("Speech recognition is not supported in this browser");
+      return;
+    }
+
+    this.recognition = new SpeechRecognition();
+    this.recognition.continuous = true;
+    this.recognition.interimResults = true;
+    this.recognition.lang = 'en-US';
+
+    this.recognition.onstart = () => {
+      this.onStateChange(true);
+    };
+
+    this.recognition.onend = () => {
+      this.onStateChange(false);
+    };
+
+    this.recognition.onresult = (event) => {
+      const lastResult = event.results[event.results.length - 1];
+      const transcript = lastResult[0].transcript;
+      const isFinal = lastResult.isFinal;
+      this.onResult(transcript, isFinal);
+    };
+
+    this.recognition.onerror = (event) => {
+      this.onStateChange(false);
+      if (event.error !== 'aborted') {
+        this.onError(`Speech recognition error: ${event.error}`);
+      }
+    };
+  }
+
+  start() {
+    if (this.recognition) {
+      try {
+        this.recognition.start();
+      } catch (e) {
+        // Already started
+      }
+    }
+  }
+
+  stop() {
+    if (this.recognition) {
+      this.recognition.stop();
+    }
+  }
+
+  get isSupported(): boolean {
+    return this.recognition !== null;
+  }
+}
+
+// Timer management
+export class TimerManager {
+  private timers: Map<string, CookingTimer> = new Map();
+  private intervals: Map<string, NodeJS.Timeout> = new Map();
+  private onUpdate: (timers: CookingTimer[]) => void;
+  private onTimerComplete: (timer: CookingTimer) => void;
+
+  constructor(
+    onUpdate: (timers: CookingTimer[]) => void,
+    onTimerComplete: (timer: CookingTimer) => void
+  ) {
+    this.onUpdate = onUpdate;
+    this.onTimerComplete = onTimerComplete;
+  }
+
+  createTimer(name: string, minutes: number): CookingTimer {
+    const timer: CookingTimer = {
+      id: `timer-${Date.now()}`,
+      name,
+      durationSeconds: minutes * 60,
+      remainingSeconds: minutes * 60,
+      isRunning: true,
+      createdAt: new Date(),
+    };
+
+    this.timers.set(timer.id, timer);
+    this.startTimerInterval(timer.id);
+    this.notifyUpdate();
+    return timer;
+  }
+
+  private startTimerInterval(timerId: string) {
+    const interval = setInterval(() => {
+      const timer = this.timers.get(timerId);
+      if (!timer) {
+        this.clearInterval(timerId);
+        return;
+      }
+
+      if (timer.isRunning && timer.remainingSeconds > 0) {
+        timer.remainingSeconds--;
+        this.notifyUpdate();
+
+        if (timer.remainingSeconds === 0) {
+          this.onTimerComplete(timer);
+          this.clearInterval(timerId);
+        }
+      }
+    }, 1000);
+
+    this.intervals.set(timerId, interval);
+  }
+
+  private clearInterval(timerId: string) {
+    const interval = this.intervals.get(timerId);
+    if (interval) {
+      clearInterval(interval);
+      this.intervals.delete(timerId);
+    }
+  }
+
+  pauseTimer(timerId: string) {
+    const timer = this.timers.get(timerId);
+    if (timer) {
+      timer.isRunning = false;
+      this.notifyUpdate();
+    }
+  }
+
+  resumeTimer(timerId: string) {
+    const timer = this.timers.get(timerId);
+    if (timer && timer.remainingSeconds > 0) {
+      timer.isRunning = true;
+      this.notifyUpdate();
+    }
+  }
+
+  stopTimer(timerId: string) {
+    this.clearInterval(timerId);
+    this.timers.delete(timerId);
+    this.notifyUpdate();
+  }
+
+  stopAllTimers() {
+    this.intervals.forEach((_, id) => this.clearInterval(id));
+    this.timers.clear();
+    this.notifyUpdate();
+  }
+
+  getTimers(): CookingTimer[] {
+    return Array.from(this.timers.values());
+  }
+
+  getActiveTimer(): CookingTimer | undefined {
+    return Array.from(this.timers.values()).find(t => t.isRunning);
+  }
+
+  // Find timer by name (case-insensitive partial match)
+  findTimerByName(name: string): CookingTimer | undefined {
+    const lowerName = name.toLowerCase();
+    return Array.from(this.timers.values()).find(t =>
+      t.name.toLowerCase().includes(lowerName) ||
+      lowerName.includes(t.name.toLowerCase())
+    );
+  }
+
+  // Stop timer by name
+  stopTimerByName(name: string): CookingTimer | undefined {
+    const timer = this.findTimerByName(name);
+    if (timer) {
+      this.stopTimer(timer.id);
+      return timer;
+    }
+    return undefined;
+  }
+
+  private notifyUpdate() {
+    this.onUpdate(this.getTimers());
+  }
+
+  destroy() {
+    this.intervals.forEach((interval) => clearInterval(interval));
+    this.intervals.clear();
+    this.timers.clear();
+  }
+}
+
+// Parse instructions into numbered steps
+export const parseInstructionSteps = (instructions: string): string[] => {
+  // Try to split by numbered steps first
+  const numberedSteps = instructions.split(/(?:^|\n)\s*\d+[\.\)]\s*/);
+  if (numberedSteps.length > 1) {
+    return numberedSteps.filter(s => s.trim()).map(s => s.trim());
+  }
+
+  // Fall back to sentence splitting
+  const sentences = instructions.split(/(?<=[.!?])\s+/);
+  return sentences.filter(s => s.trim()).map(s => s.trim());
+};
+
+// Format timer for display
+export const formatTimerDisplay = (seconds: number): string => {
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
+};
+
+// Check if user is asking to read recipe
+export const isReadCommand = (text: string): { type: 'full' | 'step' | 'ingredients' | 'next' | 'previous' | null; stepNum?: number } => {
+  const lowerText = text.toLowerCase();
+
+  if (/read\s+(?:the\s+)?(?:full\s+)?recipe|read\s+(?:me\s+)?everything/i.test(lowerText)) {
+    return { type: 'full' };
+  }
+
+  if (/(?:read\s+)?(?:the\s+)?ingredients?|what\s+(?:are\s+)?(?:the\s+)?ingredients/i.test(lowerText)) {
+    return { type: 'ingredients' };
+  }
+
+  if (/next\s+step|what'?s?\s+next|continue|go\s+on/i.test(lowerText)) {
+    return { type: 'next' };
+  }
+
+  if (/previous\s+step|go\s+back|last\s+step|repeat/i.test(lowerText)) {
+    return { type: 'previous' };
+  }
+
+  const stepMatch = lowerText.match(/(?:read\s+)?step\s+(\d+)|(?:what'?s?\s+)?step\s+(\d+)/i);
+  if (stepMatch) {
+    return { type: 'step', stepNum: parseInt(stepMatch[1] || stepMatch[2]) - 1 };
+  }
+
+  if (/(?:read\s+)?(?:the\s+)?(?:current\s+)?step|where\s+(?:am\s+)?i|what\s+step/i.test(lowerText)) {
+    return { type: 'step' };
+  }
+
+  return { type: null };
+};
+
+// Export timer command parser
+export { parseTimerCommand };
