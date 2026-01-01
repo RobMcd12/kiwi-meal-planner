@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { X, Search, Loader2, User, ChefHat, Video, Calendar, Crown, CheckCircle, XCircle, Clock } from 'lucide-react';
-import { getAllUsers } from '../../services/adminService';
-import { getAllRecipeVideos } from '../../services/recipeVideoService';
+import { X, Search, Loader2, User, ChefHat, Video, Calendar, Crown, CheckCircle, XCircle, Clock, Play, Globe, Lock, RefreshCw } from 'lucide-react';
+import { getAllUsers, getAllRecipes, getAllMealPlans, type AdminRecipe, type AdminMealPlan } from '../../services/adminService';
+import { getAllRecipeVideos, initiateVideoGeneration } from '../../services/recipeVideoService';
 import type { RecipeVideo } from '../../types';
 
 export type CounterType = 'users' | 'mealPlans' | 'recipes' | 'videos';
@@ -45,6 +45,7 @@ const DashboardCounterModal: React.FC<DashboardCounterModalProps> = ({
   const [isLoading, setIsLoading] = useState(true);
   const [items, setItems] = useState<any[]>([]);
   const [displayLimit, setDisplayLimit] = useState(20);
+  const [generatingIds, setGeneratingIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     loadItems();
@@ -69,7 +70,14 @@ const DashboardCounterModal: React.FC<DashboardCounterModalProps> = ({
           const videos = await getAllRecipeVideos();
           setItems(videos);
           break;
-        // TODO: Add meal plans and recipes loading
+        case 'recipes':
+          const recipes = await getAllRecipes();
+          setItems(recipes);
+          break;
+        case 'mealPlans':
+          const mealPlans = await getAllMealPlans();
+          setItems(mealPlans);
+          break;
         default:
           setItems([]);
       }
@@ -77,6 +85,25 @@ const DashboardCounterModal: React.FC<DashboardCounterModalProps> = ({
       console.error('Error loading items:', err);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleGenerateVideo = async (recipeId: string) => {
+    setGeneratingIds(prev => new Set(prev).add(recipeId));
+    try {
+      await initiateVideoGeneration(recipeId, 'supabase');
+      // Update the item's video status
+      setItems(prev => prev.map(item =>
+        item.id === recipeId ? { ...item, hasVideo: true, videoStatus: 'pending' } : item
+      ));
+    } catch (err) {
+      console.error('Error generating video:', err);
+    } finally {
+      setGeneratingIds(prev => {
+        const next = new Set(prev);
+        next.delete(recipeId);
+        return next;
+      });
     }
   };
 
@@ -106,6 +133,16 @@ const DashboardCounterModal: React.FC<DashboardCounterModalProps> = ({
     }
     if (type === 'videos') {
       return item.mealName?.toLowerCase().includes(query);
+    }
+    if (type === 'recipes') {
+      return item.name?.toLowerCase().includes(query) ||
+             item.userEmail?.toLowerCase().includes(query) ||
+             item.userName?.toLowerCase().includes(query);
+    }
+    if (type === 'mealPlans') {
+      return item.name?.toLowerCase().includes(query) ||
+             item.userEmail?.toLowerCase().includes(query) ||
+             item.userName?.toLowerCase().includes(query);
     }
     return true;
   });
@@ -187,6 +224,87 @@ const DashboardCounterModal: React.FC<DashboardCounterModalProps> = ({
                   {video.processingStatus}
                 </span>
               )}
+            </div>
+          </div>
+        );
+
+      case 'recipes':
+        const recipe = item as AdminRecipe;
+        return (
+          <div key={recipe.id} className="flex items-center justify-between p-3 bg-white rounded-lg border border-slate-200 hover:border-slate-300 transition-colors">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 bg-slate-100 rounded-lg flex items-center justify-center overflow-hidden flex-shrink-0">
+                {recipe.imageUrl ? (
+                  <img src={recipe.imageUrl} alt="" className="w-full h-full object-cover" />
+                ) : (
+                  <ChefHat size={20} className="text-slate-400" />
+                )}
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="font-medium text-slate-800 truncate">{recipe.name}</span>
+                  {recipe.isPublic && (
+                    <Globe size={12} className="text-blue-500 flex-shrink-0" />
+                  )}
+                  {recipe.hasVideo && (
+                    <Video size={12} className="text-purple-500 flex-shrink-0" />
+                  )}
+                </div>
+                <div className="flex items-center gap-2 text-xs text-slate-500">
+                  <User size={12} />
+                  <span className="truncate">{recipe.userName || recipe.userEmail || 'Unknown'}</span>
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 flex-shrink-0">
+              {recipe.hasVideo ? (
+                <span className={`flex items-center gap-1 text-xs px-2 py-1 rounded-full ${
+                  recipe.videoStatus === 'complete' ? 'bg-emerald-100 text-emerald-700' :
+                  recipe.videoStatus === 'failed' ? 'bg-red-100 text-red-700' :
+                  'bg-amber-100 text-amber-700'
+                }`}>
+                  {recipe.videoStatus === 'complete' ? <CheckCircle size={12} /> :
+                   recipe.videoStatus === 'failed' ? <XCircle size={12} /> :
+                   <Clock size={12} />}
+                  {recipe.videoStatus}
+                </span>
+              ) : (
+                <button
+                  onClick={(e) => { e.stopPropagation(); handleGenerateVideo(recipe.id); }}
+                  disabled={generatingIds.has(recipe.id)}
+                  className="flex items-center gap-1 px-2 py-1 bg-purple-100 hover:bg-purple-200 text-purple-700 text-xs font-medium rounded-lg transition-colors disabled:opacity-50"
+                >
+                  {generatingIds.has(recipe.id) ? (
+                    <Loader2 size={12} className="animate-spin" />
+                  ) : (
+                    <Play size={12} />
+                  )}
+                  {generatingIds.has(recipe.id) ? 'Starting...' : 'Video'}
+                </button>
+              )}
+            </div>
+          </div>
+        );
+
+      case 'mealPlans':
+        const plan = item as AdminMealPlan;
+        return (
+          <div key={plan.id} className="flex items-center justify-between p-3 bg-white rounded-lg border border-slate-200 hover:border-slate-300 transition-colors">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center">
+                <Calendar size={18} className="text-emerald-600" />
+              </div>
+              <div>
+                <span className="font-medium text-slate-800">{plan.name}</span>
+                <div className="flex items-center gap-2 text-xs text-slate-500">
+                  <User size={12} />
+                  <span>{plan.userName || plan.userEmail || 'Unknown'}</span>
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center gap-3 text-sm text-slate-500">
+              <span className="px-2 py-0.5 bg-slate-100 rounded text-xs">{plan.daysCount} days</span>
+              <span className="px-2 py-0.5 bg-slate-100 rounded text-xs">{plan.mealsCount} meals</span>
             </div>
           </div>
         );

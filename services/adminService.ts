@@ -275,6 +275,75 @@ export const getAllRecipes = async (): Promise<AdminRecipe[]> => {
   }
 };
 
+/**
+ * Admin meal plan type
+ */
+export interface AdminMealPlan {
+  id: string;
+  name: string;
+  userId: string;
+  userEmail?: string;
+  userName?: string;
+  daysCount: number;
+  mealsCount: number;
+  createdAt: string;
+}
+
+/**
+ * Get all meal plans from all users (admin only)
+ */
+export const getAllMealPlans = async (): Promise<AdminMealPlan[]> => {
+  if (!isSupabaseConfigured()) {
+    return [];
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('saved_meal_plans')
+      .select(`
+        id,
+        name,
+        user_id,
+        weekly_plan,
+        created_at,
+        profiles:user_id(email, full_name)
+      `)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching all meal plans:', error);
+      return [];
+    }
+
+    return (data || []).map((plan: any) => {
+      // Count days and meals from weekly_plan JSONB
+      const weeklyPlan = plan.weekly_plan || {};
+      const days = Object.keys(weeklyPlan);
+      let mealsCount = 0;
+      days.forEach(day => {
+        const dayMeals = weeklyPlan[day];
+        if (dayMeals) {
+          mealsCount += Object.keys(dayMeals).filter(k => dayMeals[k]).length;
+        }
+      });
+
+      return {
+        id: plan.id,
+        name: plan.name,
+        userId: plan.user_id,
+        userEmail: plan.profiles?.email,
+        userName: plan.profiles?.full_name,
+        daysCount: days.length,
+        mealsCount,
+        createdAt: plan.created_at,
+      };
+    });
+  } catch (err) {
+    console.error('Error fetching all meal plans:', err);
+    return [];
+  }
+};
+
 export const getUserForImpersonation = async (userId: string): Promise<ImpersonatedUserDetails | null> => {
   if (!isSupabaseConfigured()) {
     return null;

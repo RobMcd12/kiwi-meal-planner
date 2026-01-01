@@ -134,7 +134,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
   const [stats, setStats] = useState<Stats>({ totalUsers: 0, totalMealPlans: 0, totalFavorites: 0, totalVideos: 0 });
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'overview' | 'feedback' | 'data' | 'users' | 'instructions' | 'subscriptions' | 'videos'>('overview');
-  const [counterModalType, setCounterModalType] = useState<'users' | 'videos' | null>(null);
+  const [counterModalType, setCounterModalType] = useState<'users' | 'videos' | 'recipes' | 'mealPlans' | null>(null);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   // Instructions state
@@ -901,7 +901,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
             </div>
           </button>
 
-          <div className="bg-white rounded-xl border border-slate-200 p-6">
+          <button
+            onClick={() => setCounterModalType('mealPlans')}
+            className="bg-white rounded-xl border border-slate-200 p-6 text-left hover:border-emerald-300 hover:shadow-md transition-all cursor-pointer"
+          >
             <div className="flex items-center gap-3 mb-4">
               <div className="bg-emerald-100 p-3 rounded-lg">
                 <Activity className="text-emerald-600" size={24} />
@@ -911,19 +914,22 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
                 <div className="text-sm text-slate-500">Meal Plans Created</div>
               </div>
             </div>
-          </div>
+          </button>
 
-          <div className="bg-white rounded-xl border border-slate-200 p-6">
+          <button
+            onClick={() => setCounterModalType('recipes')}
+            className="bg-white rounded-xl border border-slate-200 p-6 text-left hover:border-rose-300 hover:shadow-md transition-all cursor-pointer"
+          >
             <div className="flex items-center gap-3 mb-4">
               <div className="bg-rose-100 p-3 rounded-lg">
                 <Database className="text-rose-600" size={24} />
               </div>
               <div>
                 <div className="text-2xl font-bold text-slate-800">{loading ? '...' : stats.totalFavorites}</div>
-                <div className="text-sm text-slate-500">Saved Favorites</div>
+                <div className="text-sm text-slate-500">Saved Recipes</div>
               </div>
             </div>
-          </div>
+          </button>
 
           <button
             onClick={() => setCounterModalType('videos')}
