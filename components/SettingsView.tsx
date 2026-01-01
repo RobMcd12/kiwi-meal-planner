@@ -30,8 +30,10 @@ const SettingsView: React.FC<SettingsViewProps> = ({
   onClose,
   initialTab = 'general',
 }) => {
-  const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<'general' | 'pantry' | 'prefs' | 'account' | 'subscription'>(initialTab);
+  const { user, isImpersonating } = useAuth();
+  // If impersonating and trying to access account tab, redirect to general
+  const safeInitialTab = isImpersonating && (initialTab === 'account' || initialTab === 'subscription') ? 'general' : initialTab;
+  const [activeTab, setActiveTab] = useState<'general' | 'pantry' | 'prefs' | 'account' | 'subscription'>(safeInitialTab);
   const [isLinkingGoogle, setIsLinkingGoogle] = useState(false);
   const [linkError, setLinkError] = useState<string | null>(null);
   const [linkSuccess, setLinkSuccess] = useState(false);
@@ -159,28 +161,33 @@ const SettingsView: React.FC<SettingsViewProps> = ({
                 <Utensils size={18} />
                 Preferences
             </button>
-            <button
-                onClick={() => setActiveTab('account')}
-                className={`flex-1 min-w-[120px] py-4 text-center font-medium text-sm flex items-center justify-center gap-2 transition-colors border-b-2 ${
-                    activeTab === 'account'
-                    ? 'border-blue-600 text-blue-600 bg-blue-50/50'
-                    : 'border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-50'
-                }`}
-            >
-                <UserCircle size={18} />
-                Account
-            </button>
-            <button
-                onClick={() => setActiveTab('subscription')}
-                className={`flex-1 min-w-[120px] py-4 text-center font-medium text-sm flex items-center justify-center gap-2 transition-colors border-b-2 ${
-                    activeTab === 'subscription'
-                    ? 'border-amber-600 text-amber-600 bg-amber-50/50'
-                    : 'border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-50'
-                }`}
-            >
-                <Crown size={18} />
-                Subscription
-            </button>
+            {/* Hide Account and Subscription tabs when impersonating */}
+            {!isImpersonating && (
+              <>
+                <button
+                    onClick={() => setActiveTab('account')}
+                    className={`flex-1 min-w-[120px] py-4 text-center font-medium text-sm flex items-center justify-center gap-2 transition-colors border-b-2 ${
+                        activeTab === 'account'
+                        ? 'border-blue-600 text-blue-600 bg-blue-50/50'
+                        : 'border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-50'
+                    }`}
+                >
+                    <UserCircle size={18} />
+                    Account
+                </button>
+                <button
+                    onClick={() => setActiveTab('subscription')}
+                    className={`flex-1 min-w-[120px] py-4 text-center font-medium text-sm flex items-center justify-center gap-2 transition-colors border-b-2 ${
+                        activeTab === 'subscription'
+                        ? 'border-amber-600 text-amber-600 bg-amber-50/50'
+                        : 'border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-50'
+                    }`}
+                >
+                    <Crown size={18} />
+                    Subscription
+                </button>
+              </>
+            )}
         </div>
 
         {/* Content */}

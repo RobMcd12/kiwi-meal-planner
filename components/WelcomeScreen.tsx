@@ -7,6 +7,7 @@ interface WelcomeScreenProps {
   onViewSavedPlans?: () => void;
   onGenerateSingleRecipe?: () => void;
   onUseWhatIHave?: () => void;
+  onManagePantry?: () => void;
   hasPantryItems?: boolean;
 }
 
@@ -16,6 +17,7 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
   onViewSavedPlans,
   onGenerateSingleRecipe,
   onUseWhatIHave,
+  onManagePantry,
   hasPantryItems = false
 }) => {
   const foodImages = [
@@ -58,13 +60,10 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
       </div>
 
       {/* Featured: Use What I Have */}
-      {hasPantryItems && onUseWhatIHave && (
-        <button
-          onClick={onUseWhatIHave}
-          className="group w-full bg-gradient-to-r from-blue-50 to-cyan-50 p-5 rounded-2xl shadow-sm border border-blue-200 hover:shadow-md hover:border-blue-300 transition-all text-left mb-6"
-        >
+      {onUseWhatIHave && (
+        <div className="w-full bg-gradient-to-r from-blue-50 to-cyan-50 p-5 rounded-2xl shadow-sm border border-blue-200 mb-6">
           <div className="flex items-start gap-4">
-            <div className="bg-blue-100 w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+            <div className="bg-blue-100 w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0">
               <Package className="text-blue-600" size={24} />
             </div>
             <div className="flex-1">
@@ -78,12 +77,25 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
               <p className="text-sm text-slate-600 mb-2">
                 Create meals prioritizing ingredients from your pantry, fridge, and freezer - minimizing shopping and reducing waste.
               </p>
-              <span className="inline-flex items-center gap-1 text-sm font-medium text-blue-600 group-hover:gap-2 transition-all">
-                Start cooking <ArrowRight size={14} />
-              </span>
+              {hasPantryItems ? (
+                <button
+                  onClick={onUseWhatIHave}
+                  className="inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:gap-2 transition-all"
+                >
+                  Start cooking <ArrowRight size={14} />
+                </button>
+              ) : (
+                <button
+                  onClick={onManagePantry}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+                >
+                  <Package size={16} />
+                  Add Items to Pantry
+                </button>
+              )}
             </div>
           </div>
-        </button>
+        </div>
       )}
 
       {/* Action Cards */}

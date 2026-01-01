@@ -344,6 +344,10 @@ const AppContent: React.FC = () => {
               setConfig(prev => ({ ...prev, useWhatIHave: true }));
               setStep(AppStep.CONFIG);
             }}
+            onManagePantry={() => {
+              setSettingsInitialTab('pantry');
+              setStep(AppStep.SETTINGS);
+            }}
             hasPantryItems={pantryItems.length > 0}
           />
         );
