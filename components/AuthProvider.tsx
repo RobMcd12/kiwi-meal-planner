@@ -5,12 +5,14 @@ import { checkIsAdmin, isSuperAdmin } from '../services/adminService';
 import { recordLogin } from '../services/loginHistoryService';
 
 // Capture URL state immediately at module load (before Supabase can modify it)
-// This is necessary because Supabase's detectSessionInUrl may process and clear the URL
+// This is used to detect if we're returning from an OAuth callback
 const INITIAL_HASH = window.location.hash;
 const INITIAL_CODE = new URLSearchParams(window.location.search).get('code');
 
 // Check if this was an OAuth callback (using captured initial state)
-const isOAuthCallback = (): boolean => {
+// Note: We don't manually exchange the code - Supabase's detectSessionInUrl handles that
+// This is just used to know we should wait for the auth state change
+export const isOAuthCallback = (): boolean => {
   // Check for OAuth tokens in hash (implicit flow)
   if (INITIAL_HASH && (INITIAL_HASH.includes('access_token=') || INITIAL_HASH.includes('error='))) {
     return true;
@@ -23,9 +25,6 @@ const isOAuthCallback = (): boolean => {
 
   return false;
 };
-
-// Get the initial OAuth code (if present)
-const getInitialOAuthCode = (): string | null => INITIAL_CODE;
 
 interface AuthContextType {
   user: User | null;
@@ -125,9 +124,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
 
     // Track if we're processing an OAuth callback
+    // When detectSessionInUrl is true, Supabase automatically handles the code exchange
+    // and fires onAuthStateChange when complete
     const processingOAuth = isOAuthCallback();
 
-    // Subscribe to auth changes
+    // Subscribe to auth changes - this is triggered by Supabase after OAuth code exchange
     const unsubscribe = onAuthStateChange(async (newSession) => {
       setSession(newSession);
       setUser(newSession?.user ?? null);
@@ -149,39 +150,18 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setLoading(false);
     });
 
-    // Initialize auth
+    // Initialize auth - check for existing session
+    // Note: For OAuth callbacks, Supabase's detectSessionInUrl automatically
+    // exchanges the code and triggers onAuthStateChange, so we don't need
+    // to manually call exchangeCodeForSession
     const initAuth = async () => {
       try {
-        // If this is an OAuth callback, explicitly exchange the code
+        // If this is an OAuth callback, just wait for onAuthStateChange
+        // Supabase will handle the code exchange automatically
         if (processingOAuth) {
-          // Use the code captured at module load time
-          const code = getInitialOAuthCode();
-
-          if (code) {
-            // exchangeCodeForSession handles the PKCE code exchange
-            const { data, error } = await supabase.auth.exchangeCodeForSession(code);
-
-            if (error) {
-              console.error('OAuth code exchange failed:', error);
-              setLoading(false);
-              return;
-            }
-
-            if (data.session) {
-              setSession(data.session);
-              setUser(data.session.user);
-
-              // Check admin status
-              const adminStatus = await checkIsAdmin(data.session.user.id, data.session.user.email ?? undefined);
-              setIsAdmin(adminStatus);
-
-              // Record login
-              handleLoginRecord(data.session.user);
-            }
-
-            setLoading(false);
-            return;
-          }
+          // Don't call getSession during OAuth callback as Supabase is processing
+          // The onAuthStateChange callback will handle setting the session
+          return;
         }
 
         // Normal session check (not OAuth callback)
@@ -200,7 +180,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       } catch (error) {
         console.error('Error during auth init:', error);
       } finally {
-        setLoading(false);
+        // Only set loading false if not processing OAuth
+        // OAuth callback will set loading false in onAuthStateChange
+        if (!processingOAuth) {
+          setLoading(false);
+        }
       }
     };
 
