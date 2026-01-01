@@ -79,6 +79,7 @@ const RecipeNotesSection: React.FC<RecipeNotesSectionProps> = ({
   const [comments, setComments] = useState<RecipeComment[]>([]);
   const [newComment, setNewComment] = useState('');
   const [newRating, setNewRating] = useState(0);
+  const [commentIsPublic, setCommentIsPublic] = useState(true);
   const [userRating, setUserRating] = useState<number | null>(null);
   const [savingComment, setSavingComment] = useState(false);
   const [savingRating, setSavingRating] = useState(false);
@@ -231,11 +232,12 @@ const RecipeNotesSection: React.FC<RecipeNotesSectionProps> = ({
     if (!newComment.trim()) return;
     setSavingComment(true);
     try {
-      const saved = await saveRecipeComment(mealId, newComment.trim(), newRating || null);
+      const saved = await saveRecipeComment(mealId, newComment.trim(), newRating || null, commentIsPublic);
       if (saved) {
         setComments(prev => [saved, ...prev]);
         setNewComment('');
         setNewRating(0);
+        setCommentIsPublic(true);
         // Refresh average rating
         const rating = await getRecipeAverageRating(mealId);
         setAverageRating(rating);
@@ -597,15 +599,38 @@ const RecipeNotesSection: React.FC<RecipeNotesSectionProps> = ({
                   className="w-full px-4 py-3 border border-slate-200 rounded-xl resize-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none text-sm bg-white"
                   rows={2}
                 />
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-slate-500">Add rating with comment:</span>
-                    <StarRating rating={newRating} onRate={setNewRating} size="sm" />
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-4">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-slate-500">Rating:</span>
+                      <StarRating rating={newRating} onRate={setNewRating} size="sm" />
+                    </div>
+                    <label className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={commentIsPublic}
+                        onChange={(e) => setCommentIsPublic(e.target.checked)}
+                        className="w-4 h-4 text-blue-600 border-slate-300 rounded focus:ring-blue-500"
+                      />
+                      <span className="text-sm text-slate-600 flex items-center gap-1.5">
+                        {commentIsPublic ? (
+                          <>
+                            <Globe size={14} className="text-blue-500" />
+                            Public
+                          </>
+                        ) : (
+                          <>
+                            <Lock size={14} className="text-slate-500" />
+                            Private
+                          </>
+                        )}
+                      </span>
+                    </label>
                   </div>
                   <button
                     onClick={handleSaveComment}
                     disabled={!newComment.trim() || savingComment}
-                    className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="flex items-center justify-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     {savingComment ? (
                       <Loader2 size={14} className="animate-spin" />
@@ -651,6 +676,16 @@ const RecipeNotesSection: React.FC<RecipeNotesSectionProps> = ({
                             {comment.isOwn && (
                               <span className="text-xs bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded">
                                 You
+                              </span>
+                            )}
+                            {comment.isOwn && (
+                              <span className={`text-xs px-1.5 py-0.5 rounded flex items-center gap-1 ${
+                                comment.isPublic
+                                  ? 'bg-blue-100 text-blue-700'
+                                  : 'bg-slate-100 text-slate-600'
+                              }`}>
+                                {comment.isPublic ? <Globe size={10} /> : <Lock size={10} />}
+                                {comment.isPublic ? 'Public' : 'Private'}
                               </span>
                             )}
                           </div>

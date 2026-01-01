@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { MealPlanResponse, Meal } from '../types';
-import { Calendar, ShoppingCart, ChevronDown, ChevronUp, ExternalLink, Check, RefreshCw, Heart, Loader2, Clock, ChefHat, Image as ImageIcon, Share, LayoutGrid, List, Save, CheckCircle, X } from 'lucide-react';
+import { MealPlanResponse, Meal, ShoppingCategory, Ingredient } from '../types';
+import { Calendar, ShoppingCart, ChevronDown, ChevronUp, ExternalLink, Check, RefreshCw, Heart, Loader2, Clock, ChefHat, Image as ImageIcon, Share, LayoutGrid, List, Save, CheckCircle, X, GripVertical } from 'lucide-react';
 import { saveFavoriteMeal, removeFavoriteMeal, getFavoriteMeals, saveCheckedItems, loadCheckedItems, getCachedImage, cacheImage, saveMealPlan } from '../services/storageService';
 import { generateDishImage } from '../services/geminiService';
 
@@ -29,6 +29,18 @@ const PlanDisplay: React.FC<PlanDisplayProps> = ({ data, onReset }) => {
   const [planName, setPlanName] = useState('');
   const [isSavingPlan, setIsSavingPlan] = useState(false);
   const [planSaved, setPlanSaved] = useState(false);
+
+  // Shopping List Drag & Drop State
+  const [shoppingList, setShoppingList] = useState<ShoppingCategory[]>(data.shoppingList);
+  const [draggedCategory, setDraggedCategory] = useState<number | null>(null);
+  const [draggedItem, setDraggedItem] = useState<{ categoryIdx: number; itemIdx: number } | null>(null);
+  const [dropTargetCategory, setDropTargetCategory] = useState<number | null>(null);
+  const [dropTargetItem, setDropTargetItem] = useState<{ categoryIdx: number; itemIdx: number } | null>(null);
+
+  // Sync shopping list when data changes
+  useEffect(() => {
+    setShoppingList(data.shoppingList);
+  }, [data.shoppingList]);
 
   // Check if we have only one meal type per day (single meal mode)
   const isSingleMealMode = data.weeklyPlan.every(day => {
@@ -114,6 +126,84 @@ const PlanDisplay: React.FC<PlanDisplayProps> = ({ data, onReset }) => {
     setCheckedItems(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
+  // Shopping List Drag & Drop Handlers
+  const handleCategoryDragStart = (e: React.DragEvent, categoryIdx: number) => {
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('type', 'category');
+    setDraggedCategory(categoryIdx);
+  };
+
+  const handleCategoryDragOver = (e: React.DragEvent, targetIdx: number) => {
+    e.preventDefault();
+    if (draggedCategory !== null && draggedCategory !== targetIdx) {
+      setDropTargetCategory(targetIdx);
+    }
+  };
+
+  const handleCategoryDrop = (e: React.DragEvent, targetIdx: number) => {
+    e.preventDefault();
+    if (draggedCategory !== null && draggedCategory !== targetIdx) {
+      const newList = [...shoppingList];
+      const [removed] = newList.splice(draggedCategory, 1);
+      newList.splice(targetIdx, 0, removed);
+      setShoppingList(newList);
+    }
+    setDraggedCategory(null);
+    setDropTargetCategory(null);
+  };
+
+  const handleItemDragStart = (e: React.DragEvent, categoryIdx: number, itemIdx: number) => {
+    e.stopPropagation();
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('type', 'item');
+    setDraggedItem({ categoryIdx, itemIdx });
+  };
+
+  const handleItemDragOver = (e: React.DragEvent, categoryIdx: number, itemIdx: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (draggedItem !== null) {
+      setDropTargetItem({ categoryIdx, itemIdx });
+    }
+  };
+
+  const handleItemDrop = (e: React.DragEvent, targetCategoryIdx: number, targetItemIdx: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (draggedItem === null) return;
+
+    const { categoryIdx: sourceCategoryIdx, itemIdx: sourceItemIdx } = draggedItem;
+    const newList = [...shoppingList];
+
+    if (sourceCategoryIdx === targetCategoryIdx) {
+      // Reorder within same category
+      const items = [...newList[sourceCategoryIdx].items];
+      const [removed] = items.splice(sourceItemIdx, 1);
+      items.splice(targetItemIdx, 0, removed);
+      newList[sourceCategoryIdx] = { ...newList[sourceCategoryIdx], items };
+    } else {
+      // Move between categories
+      const sourceItems = [...newList[sourceCategoryIdx].items];
+      const targetItems = [...newList[targetCategoryIdx].items];
+      const [removed] = sourceItems.splice(sourceItemIdx, 1);
+      targetItems.splice(targetItemIdx, 0, removed);
+      newList[sourceCategoryIdx] = { ...newList[sourceCategoryIdx], items: sourceItems };
+      newList[targetCategoryIdx] = { ...newList[targetCategoryIdx], items: targetItems };
+    }
+
+    setShoppingList(newList);
+    setDraggedItem(null);
+    setDropTargetItem(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedCategory(null);
+    setDraggedItem(null);
+    setDropTargetCategory(null);
+    setDropTargetItem(null);
+  };
+
   const toggleFavorite = async (meal: Meal) => {
     if (favorites.includes(meal.name)) {
       await removeFavoriteMeal(meal.id);
@@ -157,7 +247,7 @@ const PlanDisplay: React.FC<PlanDisplayProps> = ({ data, onReset }) => {
 
   const generateListText = () => {
     const itemsToBuy: string[] = [];
-    data.shoppingList.forEach(category => {
+    shoppingList.forEach(category => {
         const categoryItems: string[] = [];
         category.items.forEach((item, idx) => {
             const key = `${category.categoryName}-${idx}`;
@@ -222,10 +312,10 @@ const PlanDisplay: React.FC<PlanDisplayProps> = ({ data, onReset }) => {
 
   const handleNewWorldIntegration = () => {
     setIsNewWorldLoading(true);
-    
+
     // Collect only unchecked items to "buy"
     const itemsToBuy: string[] = [];
-    data.shoppingList.forEach(category => {
+    shoppingList.forEach(category => {
         category.items.forEach((item, idx) => {
             const key = `${category.categoryName}-${idx}`;
             // If NOT checked, we need to buy it
@@ -605,22 +695,65 @@ const PlanDisplay: React.FC<PlanDisplayProps> = ({ data, onReset }) => {
                </p>
              </div>
 
-            <div className="space-y-6">
-              {data.shoppingList.map((category) => (
-                <div key={category.categoryName} className="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                  <div className="bg-slate-50 px-4 py-2 border-b border-slate-100 font-bold text-slate-700 uppercase text-sm tracking-wider">
+            <div className="space-y-4">
+              {shoppingList.map((category, categoryIdx) => (
+                <div
+                  key={category.categoryName}
+                  draggable
+                  onDragStart={(e) => handleCategoryDragStart(e, categoryIdx)}
+                  onDragOver={(e) => handleCategoryDragOver(e, categoryIdx)}
+                  onDrop={(e) => handleCategoryDrop(e, categoryIdx)}
+                  onDragEnd={handleDragEnd}
+                  className={`bg-white rounded-xl shadow-sm border overflow-hidden transition-all ${
+                    dropTargetCategory === categoryIdx
+                      ? 'border-emerald-400 ring-2 ring-emerald-200'
+                      : draggedCategory === categoryIdx
+                      ? 'opacity-50 border-slate-300'
+                      : 'border-slate-200'
+                  }`}
+                >
+                  <div className="bg-slate-50 px-4 py-2 border-b border-slate-100 font-bold text-slate-700 uppercase text-sm tracking-wider flex items-center gap-2 cursor-grab active:cursor-grabbing">
+                    <GripVertical size={16} className="text-slate-400" />
                     {category.categoryName}
+                    <span className="ml-auto text-xs font-normal text-slate-500 normal-case">
+                      {category.items.length} items
+                    </span>
                   </div>
                   <div className="divide-y divide-slate-100">
-                    {category.items.map((item, idx) => {
-                      const isChecked = checkedItems[`${category.categoryName}-${idx}`];
+                    {category.items.map((item, itemIdx) => {
+                      const isChecked = checkedItems[`${category.categoryName}-${itemIdx}`];
+                      const isDropTarget = dropTargetItem?.categoryIdx === categoryIdx && dropTargetItem?.itemIdx === itemIdx;
+                      const isDragging = draggedItem?.categoryIdx === categoryIdx && draggedItem?.itemIdx === itemIdx;
                       return (
-                        <div 
-                          key={idx} 
-                          className={`flex items-center px-4 py-3 hover:bg-slate-50 transition-colors cursor-pointer ${isChecked ? 'bg-slate-50' : ''}`}
-                          onClick={() => toggleItem(category.categoryName, idx)}
+                        <div
+                          key={itemIdx}
+                          draggable
+                          onDragStart={(e) => handleItemDragStart(e, categoryIdx, itemIdx)}
+                          onDragOver={(e) => handleItemDragOver(e, categoryIdx, itemIdx)}
+                          onDrop={(e) => handleItemDrop(e, categoryIdx, itemIdx)}
+                          onDragEnd={handleDragEnd}
+                          className={`group flex items-center px-4 py-3 transition-colors cursor-grab active:cursor-grabbing ${
+                            isDropTarget
+                              ? 'bg-emerald-50 border-t-2 border-emerald-400'
+                              : isDragging
+                              ? 'opacity-50 bg-slate-100'
+                              : isChecked
+                              ? 'bg-slate-50'
+                              : 'hover:bg-slate-50'
+                          }`}
                         >
-                          <div className={`w-5 h-5 rounded border flex items-center justify-center mr-4 transition-colors ${isChecked ? 'bg-emerald-500 border-emerald-500' : 'border-slate-300'}`}>
+                          <div className="text-slate-300 group-hover:text-slate-400 mr-2">
+                            <GripVertical size={14} />
+                          </div>
+                          <div
+                            className={`w-5 h-5 rounded border flex items-center justify-center mr-3 transition-colors cursor-pointer ${
+                              isChecked ? 'bg-emerald-500 border-emerald-500' : 'border-slate-300'
+                            }`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              toggleItem(category.categoryName, itemIdx);
+                            }}
+                          >
                             {isChecked && <Check size={12} className="text-white" />}
                           </div>
                           <div className={`flex-1 ${isChecked ? 'line-through text-slate-400' : 'text-slate-800'}`}>
@@ -746,7 +879,7 @@ const PlanDisplay: React.FC<PlanDisplayProps> = ({ data, onReset }) => {
                         {data.weeklyPlan.filter(d => d.meals?.dinner).length} dinners
                       </span>
                       <span className="px-2 py-1 bg-emerald-100 text-emerald-700 rounded-full">
-                        {data.shoppingList.reduce((acc, cat) => acc + cat.items.length, 0)} shopping items
+                        {shoppingList.reduce((acc, cat) => acc + cat.items.length, 0)} shopping items
                       </span>
                     </div>
                   </div>

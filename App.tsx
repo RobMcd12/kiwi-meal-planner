@@ -818,7 +818,8 @@ const AppContent: React.FC = () => {
 
       {/* Footer */}
       <footer className="bg-white/80 backdrop-blur-sm border-t border-slate-200 py-6 text-center text-slate-400 text-sm">
-        <p>© {new Date().getFullYear()} Kiwi Meal Planner. An app by <a href="https://www.unicloud.co.nz" target="_blank" rel="noopener noreferrer" className="text-emerald-600 hover:text-emerald-700 hover:underline">Unicloud.co.nz</a></p>
+        <p>© {new Date().getFullYear()} Kiwi Meal Planner.</p>
+        <p className="mt-1">Powered by <a href="https://www.unicloud.co.nz" target="_blank" rel="noopener noreferrer" className="text-emerald-600 hover:text-emerald-700 hover:underline">www.unicloud.co.nz</a></p>
       </footer>
 
       {/* Toast notifications */}

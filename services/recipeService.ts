@@ -633,6 +633,7 @@ export const getRecipeComments = async (mealId: string): Promise<RecipeComment[]
       userId: comment.user_id,
       commentText: comment.comment_text,
       rating: comment.rating,
+      isPublic: comment.is_public ?? true,
       createdAt: comment.created_at,
       updatedAt: comment.updated_at,
       userName: comment.profiles?.full_name || 'Anonymous',
@@ -646,12 +647,13 @@ export const getRecipeComments = async (mealId: string): Promise<RecipeComment[]
 };
 
 /**
- * Save a comment with optional rating
+ * Save a comment with optional rating and visibility
  */
 export const saveRecipeComment = async (
   mealId: string,
   commentText: string,
-  rating: number | null = null
+  rating: number | null = null,
+  isPublic: boolean = true
 ): Promise<RecipeComment | null> => {
   if (!isSupabaseConfigured()) return null;
 
@@ -665,7 +667,8 @@ export const saveRecipeComment = async (
         meal_id: mealId,
         user_id: user.id,
         comment_text: commentText,
-        rating: rating
+        rating: rating,
+        is_public: isPublic
       })
       .select('*, profiles(full_name, avatar_url)')
       .single();
@@ -678,6 +681,7 @@ export const saveRecipeComment = async (
       userId: data.user_id,
       commentText: data.comment_text,
       rating: data.rating,
+      isPublic: data.is_public,
       createdAt: data.created_at,
       updatedAt: data.updated_at,
       userName: data.profiles?.full_name || 'Anonymous',

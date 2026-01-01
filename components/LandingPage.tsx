@@ -460,17 +460,20 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin }) => {
               </div>
               <span className="font-semibold text-slate-700">KiwiMealPlanner</span>
             </div>
-            <p className="text-sm text-slate-500">
-              © {new Date().getFullYear()} Kiwi Meal Planner. An app by{' '}
-              <a
-                href="https://www.unicloud.co.nz"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-emerald-600 hover:underline"
-              >
-                Unicloud.co.nz
-              </a>
-            </p>
+            <div className="text-sm text-slate-500 text-center md:text-right">
+              <p>© {new Date().getFullYear()} Kiwi Meal Planner.</p>
+              <p className="mt-0.5">
+                Powered by{' '}
+                <a
+                  href="https://www.unicloud.co.nz"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-emerald-600 hover:underline"
+                >
+                  www.unicloud.co.nz
+                </a>
+              </p>
+            </div>
           </div>
           <div className="flex flex-wrap items-center justify-center gap-4 text-sm text-slate-500">
             <button

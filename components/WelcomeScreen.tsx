@@ -1,5 +1,5 @@
 import React from 'react';
-import { BookHeart, CalendarPlus, FolderHeart, ArrowRight, ChefHat, Package, Camera, Sparkles } from 'lucide-react';
+import { BookHeart, CalendarPlus, FolderHeart, ArrowRight, ChefHat, Package, Sparkles, Archive, Star } from 'lucide-react';
 
 interface WelcomeScreenProps {
   onStartNew: () => void;
@@ -168,6 +168,34 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
           </span>
         </button>
       </div>
+
+      {/* Manage Pantry & Staples Section */}
+      {onManagePantry && (
+        <div className="mt-6">
+          <button
+            onClick={onManagePantry}
+            className="w-full group bg-gradient-to-r from-emerald-50 to-teal-50 p-5 rounded-2xl shadow-sm border border-emerald-200 hover:shadow-md hover:border-emerald-300 transition-all text-left"
+          >
+            <div className="flex items-start gap-4">
+              <div className="bg-emerald-100 w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform">
+                <Archive className="text-emerald-600" size={24} />
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-1">
+                  <h3 className="text-lg font-bold text-slate-800">Manage Pantry & Staples</h3>
+                  <Star size={14} className="text-amber-500" fill="currentColor" />
+                </div>
+                <p className="text-sm text-slate-600 mb-2">
+                  Keep track of what you have on hand. Add items, set quantities, and organize into categories. We'll exclude these from your shopping lists.
+                </p>
+                <span className="inline-flex items-center gap-1 text-sm font-medium text-emerald-600 group-hover:gap-2 transition-all">
+                  Open pantry <ArrowRight size={14} />
+                </span>
+              </div>
+            </div>
+          </button>
+        </div>
+      )}
 
     </div>
   );

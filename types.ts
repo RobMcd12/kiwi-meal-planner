@@ -240,6 +240,7 @@ export interface RecipeComment {
   userId: string;
   commentText: string;
   rating: number | null; // 1-5 stars
+  isPublic: boolean;
   createdAt: string;
   updatedAt?: string;
   userName?: string;

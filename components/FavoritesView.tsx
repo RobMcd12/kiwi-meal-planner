@@ -937,7 +937,7 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({
           onClick={handleCloseMeal}
         >
           <div
-            className="bg-white rounded-2xl max-w-2xl w-full shadow-2xl max-h-[90vh] overflow-y-auto"
+            className="bg-white rounded-2xl w-[90%] md:w-[80%] max-w-5xl shadow-2xl max-h-[90vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Image Section */}
