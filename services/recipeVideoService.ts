@@ -170,7 +170,7 @@ export const getCompletedVideoCount = async (): Promise<number> => {
 
 /**
  * Initiate video generation for a recipe
- * This creates the video record and triggers the Edge Function to generate the video in the background
+ * Uses an Edge Function with service role to bypass RLS for the insert
  */
 export const initiateVideoGeneration = async (
   mealId: string,
@@ -180,43 +180,41 @@ export const initiateVideoGeneration = async (
   if (!isSupabaseConfigured()) return null;
 
   try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Not authenticated');
+    // Use Edge Function to create video record (bypasses RLS using service role)
+    const { data, error } = await supabase.functions.invoke('create-video-record', {
+      body: {
+        mealId,
+        storageType,
+        customPrompt,
+      },
+    });
 
-    // Check if video already exists for this recipe
-    const existing = await getRecipeVideo(mealId);
-    if (existing) {
-      throw new Error('Video already exists for this recipe. Delete it first to regenerate.');
+    if (error) {
+      console.error('Edge function error:', error);
+      throw new Error(error.message || 'Failed to create video record');
     }
 
-    const { data, error } = await supabase
-      .from('recipe_videos')
-      .insert({
-        meal_id: mealId,
-        storage_type: storageType,
-        processing_status: 'pending',
-        generation_prompt: customPrompt,
-        created_by: user.id,
-      })
-      .select('*')
-      .single();
+    if (data?.error) {
+      throw new Error(data.error);
+    }
 
-    if (error) throw error;
+    if (!data?.video) {
+      throw new Error('No video data returned');
+    }
+
+    // Map the response
+    const video: RecipeVideo = mapVideoRow(data.video);
 
     // Fetch related data separately
     const mealName = await getMealName(mealId);
-    const creatorName = await getProfileName(user.id);
+    const { data: { user } } = await supabase.auth.getUser();
+    const creatorName = user ? await getProfileName(user.id) : undefined;
 
-    const video: RecipeVideo = {
-      ...mapVideoRow(data),
+    return {
+      ...video,
       mealName,
       createdByName: creatorName,
     };
-
-    // Trigger background video generation (fire and forget)
-    triggerBackgroundGeneration(video.id, mealId, storageType);
-
-    return video;
   } catch (err) {
     console.error('Error initiating video generation:', err);
     throw err;
