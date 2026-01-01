@@ -124,14 +124,23 @@ export const getRecipeNotes = async (mealId: string): Promise<RecipeNote[]> => {
     const { data: { user } } = await supabase.auth.getUser();
 
     // Get user's own note + public notes from others
-    const { data, error } = await supabase
+    const { data: notes, error } = await supabase
       .from('recipe_notes')
-      .select('*, profiles(full_name)')
+      .select('*')
       .eq('meal_id', mealId);
 
     if (error) throw error;
+    if (!notes || notes.length === 0) return [];
 
-    return (data || []).map((note: any) => ({
+    // Get unique user IDs and fetch profiles separately
+    const userIds = [...new Set(notes.map(n => n.user_id).filter(Boolean))];
+    const { data: profiles } = userIds.length > 0
+      ? await supabase.from('profiles').select('id, full_name').in('id', userIds)
+      : { data: [] };
+
+    const profileMap = new Map((profiles || []).map(p => [p.id, p.full_name]));
+
+    return notes.map((note: any) => ({
       id: note.id,
       mealId: note.meal_id,
       userId: note.user_id,
@@ -139,7 +148,7 @@ export const getRecipeNotes = async (mealId: string): Promise<RecipeNote[]> => {
       isPublic: note.is_public,
       createdAt: note.created_at,
       updatedAt: note.updated_at,
-      userName: note.profiles?.full_name || 'Anonymous',
+      userName: profileMap.get(note.user_id) || 'Anonymous',
       isOwn: note.user_id === user?.id
     }));
   } catch (err) {
@@ -637,27 +646,39 @@ export const getRecipeComments = async (mealId: string): Promise<RecipeComment[]
   try {
     const { data: { user } } = await supabase.auth.getUser();
 
-    const { data, error } = await supabase
+    const { data: comments, error } = await supabase
       .from('recipe_comments')
-      .select('*, profiles(full_name, avatar_url)')
+      .select('*')
       .eq('meal_id', mealId)
       .order('created_at', { ascending: false });
 
     if (error) throw error;
+    if (!comments || comments.length === 0) return [];
 
-    return (data || []).map((comment: any) => ({
-      id: comment.id,
-      mealId: comment.meal_id,
-      userId: comment.user_id,
-      commentText: comment.comment_text,
-      rating: comment.rating,
-      isPublic: comment.is_public ?? true,
-      createdAt: comment.created_at,
-      updatedAt: comment.updated_at,
-      userName: comment.profiles?.full_name || 'Anonymous',
-      userAvatar: comment.profiles?.avatar_url,
-      isOwn: comment.user_id === user?.id
-    }));
+    // Get unique user IDs and fetch profiles separately
+    const userIds = [...new Set(comments.map(c => c.user_id).filter(Boolean))];
+    const { data: profiles } = userIds.length > 0
+      ? await supabase.from('profiles').select('id, full_name, avatar_url').in('id', userIds)
+      : { data: [] };
+
+    const profileMap = new Map((profiles || []).map(p => [p.id, p]));
+
+    return comments.map((comment: any) => {
+      const profile = profileMap.get(comment.user_id);
+      return {
+        id: comment.id,
+        mealId: comment.meal_id,
+        userId: comment.user_id,
+        commentText: comment.comment_text,
+        rating: comment.rating,
+        isPublic: comment.is_public ?? true,
+        createdAt: comment.created_at,
+        updatedAt: comment.updated_at,
+        userName: profile?.full_name || 'Anonymous',
+        userAvatar: profile?.avatar_url,
+        isOwn: comment.user_id === user?.id
+      };
+    });
   } catch (err) {
     console.error('Error fetching comments:', err);
     return [];
@@ -688,10 +709,17 @@ export const saveRecipeComment = async (
         rating: rating,
         is_public: isPublic
       })
-      .select('*, profiles(full_name, avatar_url)')
+      .select('*')
       .single();
 
     if (error) throw error;
+
+    // Fetch user profile separately
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('full_name, avatar_url')
+      .eq('id', user.id)
+      .single();
 
     return {
       id: data.id,
@@ -702,8 +730,8 @@ export const saveRecipeComment = async (
       isPublic: data.is_public,
       createdAt: data.created_at,
       updatedAt: data.updated_at,
-      userName: data.profiles?.full_name || 'Anonymous',
-      userAvatar: data.profiles?.avatar_url,
+      userName: profile?.full_name || 'Anonymous',
+      userAvatar: profile?.avatar_url,
       isOwn: true
     };
   } catch (err) {
