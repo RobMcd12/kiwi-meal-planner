@@ -9,20 +9,24 @@ function getSupabaseAdmin() {
   );
 }
 
-// Verify user is admin
-async function verifyAdmin(req: Request): Promise<{ userId: string } | null> {
+// Verify user is admin - returns detailed error info for debugging
+async function verifyAdmin(req: Request): Promise<{ userId: string } | { error: string; details: string }> {
   const authHeader = req.headers.get('Authorization');
   console.log('Auth header present:', !!authHeader);
 
   if (!authHeader) {
     console.log('No Authorization header found');
-    return null;
+    return { error: 'No Authorization header', details: 'Request missing Authorization header' };
   }
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
   const anonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
   console.log('Supabase URL configured:', !!supabaseUrl);
   console.log('Anon key configured:', !!anonKey);
+
+  if (!supabaseUrl || !anonKey) {
+    return { error: 'Missing config', details: `URL: ${!!supabaseUrl}, ANON_KEY: ${!!anonKey}` };
+  }
 
   const supabaseClient = createClient(supabaseUrl, anonKey, {
     global: {
@@ -35,7 +39,7 @@ async function verifyAdmin(req: Request): Promise<{ userId: string } | null> {
 
   if (error || !user) {
     console.log('Auth failed:', error?.message || 'No user');
-    return null;
+    return { error: 'Auth failed', details: error?.message || 'No user returned from getUser()' };
   }
 
   // Check if user is admin using admin client
@@ -48,9 +52,13 @@ async function verifyAdmin(req: Request): Promise<{ userId: string } | null> {
 
   console.log('Profile check:', { is_admin: profile?.is_admin, error: profileError?.message });
 
+  if (profileError) {
+    return { error: 'Profile lookup failed', details: profileError.message };
+  }
+
   if (!profile?.is_admin) {
     console.log('User is not admin');
-    return null;
+    return { error: 'Not admin', details: `User ${user.id} is_admin: ${profile?.is_admin}` };
   }
 
   return { userId: user.id };
@@ -63,13 +71,18 @@ Deno.serve(async (req) => {
 
   try {
     // Verify admin access
-    const admin = await verifyAdmin(req);
-    if (!admin) {
+    const adminResult = await verifyAdmin(req);
+    if ('error' in adminResult) {
       return new Response(
-        JSON.stringify({ error: 'Unauthorized - Admin access required' }),
+        JSON.stringify({
+          error: 'Unauthorized - Admin access required',
+          reason: adminResult.error,
+          details: adminResult.details
+        }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+    const admin = adminResult;
 
     const { action, data } = await req.json();
     const adminClient = getSupabaseAdmin();
