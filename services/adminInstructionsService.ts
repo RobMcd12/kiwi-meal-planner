@@ -2,6 +2,34 @@ import { supabase, isSupabaseConfigured } from './authService';
 import type { AdminInstruction, AdminInstructionCategory, InstructionTag } from '../types';
 
 /**
+ * Helper to call the manage-instructions edge function
+ */
+const callManageInstructionsFunction = async (action: string, data: Record<string, unknown>) => {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) {
+    throw new Error('Not authenticated');
+  }
+
+  const { data: result, error } = await supabase.functions.invoke('manage-instructions', {
+    body: { action, data },
+    headers: {
+      Authorization: `Bearer ${session.access_token}`,
+    },
+  });
+
+  if (error) {
+    console.error('Edge function error:', error);
+    throw new Error(error.message || 'Edge function failed');
+  }
+
+  if (result?.error) {
+    throw new Error(result.error);
+  }
+
+  return result;
+};
+
+/**
  * Get all active instructions for a specific tag
  * This is used by AI services to get instructions to prepend to prompts
  */
@@ -73,6 +101,7 @@ export const getAllInstructions = async (): Promise<AdminInstruction[]> => {
 
 /**
  * Create a new instruction (admin only)
+ * Uses Edge Function to bypass RLS
  */
 export const createInstruction = async (data: {
   categoryId: string;
@@ -85,39 +114,40 @@ export const createInstruction = async (data: {
     return null;
   }
 
-  const { data: result, error } = await supabase
-    .from('admin_instructions')
-    .insert({
-      category_id: data.categoryId,
+  try {
+    const result = await callManageInstructionsFunction('createInstruction', {
+      categoryId: data.categoryId,
       title: data.title,
-      instruction_text: data.instructionText,
+      instructionText: data.instructionText,
       tags: data.tags,
       priority: data.priority ?? 0,
-      is_active: true,
-    })
-    .select()
-    .single();
+    });
 
-  if (error) {
-    console.error('Error creating instruction:', error);
+    if (!result?.instruction) {
+      return null;
+    }
+
+    const row = result.instruction;
+    return {
+      id: row.id,
+      categoryId: row.category_id,
+      title: row.title,
+      instructionText: row.instruction_text,
+      tags: row.tags || [],
+      isActive: row.is_active,
+      priority: row.priority,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+    };
+  } catch (err) {
+    console.error('Error creating instruction:', err);
     return null;
   }
-
-  return {
-    id: result.id,
-    categoryId: result.category_id,
-    title: result.title,
-    instructionText: result.instruction_text,
-    tags: result.tags || [],
-    isActive: result.is_active,
-    priority: result.priority,
-    createdAt: result.created_at,
-    updatedAt: result.updated_at,
-  };
 };
 
 /**
  * Update an existing instruction (admin only)
+ * Uses Edge Function to bypass RLS
  */
 export const updateInstruction = async (
   id: string,
@@ -134,46 +164,34 @@ export const updateInstruction = async (
     return false;
   }
 
-  const updateData: Record<string, unknown> = {};
-  if (data.categoryId !== undefined) updateData.category_id = data.categoryId;
-  if (data.title !== undefined) updateData.title = data.title;
-  if (data.instructionText !== undefined) updateData.instruction_text = data.instructionText;
-  if (data.tags !== undefined) updateData.tags = data.tags;
-  if (data.isActive !== undefined) updateData.is_active = data.isActive;
-  if (data.priority !== undefined) updateData.priority = data.priority;
-
-  const { error } = await supabase
-    .from('admin_instructions')
-    .update(updateData)
-    .eq('id', id);
-
-  if (error) {
-    console.error('Error updating instruction:', error);
+  try {
+    await callManageInstructionsFunction('updateInstruction', {
+      id,
+      updates: data,
+    });
+    return true;
+  } catch (err) {
+    console.error('Error updating instruction:', err);
     return false;
   }
-
-  return true;
 };
 
 /**
  * Delete an instruction (admin only)
+ * Uses Edge Function to bypass RLS
  */
 export const deleteInstruction = async (id: string): Promise<boolean> => {
   if (!isSupabaseConfigured()) {
     return false;
   }
 
-  const { error } = await supabase
-    .from('admin_instructions')
-    .delete()
-    .eq('id', id);
-
-  if (error) {
-    console.error('Error deleting instruction:', error);
+  try {
+    await callManageInstructionsFunction('deleteInstruction', { id });
+    return true;
+  } catch (err) {
+    console.error('Error deleting instruction:', err);
     return false;
   }
-
-  return true;
 };
 
 /**
@@ -204,6 +222,7 @@ export const getCategories = async (): Promise<AdminInstructionCategory[]> => {
 
 /**
  * Create a new category (admin only)
+ * Uses Edge Function to bypass RLS
  */
 export const createCategory = async (
   name: string,
@@ -213,23 +232,27 @@ export const createCategory = async (
     return null;
   }
 
-  const { data, error } = await supabase
-    .from('admin_instruction_categories')
-    .insert({ name, description })
-    .select()
-    .single();
+  try {
+    const result = await callManageInstructionsFunction('createCategory', {
+      name,
+      description,
+    });
 
-  if (error) {
-    console.error('Error creating category:', error);
+    if (!result?.category) {
+      return null;
+    }
+
+    const row = result.category;
+    return {
+      id: row.id,
+      name: row.name,
+      description: row.description,
+      createdAt: row.created_at,
+    };
+  } catch (err) {
+    console.error('Error creating category:', err);
     return null;
   }
-
-  return {
-    id: data.id,
-    name: data.name,
-    description: data.description,
-    createdAt: data.created_at,
-  };
 };
 
 /**
@@ -259,23 +282,20 @@ export const updateCategory = async (
 /**
  * Delete a category (admin only)
  * Note: This will cascade delete all instructions in the category
+ * Uses Edge Function to bypass RLS
  */
 export const deleteCategory = async (id: string): Promise<boolean> => {
   if (!isSupabaseConfigured()) {
     return false;
   }
 
-  const { error } = await supabase
-    .from('admin_instruction_categories')
-    .delete()
-    .eq('id', id);
-
-  if (error) {
-    console.error('Error deleting category:', error);
+  try {
+    await callManageInstructionsFunction('deleteCategory', { id });
+    return true;
+  } catch (err) {
+    console.error('Error deleting category:', err);
     return false;
   }
-
-  return true;
 };
 
 /**
