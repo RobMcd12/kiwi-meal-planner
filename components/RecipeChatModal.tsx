@@ -30,6 +30,7 @@ import {
   formatTimerDisplay,
   isReadCommand,
   parseTimerCommand,
+  MAX_TIMERS,
 } from '../services/recipeChatService';
 
 interface RecipeChatModalProps {
@@ -57,9 +58,24 @@ const RecipeChatModal: React.FC<RecipeChatModalProps> = ({ recipe, isOpen, onClo
   const timerManagerRef = useRef<TimerManager | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const expiredAnnouncementRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
 
   // Parse recipe steps
   const steps = parseInstructionSteps(recipe.instructions);
+
+  // Dismiss an expired timer and stop its announcement
+  const dismissExpiredTimer = useCallback((timerId: string) => {
+    // Stop the repeating announcement
+    const interval = expiredAnnouncementRef.current.get(timerId);
+    if (interval) {
+      clearInterval(interval);
+      expiredAnnouncementRef.current.delete(timerId);
+    }
+    // Remove the timer
+    timerManagerRef.current?.dismissTimer(timerId);
+    // Stop speaking if currently announcing
+    speakerRef.current?.stop();
+  }, []);
 
   // Initialize audio for timer alerts
   useEffect(() => {
@@ -81,11 +97,26 @@ const RecipeChatModal: React.FC<RecipeChatModalProps> = ({ recipe, isOpen, onClo
         if (audioRef.current) {
           audioRef.current.play().catch(() => {});
         }
-        const announcement = `Timer complete! ${completedTimer.name} is done.`;
-        addMessage('assistant', announcement);
-        if (autoSpeak && speakerRef.current) {
-          speakerRef.current.speak(announcement);
-        }
+        const announcement = `${completedTimer.name} timer is done!`;
+        addMessage('assistant', `Timer complete! ${completedTimer.name} is done.`);
+
+        // Start repeating announcement every 8 seconds until dismissed
+        const announceAndPlay = () => {
+          if (audioRef.current) {
+            audioRef.current.currentTime = 0;
+            audioRef.current.play().catch(() => {});
+          }
+          if (speakerRef.current) {
+            speakerRef.current.speak(announcement);
+          }
+        };
+
+        // Initial announcement
+        announceAndPlay();
+
+        // Repeat announcement every 8 seconds
+        const interval = setInterval(announceAndPlay, 8000);
+        expiredAnnouncementRef.current.set(completedTimer.id, interval);
       }
     );
 
@@ -111,6 +142,9 @@ const RecipeChatModal: React.FC<RecipeChatModalProps> = ({ recipe, isOpen, onClo
       speakerRef.current?.stop();
       listenerRef.current?.stop();
       timerManagerRef.current?.destroy();
+      // Clear all expired timer announcement intervals
+      expiredAnnouncementRef.current.forEach(interval => clearInterval(interval));
+      expiredAnnouncementRef.current.clear();
     };
   }, [isOpen, recipe.name]);
 
@@ -173,7 +207,9 @@ const RecipeChatModal: React.FC<RecipeChatModalProps> = ({ recipe, isOpen, onClo
       // Handle suggested timer
       if (suggestedTimer && timerManagerRef.current) {
         const timer = timerManagerRef.current.createTimer(suggestedTimer.name, suggestedTimer.minutes);
-        addMessage('system', `Timer set: ${suggestedTimer.name} for ${suggestedTimer.minutes} minutes`);
+        if (timer) {
+          addMessage('system', `Timer set: ${suggestedTimer.name} for ${suggestedTimer.minutes} minutes`);
+        }
       }
     } catch (err) {
       console.error('Chat error:', err);
@@ -195,17 +231,39 @@ const RecipeChatModal: React.FC<RecipeChatModalProps> = ({ recipe, isOpen, onClo
             ? cmd.name.charAt(0).toUpperCase() + cmd.name.slice(1)
             : 'Cooking timer';
           const timer = timerManagerRef.current.createTimer(timerName, cmd.minutes);
-          const response = `${timerName} timer set for ${cmd.minutes} minute${cmd.minutes > 1 ? 's' : ''}.`;
-          addMessage('assistant', response);
-          if (autoSpeak && speakerRef.current) {
-            speakerRef.current.speak(response);
+          if (timer) {
+            const response = `${timerName} timer set for ${cmd.minutes} minute${cmd.minutes > 1 ? 's' : ''}.`;
+            addMessage('assistant', response);
+            if (autoSpeak && speakerRef.current) {
+              speakerRef.current.speak(response);
+            }
+          } else {
+            // Max timers reached
+            const response = `You already have ${MAX_TIMERS} timers running. Please dismiss one first.`;
+            addMessage('assistant', response);
+            if (autoSpeak && speakerRef.current) {
+              speakerRef.current.speak(response);
+            }
           }
         }
         break;
 
       case 'stop':
-        // If a name was specified, try to find that timer
-        if (cmd.name) {
+        // First check for expired timers - dismiss those first
+        const expiredTimers = timerManagerRef.current.getExpiredTimers();
+        if (expiredTimers.length > 0) {
+          // Dismiss all expired timers
+          expiredTimers.forEach(t => dismissExpiredTimer(t.id));
+          const names = expiredTimers.map(t => t.name).join(', ');
+          const response = expiredTimers.length === 1
+            ? `Dismissed the ${names} timer.`
+            : `Dismissed ${expiredTimers.length} expired timers.`;
+          addMessage('assistant', response);
+          if (autoSpeak && speakerRef.current) {
+            speakerRef.current.speak(response);
+          }
+        } else if (cmd.name) {
+          // If a name was specified, try to find that timer
           const namedTimer = timerManagerRef.current.stopTimerByName(cmd.name);
           if (namedTimer) {
             const response = `Stopped the ${namedTimer.name} timer.`;
@@ -410,39 +468,54 @@ const RecipeChatModal: React.FC<RecipeChatModalProps> = ({ recipe, isOpen, onClo
 
         {/* Timers Bar */}
         {timers.length > 0 && (
-          <div className="bg-amber-50 border-b border-amber-200 p-3">
+          <div className={`border-b p-3 ${timers.some(t => t.isExpired) ? 'bg-red-50 border-red-200' : 'bg-amber-50 border-amber-200'}`}>
             <div className="flex items-center gap-2 flex-wrap">
-              <Timer size={18} className="text-amber-600" />
+              <Timer size={18} className={timers.some(t => t.isExpired) ? 'text-red-600' : 'text-amber-600'} />
               {timers.map(timer => (
-                <div
-                  key={timer.id}
-                  className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium ${
-                    timer.remainingSeconds <= 30
-                      ? 'bg-red-100 text-red-700 animate-pulse'
-                      : 'bg-amber-100 text-amber-700'
-                  }`}
-                >
-                  <span>{timer.name}</span>
-                  <span className="font-mono">{formatTimerDisplay(timer.remainingSeconds)}</span>
+                timer.isExpired ? (
+                  // Expired timer - flashing red, clickable to dismiss
                   <button
-                    onClick={() => {
-                      if (timer.isRunning) {
-                        timerManagerRef.current?.pauseTimer(timer.id);
-                      } else {
-                        timerManagerRef.current?.resumeTimer(timer.id);
-                      }
-                    }}
-                    className="p-0.5 hover:bg-amber-200 rounded"
+                    key={timer.id}
+                    onClick={() => dismissExpiredTimer(timer.id)}
+                    className="flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-bold bg-red-500 text-white animate-pulse cursor-pointer hover:bg-red-600 transition-colors shadow-lg"
+                    title="Click to dismiss"
                   >
-                    {timer.isRunning ? <Pause size={14} /> : <Play size={14} />}
+                    <span>{timer.name}</span>
+                    <span>DONE!</span>
+                    <X size={14} />
                   </button>
-                  <button
-                    onClick={() => timerManagerRef.current?.stopTimer(timer.id)}
-                    className="p-0.5 hover:bg-amber-200 rounded"
+                ) : (
+                  // Active timer
+                  <div
+                    key={timer.id}
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium ${
+                      timer.remainingSeconds <= 30
+                        ? 'bg-red-100 text-red-700 animate-pulse'
+                        : 'bg-amber-100 text-amber-700'
+                    }`}
                   >
-                    <Trash2 size={14} />
-                  </button>
-                </div>
+                    <span>{timer.name}</span>
+                    <span className="font-mono">{formatTimerDisplay(timer.remainingSeconds)}</span>
+                    <button
+                      onClick={() => {
+                        if (timer.isRunning) {
+                          timerManagerRef.current?.pauseTimer(timer.id);
+                        } else {
+                          timerManagerRef.current?.resumeTimer(timer.id);
+                        }
+                      }}
+                      className="p-0.5 hover:bg-amber-200 rounded"
+                    >
+                      {timer.isRunning ? <Pause size={14} /> : <Play size={14} />}
+                    </button>
+                    <button
+                      onClick={() => timerManagerRef.current?.stopTimer(timer.id)}
+                      className="p-0.5 hover:bg-amber-200 rounded"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                )
               ))}
             </div>
           </div>

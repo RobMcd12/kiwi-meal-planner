@@ -15,8 +15,12 @@ export interface CookingTimer {
   durationSeconds: number;
   remainingSeconds: number;
   isRunning: boolean;
+  isExpired: boolean;
   createdAt: Date;
 }
+
+// Maximum number of concurrent timers
+export const MAX_TIMERS = 5;
 
 export interface RecipeChatState {
   messages: ChatMessage[];
@@ -135,6 +139,12 @@ const parseTimerCommand = (text: string): { action: 'start' | 'stop' | 'check' |
         return { action: 'start', minutes, name };
       }
     }
+  }
+
+  // Dismiss expired timer patterns - simple words to stop the alarm
+  // "ok", "okay", "stop", "done", "got it", "thanks", "dismiss"
+  if (/^(?:ok(?:ay)?|stop|done|got\s+it|thanks?|dismiss|quiet|silence|hush)$/i.test(lowerText)) {
+    return { action: 'stop' };
   }
 
   // Stop timer patterns - can stop by name
@@ -531,13 +541,20 @@ export class TimerManager {
     this.onTimerComplete = onTimerComplete;
   }
 
-  createTimer(name: string, minutes: number): CookingTimer {
+  createTimer(name: string, minutes: number): CookingTimer | null {
+    // Count non-expired timers
+    const activeCount = Array.from(this.timers.values()).filter(t => !t.isExpired).length;
+    if (activeCount >= MAX_TIMERS) {
+      return null; // Max timers reached
+    }
+
     const timer: CookingTimer = {
       id: `timer-${Date.now()}`,
       name,
       durationSeconds: minutes * 60,
       remainingSeconds: minutes * 60,
       isRunning: true,
+      isExpired: false,
       createdAt: new Date(),
     };
 
@@ -560,8 +577,12 @@ export class TimerManager {
         this.notifyUpdate();
 
         if (timer.remainingSeconds === 0) {
+          // Mark as expired instead of removing
+          timer.isExpired = true;
+          timer.isRunning = false;
           this.onTimerComplete(timer);
           this.clearInterval(timerId);
+          this.notifyUpdate();
         }
       }
     }, 1000);
@@ -579,7 +600,7 @@ export class TimerManager {
 
   pauseTimer(timerId: string) {
     const timer = this.timers.get(timerId);
-    if (timer) {
+    if (timer && !timer.isExpired) {
       timer.isRunning = false;
       this.notifyUpdate();
     }
@@ -587,10 +608,17 @@ export class TimerManager {
 
   resumeTimer(timerId: string) {
     const timer = this.timers.get(timerId);
-    if (timer && timer.remainingSeconds > 0) {
+    if (timer && timer.remainingSeconds > 0 && !timer.isExpired) {
       timer.isRunning = true;
       this.notifyUpdate();
     }
+  }
+
+  // Dismiss an expired timer (or stop an active one)
+  dismissTimer(timerId: string) {
+    this.clearInterval(timerId);
+    this.timers.delete(timerId);
+    this.notifyUpdate();
   }
 
   stopTimer(timerId: string) {
@@ -605,12 +633,22 @@ export class TimerManager {
     this.notifyUpdate();
   }
 
+  // Dismiss all expired timers
+  dismissAllExpired() {
+    const expired = Array.from(this.timers.values()).filter(t => t.isExpired);
+    expired.forEach(t => this.dismissTimer(t.id));
+  }
+
   getTimers(): CookingTimer[] {
     return Array.from(this.timers.values());
   }
 
+  getExpiredTimers(): CookingTimer[] {
+    return Array.from(this.timers.values()).filter(t => t.isExpired);
+  }
+
   getActiveTimer(): CookingTimer | undefined {
-    return Array.from(this.timers.values()).find(t => t.isRunning);
+    return Array.from(this.timers.values()).find(t => t.isRunning && !t.isExpired);
   }
 
   // Find timer by name (case-insensitive partial match)

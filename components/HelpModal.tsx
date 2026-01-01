@@ -282,10 +282,10 @@ const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
             <div className="flex items-start gap-2">
               <Timer size={16} className="text-orange-600 mt-0.5" />
               <div>
-                <strong>Named Timers</strong> - Set multiple timers with names:
+                <strong>Multiple Named Timers</strong> - Set up to 5 timers with names:
                 <ul className="list-disc list-inside ml-4 mt-1 text-slate-500">
                   <li>"Set a 10 minute timer for the pasta"</li>
-                  <li>"Start a 5 minute timer for the sauce"</li>
+                  <li>"Start a timer for the lamb for 15 minutes"</li>
                   <li>"How much time on the pasta?"</li>
                   <li>"Stop the sauce timer"</li>
                 </ul>
@@ -294,7 +294,7 @@ const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
             <div className="flex items-start gap-2">
               <Play size={16} className="text-purple-600 mt-0.5" />
               <div>
-                <strong>Timer Controls</strong> - Visual timer bar shows all active timers. Pause <Pause size={12} className="inline" />, resume <Play size={12} className="inline" />, or delete timers. When a timer completes, the assistant announces it by name.
+                <strong>Timer Alerts</strong> - When a timer expires, it flashes red and announces the name repeatedly until you dismiss it. Say "ok", "stop", "done", or click the flashing timer to dismiss. Timer bar shows all active timers with pause/resume controls.
               </div>
             </div>
           </div>
