@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Loader2, Check, ChefHat, Clock, Plus, Trash2, Sparkles, UtensilsCrossed } from 'lucide-react';
+import { X, Loader2, Check, ChefHat, Clock, Plus, Trash2, Sparkles, UtensilsCrossed, MessageSquare } from 'lucide-react';
 import { Meal, SideDish } from '../types';
 import { suggestSideDishes, saveSidesToRecipe, getSidesForRecipe, removeSidesFromRecipe } from '../services/suggestSidesService';
 
@@ -25,6 +25,7 @@ const SuggestSidesModal: React.FC<SuggestSidesModalProps> = ({
   const [existingSides, setExistingSides] = useState<SideDish[]>([]);
   const [expandedSide, setExpandedSide] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [customPrompt, setCustomPrompt] = useState('');
 
   // Load existing sides when modal opens
   useEffect(() => {
@@ -44,7 +45,7 @@ const SuggestSidesModal: React.FC<SuggestSidesModalProps> = ({
     setIsLoading(true);
     setError(null);
     try {
-      const sides = await suggestSideDishes(meal, userPreferences);
+      const sides = await suggestSideDishes(meal, userPreferences, customPrompt.trim() || undefined);
       setSuggestions(sides);
     } catch (err) {
       console.error('Error getting suggestions:', err);
@@ -195,6 +196,24 @@ const SuggestSidesModal: React.FC<SuggestSidesModalProps> = ({
               <p className="text-slate-500 mb-4 max-w-md mx-auto">
                 Our AI will suggest 4 complementary side dishes that pair perfectly with {meal.name}
               </p>
+
+              {/* Custom Prompt Input */}
+              <div className="max-w-md mx-auto mb-4">
+                <div className="relative">
+                  <MessageSquare size={16} className="absolute left-3 top-3 text-slate-400" />
+                  <input
+                    type="text"
+                    value={customPrompt}
+                    onChange={(e) => setCustomPrompt(e.target.value)}
+                    placeholder="Optional: Guide the AI (e.g., 'low carb', 'quick to make', 'Asian style')"
+                    className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none text-sm"
+                  />
+                </div>
+                <p className="text-xs text-slate-400 mt-1.5 text-left">
+                  Leave empty for general suggestions, or add preferences like cuisine, diet, or prep time
+                </p>
+              </div>
+
               <button
                 onClick={handleSuggest}
                 className="px-6 py-3 bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-medium rounded-xl transition-all shadow-md flex items-center gap-2 mx-auto"
@@ -223,15 +242,32 @@ const SuggestSidesModal: React.FC<SuggestSidesModalProps> = ({
           {/* Suggestions Grid */}
           {suggestions.length > 0 && !isLoading && (
             <div>
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center justify-between mb-3">
                 <h3 className="font-semibold text-slate-700">Suggested Sides</h3>
-                <button
-                  onClick={handleSuggest}
-                  className="text-sm text-amber-600 hover:text-amber-700 flex items-center gap-1"
-                >
-                  <Sparkles size={14} />
-                  Get New Suggestions
-                </button>
+              </div>
+
+              {/* Custom Prompt for New Suggestions */}
+              <div className="mb-4 p-3 bg-amber-50 rounded-xl border border-amber-100">
+                <div className="flex items-center gap-2 mb-2">
+                  <MessageSquare size={14} className="text-amber-600" />
+                  <span className="text-sm font-medium text-amber-800">Get different suggestions</span>
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={customPrompt}
+                    onChange={(e) => setCustomPrompt(e.target.value)}
+                    placeholder="e.g., 'keto friendly', 'Mediterranean style', 'under 15 minutes'"
+                    className="flex-1 px-3 py-2 border border-amber-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none text-sm bg-white"
+                  />
+                  <button
+                    onClick={handleSuggest}
+                    className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white font-medium rounded-lg transition-colors flex items-center gap-1.5 text-sm"
+                  >
+                    <Sparkles size={14} />
+                    Refresh
+                  </button>
+                </div>
               </div>
               <div className="grid gap-3">
                 {suggestions.map(side => {

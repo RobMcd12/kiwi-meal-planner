@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { MealConfig, UserPreferences, PantryItem, SubscriptionState } from '../types';
+import { MealConfig, UserPreferences, PantryItem, SubscriptionState, CountryCode } from '../types';
 import ConfigForm from './ConfigForm';
 import PreferenceForm from './PreferenceForm';
 import PantryManager from './PantryManager';
@@ -8,7 +8,8 @@ import SubscriptionManager from './SubscriptionManager';
 import { useAuth } from './AuthProvider';
 import { supabase } from '../services/authService';
 import { getSubscriptionState } from '../services/subscriptionService';
-import { ArrowLeft, Check, Sliders, Archive, Utensils, UserCircle, Loader2, FileVideo, Crown } from 'lucide-react';
+import { getUserProfile, updateUserProfile, COUNTRY_OPTIONS } from '../services/profileService';
+import { ArrowLeft, Check, Sliders, Archive, Utensils, UserCircle, Loader2, FileVideo, Crown, Pencil, Globe, Save } from 'lucide-react';
 
 interface SettingsViewProps {
   config: MealConfig;
@@ -39,6 +40,73 @@ const SettingsView: React.FC<SettingsViewProps> = ({
   const [linkError, setLinkError] = useState<string | null>(null);
   const [linkSuccess, setLinkSuccess] = useState(false);
   const [subscriptionState, setSubscriptionState] = useState<SubscriptionState | null>(null);
+
+  // Profile editing state
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [editDisplayName, setEditDisplayName] = useState('');
+  const [editCountry, setEditCountry] = useState<CountryCode | null>(null);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
+  const [profileSaveSuccess, setProfileSaveSuccess] = useState(false);
+  const [isLoadingProfile, setIsLoadingProfile] = useState(false);
+
+  // Load user profile
+  useEffect(() => {
+    const loadProfile = async () => {
+      if (!user) return;
+      setIsLoadingProfile(true);
+      try {
+        const profile = await getUserProfile(user.id);
+        if (profile) {
+          setEditDisplayName(profile.displayName || user.user_metadata?.full_name || '');
+          setEditCountry(profile.country);
+        } else {
+          setEditDisplayName(user.user_metadata?.full_name || '');
+        }
+      } catch (err) {
+        console.error('Error loading profile:', err);
+      } finally {
+        setIsLoadingProfile(false);
+      }
+    };
+    loadProfile();
+  }, [user]);
+
+  // Handle profile save
+  const handleSaveProfile = async () => {
+    if (!user) return;
+    setIsSavingProfile(true);
+    setProfileSaveSuccess(false);
+    try {
+      const success = await updateUserProfile(user.id, {
+        displayName: editDisplayName.trim() || null,
+        country: editCountry,
+      });
+      if (success) {
+        setProfileSaveSuccess(true);
+        setIsEditingProfile(false);
+        setTimeout(() => setProfileSaveSuccess(false), 3000);
+      }
+    } catch (err) {
+      console.error('Error saving profile:', err);
+    } finally {
+      setIsSavingProfile(false);
+    }
+  };
+
+  // Cancel profile editing
+  const handleCancelEdit = async () => {
+    if (!user) return;
+    // Reset to original values
+    const profile = await getUserProfile(user.id);
+    if (profile) {
+      setEditDisplayName(profile.displayName || user.user_metadata?.full_name || '');
+      setEditCountry(profile.country);
+    } else {
+      setEditDisplayName(user.user_metadata?.full_name || '');
+      setEditCountry(null);
+    }
+    setIsEditingProfile(false);
+  };
 
   // Load subscription state
   useEffect(() => {
@@ -234,28 +302,147 @@ const SettingsView: React.FC<SettingsViewProps> = ({
                         </p>
                     </div>
 
-                    {/* User Info */}
+                    {/* User Profile */}
                     {user && (
                         <div className="bg-slate-50 rounded-xl p-4">
-                            <div className="flex items-center gap-4">
-                                {user.user_metadata?.avatar_url ? (
-                                    <img
-                                        src={user.user_metadata.avatar_url}
-                                        alt="Profile"
-                                        className="w-16 h-16 rounded-full"
-                                    />
-                                ) : (
-                                    <div className="w-16 h-16 rounded-full bg-slate-200 flex items-center justify-center">
-                                        <UserCircle size={32} className="text-slate-400" />
-                                    </div>
-                                )}
-                                <div>
-                                    <p className="font-semibold text-slate-800">
-                                        {user.user_metadata?.full_name || 'User'}
-                                    </p>
-                                    <p className="text-sm text-slate-500">{user.email}</p>
+                            {isLoadingProfile ? (
+                                <div className="flex items-center justify-center py-4">
+                                    <Loader2 size={24} className="animate-spin text-slate-400" />
                                 </div>
-                            </div>
+                            ) : isEditingProfile ? (
+                                // Edit Mode
+                                <div className="space-y-4">
+                                    <div className="flex items-center gap-4 pb-4 border-b border-slate-200">
+                                        {user.user_metadata?.avatar_url ? (
+                                            <img
+                                                src={user.user_metadata.avatar_url}
+                                                alt="Profile"
+                                                className="w-16 h-16 rounded-full"
+                                            />
+                                        ) : (
+                                            <div className="w-16 h-16 rounded-full bg-slate-200 flex items-center justify-center">
+                                                <UserCircle size={32} className="text-slate-400" />
+                                            </div>
+                                        )}
+                                        <div>
+                                            <p className="font-semibold text-slate-800">Edit Profile</p>
+                                            <p className="text-sm text-slate-500">{user.email}</p>
+                                        </div>
+                                    </div>
+
+                                    {/* Display Name */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">
+                                            Display Name
+                                        </label>
+                                        <input
+                                            type="text"
+                                            value={editDisplayName}
+                                            onChange={(e) => setEditDisplayName(e.target.value)}
+                                            placeholder="Enter your name"
+                                            className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
+                                        />
+                                    </div>
+
+                                    {/* Country Selection */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">
+                                            <div className="flex items-center gap-2">
+                                                <Globe size={16} />
+                                                Country
+                                            </div>
+                                        </label>
+                                        <p className="text-xs text-slate-500 mb-2">
+                                            This helps us use local ingredient names (e.g., cilantro vs coriander)
+                                        </p>
+                                        <select
+                                            value={editCountry || ''}
+                                            onChange={(e) => setEditCountry(e.target.value as CountryCode || null)}
+                                            className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
+                                        >
+                                            <option value="">Select your country</option>
+                                            {COUNTRY_OPTIONS.map((country) => (
+                                                <option key={country.code} value={country.code}>
+                                                    {country.flag} {country.name}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    {/* Action Buttons */}
+                                    <div className="flex items-center gap-3 pt-2">
+                                        <button
+                                            onClick={handleSaveProfile}
+                                            disabled={isSavingProfile}
+                                            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50"
+                                        >
+                                            {isSavingProfile ? (
+                                                <>
+                                                    <Loader2 size={16} className="animate-spin" />
+                                                    Saving...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Save size={16} />
+                                                    Save Changes
+                                                </>
+                                            )}
+                                        </button>
+                                        <button
+                                            onClick={handleCancelEdit}
+                                            disabled={isSavingProfile}
+                                            className="px-4 py-2 text-slate-600 hover:bg-slate-100 font-medium rounded-lg transition-colors"
+                                        >
+                                            Cancel
+                                        </button>
+                                    </div>
+                                </div>
+                            ) : (
+                                // View Mode
+                                <div>
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-4">
+                                            {user.user_metadata?.avatar_url ? (
+                                                <img
+                                                    src={user.user_metadata.avatar_url}
+                                                    alt="Profile"
+                                                    className="w-16 h-16 rounded-full"
+                                                />
+                                            ) : (
+                                                <div className="w-16 h-16 rounded-full bg-slate-200 flex items-center justify-center">
+                                                    <UserCircle size={32} className="text-slate-400" />
+                                                </div>
+                                            )}
+                                            <div>
+                                                <p className="font-semibold text-slate-800">
+                                                    {editDisplayName || user.user_metadata?.full_name || 'User'}
+                                                </p>
+                                                <p className="text-sm text-slate-500">{user.email}</p>
+                                                {editCountry && (
+                                                    <p className="text-sm text-slate-500 flex items-center gap-1 mt-1">
+                                                        <Globe size={14} />
+                                                        {COUNTRY_OPTIONS.find(c => c.code === editCountry)?.flag}{' '}
+                                                        {COUNTRY_OPTIONS.find(c => c.code === editCountry)?.name}
+                                                    </p>
+                                                )}
+                                            </div>
+                                        </div>
+                                        <button
+                                            onClick={() => setIsEditingProfile(true)}
+                                            className="p-2 hover:bg-slate-200 rounded-lg transition-colors text-slate-600"
+                                            title="Edit profile"
+                                        >
+                                            <Pencil size={18} />
+                                        </button>
+                                    </div>
+                                    {profileSaveSuccess && (
+                                        <div className="mt-3 p-3 bg-emerald-50 border border-emerald-200 rounded-lg flex items-center gap-2">
+                                            <Check size={16} className="text-emerald-600" />
+                                            <p className="text-sm text-emerald-600">Profile updated successfully!</p>
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     )}
 

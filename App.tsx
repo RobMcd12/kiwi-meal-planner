@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { AppStep, PantryItem, UserPreferences, MealPlanResponse, MealConfig, Meal, SideDish } from './types';
+import { AppStep, PantryItem, UserPreferences, MealPlanResponse, MealConfig, Meal, SideDish, CountryCode } from './types';
 import PantryManager from './components/PantryManager';
 import PreferenceForm from './components/PreferenceForm';
 import PlanDisplay from './components/PlanDisplay';
@@ -37,6 +37,7 @@ import {
 import { signOut } from './services/authService';
 import { getNewResponseCount } from './services/feedbackService';
 import { getSubscriptionState } from './services/subscriptionService';
+import { getUserProfile } from './services/profileService';
 import type { SubscriptionState } from './types';
 import { ChefHat, Settings, LogOut, User, Shield, MessageSquare, Bell, HelpCircle, Menu, X, CalendarPlus, BookHeart, FolderHeart, Sparkles, UserCircle } from 'lucide-react';
 import HelpModal from './components/HelpModal';
@@ -151,6 +152,9 @@ const AppContent: React.FC = () => {
   const [subscriptionState, setSubscriptionState] = useState<SubscriptionState | null>(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
+  // User profile state (for localization)
+  const [userCountry, setUserCountry] = useState<CountryCode | null>(null);
+
   // Load data from storage on mount and when auth/impersonation changes
   useEffect(() => {
     const loadData = async () => {
@@ -167,6 +171,18 @@ const AppContent: React.FC = () => {
         setConfig(loadedConfig);
         setPreferences(loadedPrefs);
         setDataLoaded(true);
+
+        // Load user profile for country (for ingredient localization)
+        if (userIdToLoad) {
+          try {
+            const profile = await getUserProfile(userIdToLoad);
+            if (profile?.country) {
+              setUserCountry(profile.country);
+            }
+          } catch (profileErr) {
+            console.error('Error loading user profile:', profileErr);
+          }
+        }
       } catch (err) {
         console.error('Error loading data:', err);
         setDataLoaded(true);
@@ -275,7 +291,7 @@ const AppContent: React.FC = () => {
   const handleGenerate = async () => {
     setLoading(true);
     try {
-      const data = await generateMealPlan(config, preferences, pantryItems);
+      const data = await generateMealPlan(config, preferences, pantryItems, userCountry);
 
       // Generate images for all meals before showing results
       await generateAllMealImages(data);
@@ -496,6 +512,7 @@ const AppContent: React.FC = () => {
               setSettingsInitialTab('pantry');
               setStep(AppStep.SETTINGS);
             }}
+            userCountry={userCountry}
           />
         );
 

@@ -1,7 +1,8 @@
 import { GoogleGenAI, Type, Schema } from "@google/genai";
-import { UserPreferences, PantryItem, MealPlanResponse, MealConfig, Meal, ExtractedRecipe, ScannedPantryResult, SideDish } from "../types";
+import { UserPreferences, PantryItem, MealPlanResponse, MealConfig, Meal, ExtractedRecipe, ScannedPantryResult, SideDish, CountryCode } from "../types";
 import { supabase, isSupabaseConfigured } from "./authService";
 import { getInstructionsByTag, buildPromptWithInstructions } from "./adminInstructionsService";
+import { getLocalizationInstruction } from "./profileService";
 
 // Predefined tag categories for AI to choose from
 export const TAG_CATEGORIES = {
@@ -122,7 +123,8 @@ const generateShoppingListViaEdge = async (
 export const generateMealPlan = async (
   config: MealConfig,
   preferences: UserPreferences,
-  pantryItems: PantryItem[]
+  pantryItems: PantryItem[],
+  userCountry?: CountryCode | null
 ): Promise<MealPlanResponse> => {
   // Use Edge Functions in production when configured
   if (USE_EDGE_FUNCTIONS && isSupabaseConfigured()) {
@@ -160,10 +162,20 @@ Only add items to shopping list if absolutely necessary to complete recipes. Goa
     ? `\n\nADDITIONAL INSTRUCTIONS:\n${adminInstructions.join('\n')}`
     : '';
 
+  // Build localization instruction based on user's country
+  const localizationText = getLocalizationInstruction(userCountry || null);
+  const localizationInstruction = localizationText ? `\n${localizationText}` : '';
+
+  // Build excluded ingredients instruction
+  const excludedIngredients = preferences.excludedIngredients || [];
+  const exclusionsInstruction = excludedIngredients.length > 0
+    ? `\nCRITICAL - NEVER USE THESE INGREDIENTS (allergies/exclusions): ${excludedIngredients.map(e => e.name).join(', ')}.`
+    : '';
+
   // Concise prompt for faster generation
   const prompt = `${config.days}-day meal plan, ${config.peopleCount} people. Meals: ${requestedMeals.join(", ")} only.
-Diet: ${preferences.dietaryRestrictions || "None"}. Likes: ${preferences.likes || "Any"}. Dislikes: ${preferences.dislikes || "None"}.
-Units: ${preferences.unitSystem}. Temps: ${preferences.temperatureScale}.
+Diet: ${preferences.dietaryRestrictions || "None"}. Likes: ${preferences.likes || "Any"}. Dislikes: ${preferences.dislikes || "None"}.${exclusionsInstruction}
+Units: ${preferences.unitSystem}. Temps: ${preferences.temperatureScale}.${localizationInstruction}
 Portions: Meat/protein ${meatServing}g per person. Target ~${calorieTarget} kcal/day per person.
 ${modeInstructions}
 Each meal = complete dish with sides (e.g. "Grilled Salmon with Rice and Vegetables"). Include all ingredients/instructions for full meal.
@@ -732,7 +744,8 @@ export const generateSingleRecipe = async (
   preferences: UserPreferences,
   pantryItems: PantryItem[],
   peopleCount: number = 2,
-  useWhatIHave: boolean = false
+  useWhatIHave: boolean = false,
+  userCountry?: CountryCode | null
 ): Promise<Meal> => {
   const apiKey = process.env.API_KEY;
   if (!apiKey) throw new Error("API Key is missing.");
@@ -751,14 +764,24 @@ Only include additional ingredients that are absolutely necessary to complete th
 Goal: minimize extra shopping and reduce food waste.`
     : `Available pantry items to use: ${pantryListString || "none specified"}`;
 
+  // Build localization instruction based on user's country
+  const localizationText = getLocalizationInstruction(userCountry || null);
+  const localizationInstruction = localizationText ? `\n${localizationText}` : '';
+
+  // Build excluded ingredients instruction
+  const excludedIngredients = preferences.excludedIngredients || [];
+  const exclusionsInstruction = excludedIngredients.length > 0
+    ? `\nCRITICAL - NEVER USE THESE INGREDIENTS (allergies/exclusions): ${excludedIngredients.map(e => e.name).join(', ')}.`
+    : '';
+
   const prompt = `Create a detailed recipe based on this request: "${recipeDescription}"
 
 For ${peopleCount} people.
 Dietary requirements: ${preferences.dietaryRestrictions || "None"}
 Likes: ${preferences.likes || "Any"}
-Dislikes: ${preferences.dislikes || "None"}
+Dislikes: ${preferences.dislikes || "None"}${exclusionsInstruction}
 Units: ${preferences.unitSystem}
-Temperature: ${preferences.temperatureScale}
+Temperature: ${preferences.temperatureScale}${localizationInstruction}
 
 ${pantryInstructions}
 

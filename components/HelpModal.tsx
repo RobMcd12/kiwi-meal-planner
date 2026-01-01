@@ -4,7 +4,8 @@ import {
   Tag, Globe, Lock, Settings, Image, Link, FileText, FileType,
   Sparkles, Bell, MessageSquare, User, ChevronRight, ChevronDown,
   Star, ImagePlus, Edit2, Camera, Apple, Utensils, SlidersHorizontal,
-  Beef, Flame, Printer, Mic, Timer, Volume2, Play, Pause, UtensilsCrossed
+  Beef, Flame, Printer, Mic, Timer, Volume2, Play, Pause, UtensilsCrossed,
+  UserCircle, ShieldAlert
 } from 'lucide-react';
 
 interface HelpModalProps {
@@ -575,6 +576,79 @@ const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
           </ul>
           <p className="mt-3">
             Settings are saved automatically and sync across devices when signed in.
+          </p>
+        </>
+      )
+    },
+    {
+      id: 'profile',
+      title: 'Profile & Localization',
+      icon: <UserCircle size={20} />,
+      keywords: ['profile', 'name', 'country', 'localization', 'cilantro', 'coriander', 'ingredient', 'language', 'edit'],
+      content: (
+        <>
+          <p>Personalize your profile and ingredient names:</p>
+          <div className="space-y-3 mt-2">
+            <div className="flex items-start gap-2">
+              <Edit2 size={16} className="text-slate-600 mt-0.5" />
+              <div>
+                <strong>Display Name</strong> - Set a custom display name for your account. Go to Settings {">"} Account and click the edit button.
+              </div>
+            </div>
+            <div className="flex items-start gap-2">
+              <Globe size={16} className="text-blue-600 mt-0.5" />
+              <div>
+                <strong>Country Selection</strong> - Select your country to get localized ingredient names. For example:
+                <ul className="list-disc list-inside ml-4 mt-1 text-slate-500">
+                  <li>US: cilantro, eggplant, shrimp</li>
+                  <li>UK: coriander, aubergine, prawns</li>
+                  <li>AU: coriander, eggplant, prawns</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+          <p className="mt-3 text-slate-500">
+            The AI will use your country's ingredient names when generating recipes and meal plans.
+          </p>
+        </>
+      )
+    },
+    {
+      id: 'allergies',
+      title: 'Allergies & Exclusions',
+      icon: <ShieldAlert size={20} />,
+      keywords: ['allergy', 'allergies', 'exclude', 'exclusion', 'never', 'intolerance', 'avoid', 'ingredients'],
+      content: (
+        <>
+          <p>Permanently exclude ingredients from all recipes:</p>
+          <ol className="list-decimal list-inside space-y-2 ml-2 mt-2">
+            <li>Go to <strong>Settings {">"} Preferences</strong></li>
+            <li>Scroll to <strong>"Allergies & Always Exclude"</strong> section</li>
+            <li>Enter ingredient name and select reason (Allergy, Intolerance, or Preference)</li>
+            <li>Click <strong>Add</strong> to add to your exclusion list</li>
+          </ol>
+          <div className="space-y-3 mt-4">
+            <div className="flex items-start gap-2">
+              <ShieldAlert size={16} className="text-red-600 mt-0.5" />
+              <div>
+                <strong>Allergy</strong> - Critical allergies are highlighted in red
+              </div>
+            </div>
+            <div className="flex items-start gap-2">
+              <ShieldAlert size={16} className="text-orange-600 mt-0.5" />
+              <div>
+                <strong>Intolerance</strong> - Food intolerances are shown in orange
+              </div>
+            </div>
+            <div className="flex items-start gap-2">
+              <ShieldAlert size={16} className="text-slate-400 mt-0.5" />
+              <div>
+                <strong>Preference</strong> - General dislikes are shown in gray
+              </div>
+            </div>
+          </div>
+          <p className="mt-3 text-slate-500">
+            Excluded ingredients are NEVER included in AI-generated recipes or meal plans.
           </p>
         </>
       )

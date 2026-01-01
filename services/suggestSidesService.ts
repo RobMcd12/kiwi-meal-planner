@@ -38,7 +38,8 @@ const suggestSidesResponseSchema: Schema = {
  */
 export const suggestSideDishes = async (
   meal: Meal,
-  preferences?: { dietary?: string; dislikes?: string }
+  preferences?: { dietary?: string; dislikes?: string },
+  customPrompt?: string
 ): Promise<SideDish[]> => {
   const apiKey = process.env.API_KEY;
   if (!apiKey) throw new Error("API Key is missing.");
@@ -47,6 +48,7 @@ export const suggestSideDishes = async (
 
   const dietaryInfo = preferences?.dietary ? `Dietary restrictions: ${preferences.dietary}.` : '';
   const dislikesInfo = preferences?.dislikes ? `Avoid: ${preferences.dislikes}.` : '';
+  const customInstructions = customPrompt ? `\nUser's specific request: ${customPrompt}` : '';
 
   const prompt = `Suggest 4 complementary side dishes for this main dish:
 
@@ -56,6 +58,7 @@ Main Ingredients: ${meal.ingredients.slice(0, 5).join(', ')}
 
 ${dietaryInfo}
 ${dislikesInfo}
+${customInstructions}
 
 Requirements:
 - Suggest 4 different side dishes that pair well with this main dish
@@ -63,7 +66,7 @@ Requirements:
 - Each side should be quick to prepare (15-30 minutes)
 - Include complete ingredient lists with quantities for 4 servings
 - Provide clear, concise cooking instructions
-- Consider flavor profiles, textures, and nutritional balance`;
+- Consider flavor profiles, textures, and nutritional balance${customPrompt ? `\n- IMPORTANT: Prioritize the user's request: "${customPrompt}"` : ''}`;
 
   try {
     const response = await ai.models.generateContent({

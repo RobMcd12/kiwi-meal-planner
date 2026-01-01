@@ -79,6 +79,11 @@ export interface MealConfig {
   useWhatIHave?: boolean; // Prioritize pantry items to minimize shopping
 }
 
+export interface ExcludedIngredient {
+  name: string;
+  reason?: string; // e.g., "allergy", "preference", "intolerance"
+}
+
 export interface UserPreferences {
   dietaryRestrictions: string;
   likes: string;
@@ -88,6 +93,20 @@ export interface UserPreferences {
   // Portion/nutrition settings
   meatServingGrams?: number; // Default 150-200g per person
   calorieTarget?: number; // Daily calorie target (e.g., 2000)
+  // Ingredient exclusions (allergies, etc.)
+  excludedIngredients?: ExcludedIngredient[];
+}
+
+// Country codes for ingredient localization
+export type CountryCode = 'US' | 'UK' | 'AU' | 'NZ' | 'CA' | 'IE' | 'ZA' | 'IN' | 'OTHER';
+
+export interface UserProfile {
+  id: string;
+  displayName: string | null;
+  avatarUrl: string | null;
+  country: CountryCode | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
 export interface Ingredient {

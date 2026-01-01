@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ArrowLeft, Sparkles, ChefHat, Loader2, Heart, Printer, Users, Check, Apple, SlidersHorizontal, AlertCircle, Package, ShoppingCart } from 'lucide-react';
-import type { Meal, UserPreferences, PantryItem } from '../types';
+import type { Meal, UserPreferences, PantryItem, CountryCode } from '../types';
 import { generateSingleRecipe, generateDishImage } from '../services/geminiService';
 import { saveFavoriteMeal } from '../services/storageService';
 import RecipePrintView from './RecipePrintView';
@@ -13,6 +13,7 @@ interface SingleRecipeGeneratorProps {
   pantryItems: PantryItem[];
   peopleCount: number;
   onManagePantry?: () => void;
+  userCountry?: CountryCode | null;
 }
 
 const SingleRecipeGenerator: React.FC<SingleRecipeGeneratorProps> = ({
@@ -21,6 +22,7 @@ const SingleRecipeGenerator: React.FC<SingleRecipeGeneratorProps> = ({
   pantryItems,
   peopleCount,
   onManagePantry,
+  userCountry,
 }) => {
   const [description, setDescription] = useState('');
   const [servings, setServings] = useState(peopleCount);
@@ -60,7 +62,8 @@ const SingleRecipeGenerator: React.FC<SingleRecipeGeneratorProps> = ({
         preferences,
         pantryItems,
         servings,
-        useWhatIHave
+        useWhatIHave,
+        userCountry
       );
       setGeneratedRecipe(recipe);
 

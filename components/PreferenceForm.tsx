@@ -1,6 +1,6 @@
-import React from 'react';
-import { UserPreferences } from '../types';
-import { Utensils, Heart, ThumbsDown, Scale, Thermometer, Beef, Flame } from 'lucide-react';
+import React, { useState } from 'react';
+import { UserPreferences, ExcludedIngredient } from '../types';
+import { Utensils, Heart, ThumbsDown, Scale, Thermometer, Beef, Flame, AlertTriangle, Plus, X, ShieldAlert } from 'lucide-react';
 
 interface PreferenceFormProps {
   preferences: UserPreferences;
@@ -10,9 +10,53 @@ interface PreferenceFormProps {
   isSettingsMode?: boolean;
 }
 
+const EXCLUSION_REASONS = [
+  { value: 'allergy', label: 'Allergy', color: 'red' },
+  { value: 'intolerance', label: 'Intolerance', color: 'orange' },
+  { value: 'preference', label: 'Preference', color: 'slate' },
+];
+
 const PreferenceForm: React.FC<PreferenceFormProps> = ({ preferences, setPreferences, onSubmit, isLoading = false, isSettingsMode = false }) => {
+  const [newIngredient, setNewIngredient] = useState('');
+  const [newReason, setNewReason] = useState<string>('allergy');
+
   const handleChange = (field: keyof UserPreferences, value: any) => {
     setPreferences(prev => ({ ...prev, [field]: value }));
+  };
+
+  const addExcludedIngredient = () => {
+    if (!newIngredient.trim()) return;
+
+    const ingredient: ExcludedIngredient = {
+      name: newIngredient.trim(),
+      reason: newReason,
+    };
+
+    const current = preferences.excludedIngredients || [];
+    // Don't add duplicates
+    if (current.some(i => i.name.toLowerCase() === ingredient.name.toLowerCase())) {
+      setNewIngredient('');
+      return;
+    }
+
+    handleChange('excludedIngredients', [...current, ingredient]);
+    setNewIngredient('');
+  };
+
+  const removeExcludedIngredient = (name: string) => {
+    const current = preferences.excludedIngredients || [];
+    handleChange('excludedIngredients', current.filter(i => i.name !== name));
+  };
+
+  const getReasonBadgeColor = (reason?: string) => {
+    switch (reason) {
+      case 'allergy':
+        return 'bg-red-100 text-red-700 border-red-200';
+      case 'intolerance':
+        return 'bg-orange-100 text-orange-700 border-orange-200';
+      default:
+        return 'bg-slate-100 text-slate-600 border-slate-200';
+    }
   };
 
   return (
@@ -73,6 +117,88 @@ const PreferenceForm: React.FC<PreferenceFormProps> = ({ preferences, setPrefere
             rows={2}
             className="w-full px-4 py-3 rounded-lg border border-slate-300 focus:border-slate-500 focus:ring-2 focus:ring-slate-200 outline-none resize-none"
           />
+        </div>
+
+        {/* Allergies & Exclusions */}
+        <div className="pt-4 border-t border-slate-100">
+          <label className="flex items-center gap-2 text-sm font-semibold text-slate-700 mb-2">
+            <ShieldAlert size={18} className="text-red-500" />
+            Allergies & Always Exclude
+          </label>
+          <p className="text-xs text-slate-500 mb-3">
+            These ingredients will NEVER appear in any recipe. Use this for allergies, intolerances, or ingredients you never want.
+          </p>
+
+          {/* Add New Exclusion */}
+          <div className="flex gap-2 mb-4">
+            <input
+              type="text"
+              value={newIngredient}
+              onChange={(e) => setNewIngredient(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && addExcludedIngredient()}
+              placeholder="Enter ingredient..."
+              className="flex-1 px-4 py-2 rounded-lg border border-slate-300 focus:border-red-500 focus:ring-2 focus:ring-red-200 outline-none"
+            />
+            <select
+              value={newReason}
+              onChange={(e) => setNewReason(e.target.value)}
+              className="px-3 py-2 rounded-lg border border-slate-300 focus:border-red-500 focus:ring-2 focus:ring-red-200 outline-none bg-white"
+            >
+              {EXCLUSION_REASONS.map(r => (
+                <option key={r.value} value={r.value}>{r.label}</option>
+              ))}
+            </select>
+            <button
+              onClick={addExcludedIngredient}
+              disabled={!newIngredient.trim()}
+              className="px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-slate-300 text-white font-medium rounded-lg transition-colors flex items-center gap-1"
+            >
+              <Plus size={18} />
+              Add
+            </button>
+          </div>
+
+          {/* Excluded Ingredients List */}
+          {preferences.excludedIngredients && preferences.excludedIngredients.length > 0 ? (
+            <div className="space-y-2">
+              {preferences.excludedIngredients.map((item) => (
+                <div
+                  key={item.name}
+                  className="flex items-center justify-between p-3 bg-slate-50 rounded-lg border border-slate-200"
+                >
+                  <div className="flex items-center gap-3">
+                    <AlertTriangle size={16} className={item.reason === 'allergy' ? 'text-red-500' : item.reason === 'intolerance' ? 'text-orange-500' : 'text-slate-400'} />
+                    <span className="font-medium text-slate-800">{item.name}</span>
+                    <span className={`text-xs px-2 py-0.5 rounded-full border ${getReasonBadgeColor(item.reason)}`}>
+                      {EXCLUSION_REASONS.find(r => r.value === item.reason)?.label || 'Preference'}
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => removeExcludedIngredient(item.name)}
+                    className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                  >
+                    <X size={16} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-6 bg-slate-50 rounded-lg border border-dashed border-slate-200">
+              <ShieldAlert size={24} className="mx-auto text-slate-300 mb-2" />
+              <p className="text-sm text-slate-400">No excluded ingredients yet</p>
+              <p className="text-xs text-slate-400">Add ingredients you&apos;re allergic to or never want in recipes</p>
+            </div>
+          )}
+
+          {/* Allergy Disclaimer */}
+          <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+            <div className="flex items-start gap-2">
+              <AlertTriangle size={16} className="text-amber-600 mt-0.5 flex-shrink-0" />
+              <div className="text-xs text-amber-800">
+                <strong>Important:</strong> Recipes in this app are AI-generated or community-supplied. While we use your exclusion list to filter ingredients, we cannot guarantee complete accuracy. If you have severe allergies or intolerances, please always verify all ingredients before cooking or consuming any recipe.
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Measurement Settings */}
