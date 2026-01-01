@@ -8,9 +8,7 @@ export type CounterType = 'users' | 'mealPlans' | 'recipes' | 'videos';
 
 interface DashboardCounterModalProps {
   type: CounterType;
-  isOpen: boolean;
   onClose: () => void;
-  count: number;
 }
 
 interface UserItem {
@@ -41,9 +39,7 @@ interface RecipeItem {
 
 const DashboardCounterModal: React.FC<DashboardCounterModalProps> = ({
   type,
-  isOpen,
   onClose,
-  count,
 }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -51,10 +47,8 @@ const DashboardCounterModal: React.FC<DashboardCounterModalProps> = ({
   const [displayLimit, setDisplayLimit] = useState(20);
 
   useEffect(() => {
-    if (isOpen) {
-      loadItems();
-    }
-  }, [isOpen, type]);
+    loadItems();
+  }, [type]);
 
   const loadItems = async () => {
     setIsLoading(true);
@@ -85,8 +79,6 @@ const DashboardCounterModal: React.FC<DashboardCounterModalProps> = ({
       setIsLoading(false);
     }
   };
-
-  if (!isOpen) return null;
 
   const getTitle = () => {
     switch (type) {
@@ -217,7 +209,7 @@ const DashboardCounterModal: React.FC<DashboardCounterModalProps> = ({
           <div className="flex items-center gap-3">
             {getIcon()}
             <h2 className="text-lg font-semibold text-slate-800">
-              {getTitle()} ({count})
+              {getTitle()} ({items.length})
             </h2>
           </div>
           <button

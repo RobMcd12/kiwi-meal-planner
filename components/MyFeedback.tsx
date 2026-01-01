@@ -164,6 +164,26 @@ const MyFeedback: React.FC<MyFeedbackProps> = ({ currentUserId, onBack }) => {
                       </p>
                     </div>
 
+                    {/* Screenshot */}
+                    {item.screenshot && (
+                      <div>
+                        <h4 className="text-sm font-medium text-slate-500 mb-2">Attached Screenshot</h4>
+                        <a
+                          href={item.screenshot}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="block"
+                        >
+                          <img
+                            src={item.screenshot}
+                            alt="Feedback screenshot"
+                            className="max-w-full max-h-48 rounded-lg border border-slate-200 hover:border-emerald-500 transition-colors cursor-pointer"
+                          />
+                        </a>
+                        <p className="text-xs text-slate-400 mt-1">Click to view full size</p>
+                      </div>
+                    )}
+
                     {/* Admin response */}
                     {item.admin_response && (
                       <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">

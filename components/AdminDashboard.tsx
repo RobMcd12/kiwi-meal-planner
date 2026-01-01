@@ -29,7 +29,11 @@ import {
   FolderPlus,
   ToggleLeft,
   ToggleRight,
-  Video
+  Video,
+  RefreshCw,
+  ChefHat,
+  Play,
+  Film
 } from 'lucide-react';
 import { useAuth } from './AuthProvider';
 import { supabase, isSupabaseConfigured } from '../services/authService';
@@ -56,6 +60,7 @@ import SubscriptionSettings from './admin/SubscriptionSettings';
 import VideoManagementTab from './admin/VideoManagementTab';
 import GoogleDriveSetup from './admin/GoogleDriveSetup';
 import DashboardCounterModal from './admin/DashboardCounterModal';
+import AdminRecipeBrowser from './admin/AdminRecipeBrowser';
 import { getAllUsersWithDetails } from '../services/loginHistoryService';
 import { grantProAccess, revokeProAccess } from '../services/subscriptionService';
 import { getVideoCount } from '../services/recipeVideoService';
@@ -1047,6 +1052,26 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
                     {item.message}
                   </p>
 
+                  {/* Screenshot */}
+                  {item.screenshot && (
+                    <div className="mb-4">
+                      <p className="text-sm font-medium text-slate-600 mb-2">Attached Screenshot:</p>
+                      <a
+                        href={item.screenshot}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block"
+                      >
+                        <img
+                          src={item.screenshot}
+                          alt="Feedback screenshot"
+                          className="max-w-full max-h-64 rounded-lg border border-slate-200 hover:border-emerald-500 transition-colors cursor-pointer"
+                        />
+                      </a>
+                      <p className="text-xs text-slate-400 mt-1">Click to view full size</p>
+                    </div>
+                  )}
+
                   {/* Previous response */}
                   {item.admin_response && (
                     <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4 mb-4">
@@ -1102,6 +1127,26 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
                     </p>
                     <p className="text-slate-700 whitespace-pre-wrap">{selectedFeedback.message}</p>
                   </div>
+
+                  {/* Screenshot in modal */}
+                  {selectedFeedback.screenshot && (
+                    <div className="bg-slate-50 rounded-lg p-4">
+                      <p className="text-sm text-slate-500 mb-2">Attached Screenshot:</p>
+                      <a
+                        href={selectedFeedback.screenshot}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="block"
+                      >
+                        <img
+                          src={selectedFeedback.screenshot}
+                          alt="Feedback screenshot"
+                          className="max-w-full max-h-48 rounded-lg border border-slate-200 hover:border-emerald-500 transition-colors cursor-pointer"
+                        />
+                      </a>
+                      <p className="text-xs text-slate-400 mt-1">Click to view full size</p>
+                    </div>
+                  )}
 
                   {/* Status */}
                   <div>
@@ -1611,8 +1656,27 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
       {activeTab === 'videos' && (
         <div className="space-y-6">
           <GoogleDriveSetup onConfigChange={loadStats} />
+
+          {/* Recipe Browser for Video Generation */}
           <div className="bg-white rounded-xl border border-slate-200 p-6">
-            <h3 className="font-semibold text-slate-800 mb-4">Recipe Videos</h3>
+            <h3 className="font-semibold text-slate-800 mb-4 flex items-center gap-2">
+              <ChefHat size={20} className="text-orange-500" />
+              All Recipes - Generate Videos
+            </h3>
+            <p className="text-sm text-slate-500 mb-4">
+              Browse all recipes from all users and generate AI videos for them.
+            </p>
+            <AdminRecipeBrowser
+              onVideoGenerated={() => setStats(prev => ({ ...prev, totalVideos: prev.totalVideos + 1 }))}
+            />
+          </div>
+
+          {/* Existing Videos Management */}
+          <div className="bg-white rounded-xl border border-slate-200 p-6">
+            <h3 className="font-semibold text-slate-800 mb-4 flex items-center gap-2">
+              <Film size={20} className="text-purple-500" />
+              Existing Videos
+            </h3>
             <VideoManagementTab
               onVideoCountChange={(count) => setStats(prev => ({ ...prev, totalVideos: count }))}
             />
@@ -1623,6 +1687,43 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
       {/* Data Management Tab */}
       {activeTab === 'data' && (
         <div className="space-y-6">
+          {/* Hard Reload Section */}
+          <div className="bg-white rounded-xl border border-blue-200 p-6">
+            <h3 className="font-semibold text-slate-800 mb-4 flex items-center gap-2">
+              <RefreshCw size={20} className="text-blue-600" />
+              Force App Refresh
+            </h3>
+            <p className="text-slate-500 text-sm mb-4">
+              Clear cache and reload the application. Useful after updates or to fix display issues.
+            </p>
+            <button
+              onClick={() => {
+                if (confirm('This will clear the cache and reload the app. Continue?')) {
+                  // Clear service worker cache
+                  if ('caches' in window) {
+                    caches.keys().then(names => {
+                      names.forEach(name => caches.delete(name));
+                    });
+                  }
+                  // Unregister service workers
+                  if ('serviceWorker' in navigator) {
+                    navigator.serviceWorker.getRegistrations().then(registrations => {
+                      registrations.forEach(registration => registration.unregister());
+                    });
+                  }
+                  // Clear local storage cache flags
+                  localStorage.removeItem('app-version');
+                  // Force hard reload
+                  window.location.reload();
+                }
+              }}
+              className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+            >
+              <RefreshCw size={18} />
+              Hard Reload App
+            </button>
+          </div>
+
           <div className="bg-white rounded-xl border border-slate-200 p-6">
             <h3 className="font-semibold text-slate-800 mb-4">Export & Backup</h3>
             <p className="text-slate-500 text-sm mb-4">

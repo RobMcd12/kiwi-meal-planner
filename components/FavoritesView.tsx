@@ -22,7 +22,7 @@ import RecipeAdjuster from './RecipeAdjuster';
 import {
   Trash2, Heart, ShoppingCart, ArrowLeft, X, ChefHat, Clock,
   Image as ImageIcon, Loader2, Search, Grid, List, Plus, Upload,
-  Globe, Lock, Tag, User, Sparkles, FileText, Pencil, RefreshCw, Star, Printer, Apple, SlidersHorizontal, Crown, AlertCircle, Video, Play
+  Globe, Lock, Tag, User, Sparkles, FileText, Pencil, RefreshCw, Star, Printer, Apple, SlidersHorizontal, Crown, AlertCircle, Video, Play, MoreVertical
 } from 'lucide-react';
 import RecipeVideoPlayer from './RecipeVideoPlayer';
 import { getRecipeVideo, initiateVideoGeneration } from '../services/recipeVideoService';
@@ -87,6 +87,7 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({
   const [showPrintView, setShowPrintView] = useState(false);
   const [showNutrition, setShowNutrition] = useState(false);
   const [showAdjuster, setShowAdjuster] = useState(false);
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
 
   // Images
   const [mealImages, setMealImages] = useState<Record<string, string>>({});
@@ -299,6 +300,7 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({
     setShowImageEditor(false);
     setImageEditPrompt('');
     setCurrentVideo(null);
+    setShowMobileMenu(false);
     setLoadingVideo(false);
     // Note: We don't reset generatingVideo here to allow background generation
   };
@@ -987,11 +989,11 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({
       {/* Recipe Detail Modal */}
       {openMeal && (
         <div
-          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-2 md:p-4"
           onClick={handleCloseMeal}
         >
           <div
-            className="bg-white rounded-2xl w-[90%] md:w-[80%] max-w-5xl shadow-2xl max-h-[90vh] overflow-y-auto"
+            className="bg-white rounded-2xl w-full md:w-[85%] lg:w-[80%] max-w-5xl shadow-2xl max-h-[95vh] md:max-h-[90vh] overflow-y-auto overflow-x-hidden"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Image Section */}
@@ -1117,12 +1119,61 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({
             </div>
 
             {/* Content */}
-            <div className="p-6">
-              <div className="flex items-start justify-between gap-4 mb-2">
-                <h2 className="text-2xl font-bold text-slate-800">{openMeal.name}</h2>
+            <div className="p-4 md:p-6">
+              <div className="flex items-start justify-between gap-3 mb-3">
+                <h2 className="text-xl md:text-2xl font-bold text-slate-800 leading-tight">{openMeal.name}</h2>
 
-                {/* Action buttons */}
-                <div className="flex items-center gap-2">
+                {/* Mobile Menu Button */}
+                <div className="relative md:hidden">
+                  <button
+                    onClick={() => setShowMobileMenu(!showMobileMenu)}
+                    className="p-2 bg-slate-100 hover:bg-slate-200 rounded-lg transition-colors"
+                  >
+                    <MoreVertical size={20} className="text-slate-600" />
+                  </button>
+                  {showMobileMenu && (
+                    <>
+                      <div className="fixed inset-0 z-40" onClick={() => setShowMobileMenu(false)} />
+                      <div className="absolute right-0 top-full mt-1 bg-white rounded-xl shadow-xl border border-slate-200 py-2 min-w-48 z-50">
+                        <button
+                          onClick={() => { setShowPrintView(true); setShowMobileMenu(false); }}
+                          className="w-full flex items-center gap-3 px-4 py-2.5 text-left text-slate-700 hover:bg-slate-50"
+                        >
+                          <Printer size={18} className="text-slate-500" />
+                          Print / PDF
+                        </button>
+                        <button
+                          onClick={() => { setShowNutrition(true); setShowMobileMenu(false); }}
+                          className="w-full flex items-center gap-3 px-4 py-2.5 text-left text-green-700 hover:bg-green-50"
+                        >
+                          <Apple size={18} />
+                          Nutrition Info
+                        </button>
+                        <button
+                          onClick={() => { setShowAdjuster(true); setShowMobileMenu(false); }}
+                          className="w-full flex items-center gap-3 px-4 py-2.5 text-left text-purple-700 hover:bg-purple-50"
+                        >
+                          <SlidersHorizontal size={18} />
+                          Adjust Recipe
+                        </button>
+                        {activeTab === 'uploaded' && openMeal.source === 'uploaded' && (
+                          <button
+                            onClick={() => { handleTogglePublic(openMeal); setShowMobileMenu(false); }}
+                            className={`w-full flex items-center gap-3 px-4 py-2.5 text-left ${
+                              openMeal.isPublic ? 'text-blue-700 hover:bg-blue-50' : 'text-slate-600 hover:bg-slate-50'
+                            }`}
+                          >
+                            {openMeal.isPublic ? <Globe size={18} /> : <Lock size={18} />}
+                            {openMeal.isPublic ? 'Make Private' : 'Make Public'}
+                          </button>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                {/* Desktop Action buttons */}
+                <div className="hidden md:flex items-center gap-2 flex-shrink-0">
                   {/* Print button */}
                   <button
                     onClick={() => setShowPrintView(true)}
@@ -1170,7 +1221,7 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({
                 </div>
               </div>
 
-              <p className="text-slate-600 italic mb-4">{openMeal.description}</p>
+              <p className="text-sm md:text-base text-slate-600 italic mb-4 leading-relaxed">{openMeal.description}</p>
 
               {/* Video Section */}
               {(openMeal.hasVideo || isAdmin) && (
@@ -1295,30 +1346,30 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({
                 )}
               </div>
 
-              <div className="grid md:grid-cols-2 gap-6">
+              <div className="grid md:grid-cols-2 gap-4 md:gap-6">
                 {/* Ingredients */}
-                <div>
-                  <div className="flex items-center gap-2 mb-3 text-emerald-700 font-bold border-b border-emerald-100 pb-2">
+                <div className="bg-emerald-50/50 rounded-xl p-3 md:p-4">
+                  <div className="flex items-center gap-2 mb-3 text-emerald-700 font-bold border-b border-emerald-200 pb-2">
                     <ChefHat size={18} />
-                    <h3>Ingredients</h3>
+                    <h3 className="text-base">Ingredients</h3>
                   </div>
                   <ul className="space-y-2">
                     {openMeal.ingredients.map((ing, idx) => (
-                      <li key={idx} className="flex items-start gap-3 text-sm text-slate-700">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 mt-1.5 flex-shrink-0" />
-                        <span>{ing}</span>
+                      <li key={idx} className="flex items-start gap-2 text-sm text-slate-700">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-2 flex-shrink-0" />
+                        <span className="leading-relaxed">{ing}</span>
                       </li>
                     ))}
                   </ul>
                 </div>
 
                 {/* Instructions */}
-                <div>
-                  <div className="flex items-center gap-2 mb-3 text-indigo-700 font-bold border-b border-indigo-100 pb-2">
+                <div className="bg-indigo-50/50 rounded-xl p-3 md:p-4">
+                  <div className="flex items-center gap-2 mb-3 text-indigo-700 font-bold border-b border-indigo-200 pb-2">
                     <Clock size={18} />
-                    <h3>Instructions</h3>
+                    <h3 className="text-base">Instructions</h3>
                   </div>
-                  <div className="text-sm text-slate-700 whitespace-pre-wrap">
+                  <div className="text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">
                     {openMeal.instructions}
                   </div>
                 </div>

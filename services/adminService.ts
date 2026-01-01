@@ -207,6 +207,74 @@ export interface ImpersonatedUserDetails {
 /**
  * Get user details for impersonation (admin only)
  */
+/**
+ * Admin recipe type
+ */
+export interface AdminRecipe {
+  id: string;
+  name: string;
+  description?: string;
+  imageUrl?: string;
+  source?: string;
+  isPublic: boolean;
+  userId: string;
+  userEmail?: string;
+  userName?: string;
+  hasVideo: boolean;
+  videoStatus?: string;
+  createdAt: string;
+}
+
+/**
+ * Get all recipes from all users (admin only)
+ */
+export const getAllRecipes = async (): Promise<AdminRecipe[]> => {
+  if (!isSupabaseConfigured()) {
+    return [];
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('favorite_meals')
+      .select(`
+        id,
+        name,
+        description,
+        image_url,
+        source,
+        is_public,
+        user_id,
+        created_at,
+        profiles:user_id(email, full_name),
+        recipe_videos(id, processing_status)
+      `)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching all recipes:', error);
+      return [];
+    }
+
+    return (data || []).map((recipe: any) => ({
+      id: recipe.id,
+      name: recipe.name,
+      description: recipe.description,
+      imageUrl: recipe.image_url,
+      source: recipe.source,
+      isPublic: recipe.is_public ?? false,
+      userId: recipe.user_id,
+      userEmail: recipe.profiles?.email,
+      userName: recipe.profiles?.full_name,
+      hasVideo: recipe.recipe_videos && recipe.recipe_videos.length > 0,
+      videoStatus: recipe.recipe_videos?.[0]?.processing_status,
+      createdAt: recipe.created_at,
+    }));
+  } catch (err) {
+    console.error('Error fetching all recipes:', err);
+    return [];
+  }
+};
+
 export const getUserForImpersonation = async (userId: string): Promise<ImpersonatedUserDetails | null> => {
   if (!isSupabaseConfigured()) {
     return null;
