@@ -71,7 +71,8 @@ const parseNumber = (text: string): number | null => {
 };
 
 // Parse timer commands from user input
-const parseTimerCommand = (text: string): { action: 'start' | 'stop' | 'check' | null; name?: string; minutes?: number } => {
+// Returns stepNumber when user says "start a timer for step X" (without specifying minutes)
+const parseTimerCommand = (text: string): { action: 'start' | 'stop' | 'check' | null; name?: string; minutes?: number; stepNumber?: number; itemName?: string } => {
   const lowerText = text.toLowerCase().trim();
 
   console.log('Parsing timer command:', lowerText);
@@ -93,6 +94,32 @@ const parseTimerCommand = (text: string): { action: 'start' | 'stop' | 'check' |
 
   // Number pattern that matches both digits and common word numbers
   const numPattern = '(\\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|twenty[- ]?one|twenty[- ]?two|twenty[- ]?three|twenty[- ]?four|twenty[- ]?five|thirty|forty|forty[- ]?five|fifty|sixty)';
+
+  // Check for step-based timer requests FIRST (before other patterns)
+  // "start a timer for step 2" or "set timer for step two" or "timer for step 3"
+  const stepPattern = new RegExp(`(?:set|start)\\s+(?:a\\s+)?timer\\s+(?:for\\s+)?step\\s+${numPattern}`, 'i');
+  const stepMatch = lowerText.match(stepPattern);
+  if (stepMatch) {
+    const stepNum = parseNumber(stepMatch[1]);
+    if (stepNum !== null && stepNum > 0) {
+      console.log('Step-based timer request for step:', stepNum);
+      return { action: 'start', stepNumber: stepNum };
+    }
+  }
+
+  // Check for item-based timer without explicit minutes
+  // "start a timer for the lamb" or "set a timer for the pasta" (no minutes specified)
+  // This will be used to extract time from recipe
+  const itemTimerPattern = /(?:set|start)\s+(?:a\s+)?timer\s+(?:for\s+)?(?:the\s+)?(\w+(?:\s+\w+)?)$/i;
+  const itemMatch = lowerText.match(itemTimerPattern);
+  if (itemMatch && !lowerText.includes('minute') && !lowerText.includes('min')) {
+    const itemName = itemMatch[1]?.trim();
+    // Make sure it's not "step X" which is handled above
+    if (itemName && !itemName.match(/^step\s/i)) {
+      console.log('Item-based timer request for:', itemName);
+      return { action: 'start', itemName };
+    }
+  }
 
   // Start timer patterns - support various ways to specify names
   // Must have explicit timer-related words AND a number
@@ -699,6 +726,86 @@ export const formatTimerDisplay = (seconds: number): string => {
   const mins = Math.floor(seconds / 60);
   const secs = seconds % 60;
   return `${mins}:${secs.toString().padStart(2, '0')}`;
+};
+
+// Extract cooking time (in minutes) from text
+// Looks for patterns like "cook for 10 minutes", "bake 15-20 minutes", "simmer for 5 mins"
+export const extractCookingTime = (text: string): { minutes: number; context: string } | null => {
+  const lowerText = text.toLowerCase();
+
+  // Patterns to find cooking times
+  const timePatterns = [
+    // "for X minutes" or "for X-Y minutes" (take the higher number)
+    /(?:for|about|approximately|around)\s+(\d+)(?:\s*[-–to]+\s*(\d+))?\s*(?:minute|min)s?/i,
+    // "X minutes" at word boundary
+    /\b(\d+)(?:\s*[-–to]+\s*(\d+))?\s*(?:minute|min)s?\b/i,
+    // "X to Y minutes"
+    /(\d+)\s+to\s+(\d+)\s*(?:minute|min)s?/i,
+    // "X hour(s)" - convert to minutes
+    /(\d+(?:\.\d+)?)\s*hours?/i,
+  ];
+
+  for (const pattern of timePatterns) {
+    const match = lowerText.match(pattern);
+    if (match) {
+      let minutes: number;
+
+      // Check if it's hours
+      if (pattern.source.includes('hour')) {
+        minutes = Math.round(parseFloat(match[1]) * 60);
+      } else if (match[2]) {
+        // Range - use the higher number
+        minutes = Math.max(parseInt(match[1]), parseInt(match[2]));
+      } else {
+        minutes = parseInt(match[1]);
+      }
+
+      if (minutes > 0 && minutes <= 480) { // Max 8 hours
+        // Extract context around the time mention
+        const startIdx = Math.max(0, (match.index || 0) - 30);
+        const endIdx = Math.min(text.length, (match.index || 0) + match[0].length + 30);
+        const context = text.slice(startIdx, endIdx).trim();
+
+        return { minutes, context };
+      }
+    }
+  }
+
+  return null;
+};
+
+// Find cooking time for a specific item in the recipe
+export const findItemCookingTime = (recipe: { instructions: string; ingredients: string[] }, itemName: string): { minutes: number; stepDescription: string } | null => {
+  const lowerItem = itemName.toLowerCase();
+  const instructions = recipe.instructions.toLowerCase();
+
+  // Split instructions into sentences/steps
+  const steps = instructions.split(/(?:\d+\.\s*|\n|(?<=[.!?])\s+)/).filter(s => s.trim());
+
+  // Find steps that mention the item
+  for (const step of steps) {
+    if (step.includes(lowerItem)) {
+      const timeInfo = extractCookingTime(step);
+      if (timeInfo) {
+        return { minutes: timeInfo.minutes, stepDescription: step.trim() };
+      }
+    }
+  }
+
+  // Also check if item is in any cooking action context
+  const cookingVerbs = ['cook', 'bake', 'roast', 'fry', 'grill', 'boil', 'simmer', 'sauté', 'saute', 'braise', 'steam'];
+  for (const step of steps) {
+    const hasItem = step.includes(lowerItem);
+    const hasCookingVerb = cookingVerbs.some(v => step.includes(v));
+    if (hasItem && hasCookingVerb) {
+      const timeInfo = extractCookingTime(step);
+      if (timeInfo) {
+        return { minutes: timeInfo.minutes, stepDescription: step.trim() };
+      }
+    }
+  }
+
+  return null;
 };
 
 // Check if user is asking to read recipe

@@ -30,6 +30,8 @@ import {
   formatTimerDisplay,
   isReadCommand,
   parseTimerCommand,
+  extractCookingTime,
+  findItemCookingTime,
   MAX_TIMERS,
 } from '../services/recipeChatService';
 
@@ -220,11 +222,80 @@ const RecipeChatModal: React.FC<RecipeChatModalProps> = ({ recipe, isOpen, onClo
   };
 
   // Handle timer commands
-  const handleTimerCommand = (cmd: { action: 'start' | 'stop' | 'check' | null; name?: string; minutes?: number }) => {
+  const handleTimerCommand = (cmd: { action: 'start' | 'stop' | 'check' | null; name?: string; minutes?: number; stepNumber?: number; itemName?: string }) => {
     if (!timerManagerRef.current) return;
 
     switch (cmd.action) {
       case 'start':
+        // Handle step-based timer request
+        if (cmd.stepNumber !== undefined) {
+          const stepIndex = cmd.stepNumber - 1;
+          if (stepIndex >= 0 && stepIndex < steps.length) {
+            const stepText = steps[stepIndex];
+            const timeInfo = extractCookingTime(stepText);
+            if (timeInfo) {
+              const timerName = `Step ${cmd.stepNumber}`;
+              const timer = timerManagerRef.current.createTimer(timerName, timeInfo.minutes);
+              if (timer) {
+                const response = `${timerName} timer set for ${timeInfo.minutes} minute${timeInfo.minutes > 1 ? 's' : ''}.`;
+                addMessage('assistant', response);
+                if (autoSpeak && speakerRef.current) {
+                  speakerRef.current.speak(response);
+                }
+              } else {
+                const response = `You already have ${MAX_TIMERS} timers running. Please dismiss one first.`;
+                addMessage('assistant', response);
+                if (autoSpeak && speakerRef.current) {
+                  speakerRef.current.speak(response);
+                }
+              }
+            } else {
+              const response = `I couldn't find a cooking time in step ${cmd.stepNumber}. Try saying the specific time, like "set a timer for 10 minutes".`;
+              addMessage('assistant', response);
+              if (autoSpeak && speakerRef.current) {
+                speakerRef.current.speak(response);
+              }
+            }
+          } else {
+            const response = `Step ${cmd.stepNumber} doesn't exist. This recipe has ${steps.length} steps.`;
+            addMessage('assistant', response);
+            if (autoSpeak && speakerRef.current) {
+              speakerRef.current.speak(response);
+            }
+          }
+          break;
+        }
+
+        // Handle item-based timer request (e.g., "start a timer for the lamb")
+        if (cmd.itemName && !cmd.minutes) {
+          const itemTime = findItemCookingTime(recipe, cmd.itemName);
+          if (itemTime) {
+            const timerName = cmd.itemName.charAt(0).toUpperCase() + cmd.itemName.slice(1);
+            const timer = timerManagerRef.current.createTimer(timerName, itemTime.minutes);
+            if (timer) {
+              const response = `${timerName} timer set for ${itemTime.minutes} minute${itemTime.minutes > 1 ? 's' : ''}, based on the recipe.`;
+              addMessage('assistant', response);
+              if (autoSpeak && speakerRef.current) {
+                speakerRef.current.speak(response);
+              }
+            } else {
+              const response = `You already have ${MAX_TIMERS} timers running. Please dismiss one first.`;
+              addMessage('assistant', response);
+              if (autoSpeak && speakerRef.current) {
+                speakerRef.current.speak(response);
+              }
+            }
+          } else {
+            const response = `I couldn't find a cooking time for "${cmd.itemName}" in this recipe. Try saying the specific time, like "set a timer for ${cmd.itemName} for 10 minutes".`;
+            addMessage('assistant', response);
+            if (autoSpeak && speakerRef.current) {
+              speakerRef.current.speak(response);
+            }
+          }
+          break;
+        }
+
+        // Handle explicit minutes timer
         if (cmd.minutes) {
           // Capitalize the timer name for better display
           const timerName = cmd.name

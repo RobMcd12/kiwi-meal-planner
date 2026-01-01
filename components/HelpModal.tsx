@@ -282,12 +282,12 @@ const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
             <div className="flex items-start gap-2">
               <Timer size={16} className="text-orange-600 mt-0.5" />
               <div>
-                <strong>Multiple Named Timers</strong> - Set up to 5 timers with names:
+                <strong>Smart Timers</strong> - Set up to 5 timers. The assistant can extract times from the recipe:
                 <ul className="list-disc list-inside ml-4 mt-1 text-slate-500">
+                  <li>"Start a timer for step 2" - uses time from that step</li>
+                  <li>"Set a timer for the lamb" - finds cook time in recipe</li>
                   <li>"Set a 10 minute timer for the pasta"</li>
-                  <li>"Start a timer for the lamb for 15 minutes"</li>
-                  <li>"How much time on the pasta?"</li>
-                  <li>"Stop the sauce timer"</li>
+                  <li>"How much time on the pasta?" / "Stop the sauce timer"</li>
                 </ul>
               </div>
             </div>
