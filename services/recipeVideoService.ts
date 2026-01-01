@@ -180,12 +180,21 @@ export const initiateVideoGeneration = async (
   if (!isSupabaseConfigured()) return null;
 
   try {
+    // Get current session to ensure we have auth token
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      throw new Error('Not authenticated');
+    }
+
     // Use Edge Function to create video record (bypasses RLS using service role)
     const { data, error } = await supabase.functions.invoke('create-video-record', {
       body: {
         mealId,
         storageType,
         customPrompt,
+      },
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
       },
     });
 
