@@ -277,51 +277,53 @@ const AdminRecipeBrowser: React.FC<AdminRecipeBrowserProps> = ({ onVideoGenerate
                 )}
               </div>
 
-              {/* Actions */}
-              <div className="flex items-center gap-2 flex-shrink-0">
-                {!recipe.hasVideo ? (
-                  <button
-                    onClick={() => handleGenerateVideo(recipe.id)}
-                    disabled={generatingIds.has(recipe.id)}
-                    className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {generatingIds.has(recipe.id) ? (
-                      <>
+              {/* Actions - Video generation hidden until API is configured */}
+              {false && (
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  {!recipe.hasVideo ? (
+                    <button
+                      onClick={() => handleGenerateVideo(recipe.id)}
+                      disabled={generatingIds.has(recipe.id)}
+                      className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {generatingIds.has(recipe.id) ? (
+                        <>
+                          <Loader2 size={16} className="animate-spin" />
+                          <span className="hidden sm:inline">Generating...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Video size={16} />
+                          <span className="hidden sm:inline">Generate Video</span>
+                        </>
+                      )}
+                    </button>
+                  ) : recipe.videoStatus === 'complete' ? (
+                    <span className="flex items-center gap-1 text-emerald-600 text-sm">
+                      <Play size={16} />
+                      <span className="hidden sm:inline">Video Available</span>
+                    </span>
+                  ) : recipe.videoStatus === 'failed' ? (
+                    <button
+                      onClick={() => handleGenerateVideo(recipe.id)}
+                      disabled={generatingIds.has(recipe.id)}
+                      className="flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
+                    >
+                      {generatingIds.has(recipe.id) ? (
                         <Loader2 size={16} className="animate-spin" />
-                        <span className="hidden sm:inline">Generating...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Video size={16} />
-                        <span className="hidden sm:inline">Generate Video</span>
-                      </>
-                    )}
-                  </button>
-                ) : recipe.videoStatus === 'complete' ? (
-                  <span className="flex items-center gap-1 text-emerald-600 text-sm">
-                    <Play size={16} />
-                    <span className="hidden sm:inline">Video Available</span>
-                  </span>
-                ) : recipe.videoStatus === 'failed' ? (
-                  <button
-                    onClick={() => handleGenerateVideo(recipe.id)}
-                    disabled={generatingIds.has(recipe.id)}
-                    className="flex items-center gap-2 px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
-                  >
-                    {generatingIds.has(recipe.id) ? (
+                      ) : (
+                        <RefreshCw size={16} />
+                      )}
+                      <span className="hidden sm:inline">Retry</span>
+                    </button>
+                  ) : (
+                    <span className="flex items-center gap-2 text-blue-600 text-sm">
                       <Loader2 size={16} className="animate-spin" />
-                    ) : (
-                      <RefreshCw size={16} />
-                    )}
-                    <span className="hidden sm:inline">Retry</span>
-                  </button>
-                ) : (
-                  <span className="flex items-center gap-2 text-blue-600 text-sm">
-                    <Loader2 size={16} className="animate-spin" />
-                    <span className="hidden sm:inline">Processing...</span>
-                  </span>
-                )}
-              </div>
+                      <span className="hidden sm:inline">Processing...</span>
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
           ))}
         </div>

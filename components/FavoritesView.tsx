@@ -690,18 +690,20 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({
           </div>
         </div>
 
-        {/* Video Filter */}
-        <button
-          onClick={() => setHasVideoFilter(!hasVideoFilter)}
-          className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-full border transition-colors ${
-            hasVideoFilter
-              ? 'bg-purple-600 text-white border-purple-600'
-              : 'bg-white text-slate-600 border-slate-200 hover:border-purple-300'
-          }`}
-        >
-          <Video size={14} />
-          Has Video
-        </button>
+        {/* Video Filter - Hidden until video API is configured */}
+        {false && (
+          <button
+            onClick={() => setHasVideoFilter(!hasVideoFilter)}
+            className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-full border transition-colors ${
+              hasVideoFilter
+                ? 'bg-purple-600 text-white border-purple-600'
+                : 'bg-white text-slate-600 border-slate-200 hover:border-purple-300'
+            }`}
+          >
+            <Video size={14} />
+            Has Video
+          </button>
+        )}
 
         {/* Tag Filter Pills */}
         {availableTags.length > 0 && (
@@ -831,8 +833,8 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({
                       <h3 className="font-bold text-slate-800 line-clamp-1">{meal.name}</h3>
                     </div>
                     <div className="flex items-center gap-2">
-                      {/* Video badge */}
-                      {meal.hasVideo && (
+                      {/* Video badge - Hidden until video API is configured */}
+                      {false && meal.hasVideo && (
                         <div className="flex items-center gap-1 px-1.5 py-0.5 bg-purple-100 text-purple-700 rounded-full">
                           <Video size={12} />
                         </div>
@@ -931,8 +933,8 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({
                         Shared
                       </span>
                     )}
-                    {/* Video badge in list view */}
-                    {meal.hasVideo && (
+                    {/* Video badge in list view - Hidden until video API is configured */}
+                    {false && meal.hasVideo && (
                       <div className="flex items-center gap-1 px-1.5 py-0.5 bg-purple-100 text-purple-700 rounded-full">
                         <Video size={10} />
                       </div>
@@ -1223,8 +1225,8 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({
 
               <p className="text-sm md:text-base text-slate-600 italic mb-4 leading-relaxed">{openMeal.description}</p>
 
-              {/* Video Section */}
-              {(openMeal.hasVideo || isAdmin) && (
+              {/* Video Section - Hidden until video API is configured */}
+              {false && (openMeal.hasVideo || isAdmin) && (
                 <div className="mb-6">
                   {loadingVideo ? (
                     <div className="bg-slate-100 rounded-xl p-8 flex items-center justify-center">

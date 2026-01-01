@@ -894,7 +894,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
           { id: 'overview', label: 'Overview', icon: Activity },
           { id: 'feedback', label: 'Feedback', icon: MessageSquare, badge: newFeedbackCount },
           { id: 'instructions', label: 'Instructions', icon: Settings },
-          { id: 'videos', label: 'Videos', icon: Video },
+          // { id: 'videos', label: 'Videos', icon: Video }, // Hidden until video API is configured
           { id: 'subscriptions', label: 'Subscriptions', icon: Crown },
           { id: 'data', label: 'Data Management', icon: Database },
           { id: 'users', label: 'Users', icon: Users },
@@ -967,6 +967,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
             </div>
           </button>
 
+          {/* Video counter hidden until video API is configured
           <button
             onClick={() => setCounterModalType('videos')}
             className="bg-white rounded-xl border border-slate-200 p-6 text-left hover:border-purple-300 hover:shadow-md transition-all cursor-pointer"
@@ -981,6 +982,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
               </div>
             </div>
           </button>
+          */}
 
           <div className="md:col-span-4 bg-white rounded-xl border border-slate-200 p-6">
             <h3 className="font-semibold text-slate-800 mb-4">System Status</h3>
