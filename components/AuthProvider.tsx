@@ -1,8 +1,17 @@
 import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase, onAuthStateChange, isSupabaseConfigured } from '../services/authService';
-import { checkIsAdmin, isSuperAdmin } from '../services/adminService';
+import { checkIsAdmin, isSuperAdmin, getUserForImpersonation } from '../services/adminService';
 import { recordLogin } from '../services/loginHistoryService';
+
+// Impersonated user type
+export interface ImpersonatedUser {
+  id: string;
+  email: string;
+  fullName: string | null;
+  avatarUrl: string | null;
+  isAdmin: boolean;
+}
 
 // Capture URL state immediately at module load (before Supabase can modify it)
 // This is used to detect if we're returning from an OAuth callback
@@ -34,6 +43,12 @@ interface AuthContextType {
   isConfigured: boolean;
   isAdmin: boolean;
   refreshAdminStatus: () => Promise<void>;
+  // Impersonation
+  impersonatedUser: ImpersonatedUser | null;
+  isImpersonating: boolean;
+  startImpersonation: (userId: string) => Promise<boolean>;
+  stopImpersonation: () => void;
+  effectiveUserId: string | null;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -44,11 +59,19 @@ const AuthContext = createContext<AuthContextType>({
   isConfigured: false,
   isAdmin: false,
   refreshAdminStatus: async () => {},
+  // Impersonation defaults
+  impersonatedUser: null,
+  isImpersonating: false,
+  startImpersonation: async () => false,
+  stopImpersonation: () => {},
+  effectiveUserId: null,
 });
 
 interface AuthProviderProps {
   children: ReactNode;
 }
+
+const IMPERSONATION_STORAGE_KEY = 'kiwi_impersonated_user';
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
@@ -56,6 +79,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const isConfigured = isSupabaseConfigured();
+
+  // Impersonation state
+  const [impersonatedUser, setImpersonatedUser] = useState<ImpersonatedUser | null>(() => {
+    // Initialize from sessionStorage if available
+    try {
+      const stored = sessionStorage.getItem(IMPERSONATION_STORAGE_KEY);
+      return stored ? JSON.parse(stored) : null;
+    } catch {
+      return null;
+    }
+  });
 
   // Track if we've already recorded login for current browser session to avoid duplicates
   const loginRecordedRef = useRef<boolean>(false);
@@ -69,6 +103,58 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setIsAdmin(false);
     }
   };
+
+  // Impersonation methods
+  const startImpersonation = async (userId: string): Promise<boolean> => {
+    // Only admins can impersonate
+    if (!isAdmin) {
+      console.warn('Impersonation requires admin privileges');
+      return false;
+    }
+
+    // Cannot impersonate self
+    if (userId === user?.id) {
+      console.warn('Cannot impersonate yourself');
+      return false;
+    }
+
+    try {
+      const userDetails = await getUserForImpersonation(userId);
+      if (!userDetails) {
+        console.error('Failed to fetch user details for impersonation');
+        return false;
+      }
+
+      // Cannot impersonate other admins (security)
+      if (userDetails.isAdmin) {
+        console.warn('Cannot impersonate admin users');
+        return false;
+      }
+
+      setImpersonatedUser(userDetails);
+      sessionStorage.setItem(IMPERSONATION_STORAGE_KEY, JSON.stringify(userDetails));
+      return true;
+    } catch (error) {
+      console.error('Error starting impersonation:', error);
+      return false;
+    }
+  };
+
+  const stopImpersonation = () => {
+    setImpersonatedUser(null);
+    sessionStorage.removeItem(IMPERSONATION_STORAGE_KEY);
+  };
+
+  // Clear impersonation if user logs out or is no longer admin
+  useEffect(() => {
+    if (!isAdmin && impersonatedUser) {
+      stopImpersonation();
+    }
+  }, [isAdmin, impersonatedUser]);
+
+  // Computed values
+  const isImpersonating = !!impersonatedUser;
+  const effectiveUserId = impersonatedUser?.id ?? user?.id ?? null;
 
   // Helper to detect login method from user data
   const detectLoginMethod = (user: User): 'email' | 'google' | 'apple' | 'github' => {
@@ -203,6 +289,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     isConfigured,
     isAdmin,
     refreshAdminStatus,
+    // Impersonation
+    impersonatedUser,
+    isImpersonating,
+    startImpersonation,
+    stopImpersonation,
+    effectiveUserId,
   };
 
   return (

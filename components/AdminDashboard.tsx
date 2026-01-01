@@ -119,7 +119,7 @@ const getSubscriptionDisplay = (subscription: UserSubscription | null): { label:
 };
 
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
-  const { user, isAdmin, refreshAdminStatus } = useAuth();
+  const { user, isAdmin, refreshAdminStatus, startImpersonation } = useAuth();
   const [stats, setStats] = useState<Stats>({ totalUsers: 0, totalMealPlans: 0, totalFavorites: 0 });
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'overview' | 'feedback' | 'data' | 'users' | 'instructions' | 'subscriptions'>('overview');
@@ -182,6 +182,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
   const [resettingPasswordUserId, setResettingPasswordUserId] = useState<string | null>(null);
   const [deletingUserId, setDeletingUserId] = useState<string | null>(null);
   const [expandedUserId, setExpandedUserId] = useState<string | null>(null);
+  const [impersonatingUserId, setImpersonatingUserId] = useState<string | null>(null);
 
   // Check if current user is super admin (can manage other admins)
   const currentUserIsSuperAdmin = isSuperAdmin(user?.email ?? undefined);
@@ -540,6 +541,24 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
       setMessage({ type: 'error', text: 'Failed to delete user.' });
     } finally {
       setDeletingUserId(null);
+    }
+  };
+
+  const handleImpersonate = async (userId: string, userName: string) => {
+    setImpersonatingUserId(userId);
+    try {
+      const success = await startImpersonation(userId);
+      if (success) {
+        setMessage({ type: 'success', text: `Now viewing as ${userName}` });
+        // Navigate away from admin dashboard
+        onBack();
+      } else {
+        setMessage({ type: 'error', text: 'Failed to start impersonation. Cannot impersonate admins.' });
+      }
+    } catch (err) {
+      setMessage({ type: 'error', text: 'Failed to start impersonation.' });
+    } finally {
+      setImpersonatingUserId(null);
     }
   };
 
@@ -1820,6 +1839,22 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
                               <ShieldCheck size={16} />
                             ) : (
                               <ShieldX size={16} />
+                            )}
+                          </button>
+                        )}
+
+                        {/* Impersonate Button - Only for super admin, not for self or other admins */}
+                        {currentUserIsSuperAdmin && !isUserSuperAdmin && !userItem.isAdmin && userItem.userId !== user?.id && (
+                          <button
+                            onClick={() => handleImpersonate(userItem.userId, userItem.fullName || userItem.email)}
+                            disabled={impersonatingUserId === userItem.userId}
+                            className="p-1.5 text-slate-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors disabled:opacity-50"
+                            title="View as this user"
+                          >
+                            {impersonatingUserId === userItem.userId ? (
+                              <Loader2 size={16} className="animate-spin" />
+                            ) : (
+                              <Eye size={16} />
                             )}
                           </button>
                         )}

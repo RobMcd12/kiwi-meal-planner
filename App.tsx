@@ -16,6 +16,7 @@ import SingleRecipeGenerator from './components/SingleRecipeGenerator';
 import FeedbackDialog from './components/FeedbackDialog';
 import ErrorBoundary from './components/ErrorBoundary';
 import InstallPrompt from './components/InstallPrompt';
+import ImpersonationBanner from './components/ImpersonationBanner';
 import { AuthProvider, useAuth } from './components/AuthProvider';
 import { UploadProvider } from './contexts/UploadContext';
 import { ToastContainer } from './components/Toast';
@@ -55,7 +56,7 @@ const DEFAULT_PREFERENCES: UserPreferences = {
 };
 
 const AppContent: React.FC = () => {
-  const { user, isAuthenticated, loading: authLoading, isAdmin } = useAuth();
+  const { user, isAuthenticated, loading: authLoading, isAdmin, isImpersonating } = useAuth();
   const { toasts, dismissToast, success, error: showError } = useToast();
 
   // Determine initial step from URL or default to landing
@@ -469,8 +470,11 @@ const AppContent: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-100 via-emerald-50/50 to-orange-50 flex flex-col">
-      {/* Header */}
-      <header className="bg-white/80 backdrop-blur-sm border-b border-slate-200 py-4 px-6 sticky top-0 z-20">
+      {/* Impersonation Banner - shown when admin is viewing as another user */}
+      <ImpersonationBanner />
+
+      {/* Header - adjust top position when impersonation banner is visible */}
+      <header className={`bg-white/80 backdrop-blur-sm border-b border-slate-200 py-4 px-6 sticky z-20 ${isImpersonating ? 'top-12' : 'top-0'}`}>
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           <div
             className="flex items-center gap-2 cursor-pointer"

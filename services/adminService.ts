@@ -192,3 +192,47 @@ export const deleteUser = async (userId: string): Promise<{ success: boolean; er
     return { success: false, error: err.message || 'Failed to delete user' };
   }
 };
+
+/**
+ * User details for impersonation
+ */
+export interface ImpersonatedUserDetails {
+  id: string;
+  email: string;
+  fullName: string | null;
+  avatarUrl: string | null;
+  isAdmin: boolean;
+}
+
+/**
+ * Get user details for impersonation (admin only)
+ */
+export const getUserForImpersonation = async (userId: string): Promise<ImpersonatedUserDetails | null> => {
+  if (!isSupabaseConfigured()) {
+    return null;
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('id, email, full_name, avatar_url, is_admin')
+      .eq('id', userId)
+      .single();
+
+    if (error) {
+      console.error('Error fetching user for impersonation:', error);
+      return null;
+    }
+
+    return {
+      id: data.id,
+      email: data.email || '',
+      fullName: data.full_name,
+      avatarUrl: data.avatar_url,
+      isAdmin: data.is_admin ?? false,
+    };
+  } catch (err) {
+    console.error('Error fetching user for impersonation:', err);
+    return null;
+  }
+};
