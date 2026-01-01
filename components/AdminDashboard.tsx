@@ -86,6 +86,17 @@ const formatBytes = (bytes: number): string => {
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
 };
 
+// Helper to get friendly tag display names
+const getTagDisplayName = (tag: string): string => {
+  const tagNames: Record<string, string> = {
+    'meal_planner': 'Meal Planner',
+    'recipe_generation': 'Recipe Generation',
+    'pantry_scanning': 'Pantry Scanning',
+    'video_generation': 'Cookbook Video',
+  };
+  return tagNames[tag] || tag.replace('_', ' ');
+};
+
 // Helper to get subscription status display
 const getSubscriptionDisplay = (subscription: UserSubscription | null): { label: string; color: string; icon?: React.ReactNode } => {
   if (!subscription) {
@@ -1251,7 +1262,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
             <Settings className="text-blue-600 flex-shrink-0 mt-0.5" size={20} />
             <div>
               <p className="text-blue-800 font-medium">How Instructions Work</p>
-              <p className="text-blue-700 text-sm">Instructions are automatically applied to AI prompts based on their tags: "meal_planner" for meal plan generation, "recipe_generation" for recipe creation, "pantry_scanning" for pantry scanning, and "video_generation" for cookbook video creation.</p>
+              <p className="text-blue-700 text-sm">Instructions are automatically applied to AI prompts based on their tags: <strong>Meal Planner</strong> for weekly meal plan generation, <strong>Recipe Generation</strong> for recipe creation, <strong>Pantry Scanning</strong> for pantry item detection, and <strong>Cookbook Video</strong> for AI video generation.</p>
             </div>
           </div>
 
@@ -1278,7 +1289,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
                       : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                   }`}
                 >
-                  {tag === 'all' ? 'All' : tag.replace('_', ' ')}
+                  {tag === 'all' ? 'All' : getTagDisplayName(tag)}
                 </button>
               ))}
             </div>
@@ -1344,7 +1355,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
                                   className="px-2 py-0.5 bg-slate-100 text-slate-600 text-xs font-medium rounded-full flex items-center gap-1"
                                 >
                                   <Tag size={10} />
-                                  {tag.replace('_', ' ')}
+                                  {getTagDisplayName(tag)}
                                 </span>
                               ))}
                             </div>
@@ -1501,7 +1512,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
                               : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                           }`}
                         >
-                          {tag.replace('_', ' ')}
+                          {getTagDisplayName(tag)}
                         </button>
                       ))}
                     </div>
