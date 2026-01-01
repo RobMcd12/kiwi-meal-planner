@@ -28,7 +28,8 @@ import {
   Tag,
   FolderPlus,
   ToggleLeft,
-  ToggleRight
+  ToggleRight,
+  Video
 } from 'lucide-react';
 import { useAuth } from './AuthProvider';
 import { supabase, isSupabaseConfigured } from '../services/authService';
@@ -49,11 +50,15 @@ import {
   createCategory,
   deleteCategory
 } from '../services/adminInstructionsService';
-import type { FeedbackItem, FeedbackStatus, AdminInstruction, AdminInstructionCategory, InstructionTag, UserLoginSummary, AdminUserWithDetails, UserSubscription } from '../types';
+import type { FeedbackItem, FeedbackStatus, AdminInstruction, AdminInstructionCategory, InstructionTag, UserLoginSummary, AdminUserWithDetails, UserSubscription, RecipeVideo } from '../types';
 import UserLoginHistory from './admin/UserLoginHistory';
 import SubscriptionSettings from './admin/SubscriptionSettings';
+import VideoManagementTab from './admin/VideoManagementTab';
+import GoogleDriveSetup from './admin/GoogleDriveSetup';
+import DashboardCounterModal from './admin/DashboardCounterModal';
 import { getAllUsersWithDetails } from '../services/loginHistoryService';
 import { grantProAccess, revokeProAccess } from '../services/subscriptionService';
+import { getVideoCount } from '../services/recipeVideoService';
 import { Crown, BookOpen, HardDrive, Calendar, ArrowUpDown, ChevronDown } from 'lucide-react';
 
 interface AdminDashboardProps {
@@ -64,6 +69,7 @@ interface Stats {
   totalUsers: number;
   totalMealPlans: number;
   totalFavorites: number;
+  totalVideos: number;
 }
 
 // Helper to format bytes
@@ -120,9 +126,10 @@ const getSubscriptionDisplay = (subscription: UserSubscription | null): { label:
 
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
   const { user, isAdmin, refreshAdminStatus, startImpersonation } = useAuth();
-  const [stats, setStats] = useState<Stats>({ totalUsers: 0, totalMealPlans: 0, totalFavorites: 0 });
+  const [stats, setStats] = useState<Stats>({ totalUsers: 0, totalMealPlans: 0, totalFavorites: 0, totalVideos: 0 });
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'overview' | 'feedback' | 'data' | 'users' | 'instructions' | 'subscriptions'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'feedback' | 'data' | 'users' | 'instructions' | 'subscriptions' | 'videos'>('overview');
+  const [counterModalType, setCounterModalType] = useState<'users' | 'videos' | null>(null);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   // Instructions state
@@ -720,16 +727,18 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
     try {
       if (isSupabaseConfigured()) {
         // Load stats from Supabase
-        const [usersRes, plansRes, favsRes] = await Promise.all([
+        const [usersRes, plansRes, favsRes, videoCount] = await Promise.all([
           supabase.from('profiles').select('id', { count: 'exact', head: true }),
           supabase.from('meal_plan_history').select('id', { count: 'exact', head: true }),
           supabase.from('favorite_meals').select('id', { count: 'exact', head: true }),
+          getVideoCount(),
         ]);
 
         setStats({
           totalUsers: usersRes.count || 0,
           totalMealPlans: plansRes.count || 0,
           totalFavorites: favsRes.count || 0,
+          totalVideos: videoCount,
         });
       }
     } catch (err) {
@@ -844,6 +853,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
           { id: 'overview', label: 'Overview', icon: Activity },
           { id: 'feedback', label: 'Feedback', icon: MessageSquare, badge: newFeedbackCount },
           { id: 'instructions', label: 'Instructions', icon: Settings },
+          { id: 'videos', label: 'Videos', icon: Video },
           { id: 'subscriptions', label: 'Subscriptions', icon: Crown },
           { id: 'data', label: 'Data Management', icon: Database },
           { id: 'users', label: 'Users', icon: Users },
@@ -870,8 +880,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
 
       {/* Overview Tab */}
       {activeTab === 'overview' && (
-        <div className="grid md:grid-cols-3 gap-6">
-          <div className="bg-white rounded-xl border border-slate-200 p-6">
+        <div className="grid md:grid-cols-4 gap-6">
+          <button
+            onClick={() => setCounterModalType('users')}
+            className="bg-white rounded-xl border border-slate-200 p-6 text-left hover:border-blue-300 hover:shadow-md transition-all cursor-pointer"
+          >
             <div className="flex items-center gap-3 mb-4">
               <div className="bg-blue-100 p-3 rounded-lg">
                 <Users className="text-blue-600" size={24} />
@@ -881,7 +894,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
                 <div className="text-sm text-slate-500">Total Users</div>
               </div>
             </div>
-          </div>
+          </button>
 
           <div className="bg-white rounded-xl border border-slate-200 p-6">
             <div className="flex items-center gap-3 mb-4">
@@ -907,7 +920,22 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
             </div>
           </div>
 
-          <div className="md:col-span-3 bg-white rounded-xl border border-slate-200 p-6">
+          <button
+            onClick={() => setCounterModalType('videos')}
+            className="bg-white rounded-xl border border-slate-200 p-6 text-left hover:border-purple-300 hover:shadow-md transition-all cursor-pointer"
+          >
+            <div className="flex items-center gap-3 mb-4">
+              <div className="bg-purple-100 p-3 rounded-lg">
+                <Video className="text-purple-600" size={24} />
+              </div>
+              <div>
+                <div className="text-2xl font-bold text-slate-800">{loading ? '...' : stats.totalVideos}</div>
+                <div className="text-sm text-slate-500">Recipe Videos</div>
+              </div>
+            </div>
+          </button>
+
+          <div className="md:col-span-4 bg-white rounded-xl border border-slate-200 p-6">
             <h3 className="font-semibold text-slate-800 mb-4">System Status</h3>
             <div className="space-y-3">
               <div className="flex items-center justify-between py-2 border-b border-slate-100">
@@ -1189,7 +1217,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
               />
             </div>
             <div className="flex gap-2 flex-wrap">
-              {(['all', 'meal_planner', 'recipe_generation', 'pantry_scanning'] as const).map((tag) => (
+              {(['all', 'meal_planner', 'recipe_generation', 'pantry_scanning', 'video_generation'] as const).map((tag) => (
                 <button
                   key={tag}
                   onClick={() => setInstructionTagFilter(tag)}
@@ -1411,7 +1439,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
                       Tags (select where this applies)
                     </label>
                     <div className="flex gap-2 flex-wrap">
-                      {(['meal_planner', 'recipe_generation', 'pantry_scanning'] as const).map((tag) => (
+                      {(['meal_planner', 'recipe_generation', 'pantry_scanning', 'video_generation'] as const).map((tag) => (
                         <button
                           key={tag}
                           type="button"
@@ -1576,6 +1604,19 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
       {activeTab === 'subscriptions' && (
         <div>
           <SubscriptionSettings onMessage={setMessage} />
+        </div>
+      )}
+
+      {/* Videos Tab */}
+      {activeTab === 'videos' && (
+        <div className="space-y-6">
+          <GoogleDriveSetup onConfigChange={loadStats} />
+          <div className="bg-white rounded-xl border border-slate-200 p-6">
+            <h3 className="font-semibold text-slate-800 mb-4">Recipe Videos</h3>
+            <VideoManagementTab
+              onVideoCountChange={(count) => setStats(prev => ({ ...prev, totalVideos: count }))}
+            />
+          </div>
         </div>
       )}
 
@@ -2194,6 +2235,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
             </div>
           )}
         </div>
+      )}
+
+      {/* Dashboard Counter Modal */}
+      {counterModalType && (
+        <DashboardCounterModal
+          type={counterModalType}
+          onClose={() => setCounterModalType(null)}
+        />
       )}
     </div>
   );

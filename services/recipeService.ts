@@ -289,7 +289,10 @@ export const getPublicRecipes = async (): Promise<Meal[]> => {
 
     const { data, error } = await supabase
       .from('favorite_meals')
-      .select('*')
+      .select(`
+        *,
+        recipe_videos(id, processing_status)
+      `)
       .eq('is_public', true)
       .neq('user_id', user?.id || '') // Exclude own recipes
       .order('created_at', { ascending: false });
@@ -300,6 +303,7 @@ export const getPublicRecipes = async (): Promise<Meal[]> => {
     const recipesWithTags = await Promise.all(
       (data || []).map(async (meal: any) => {
         const tags = await getRecipeTags(meal.id);
+        const video = meal.recipe_videos?.[0];
         return {
           id: meal.id,
           name: meal.name,
@@ -313,7 +317,9 @@ export const getPublicRecipes = async (): Promise<Meal[]> => {
           ownerName: meal.owner_name,
           createdAt: meal.created_at,
           tags,
-          isFavorite: false
+          isFavorite: false,
+          videoId: video?.id,
+          hasVideo: video?.processing_status === 'complete',
         };
       })
     );
@@ -507,7 +513,10 @@ export const getUserUploadedRecipes = async (): Promise<Meal[]> => {
 
     const { data, error } = await supabase
       .from('favorite_meals')
-      .select('*')
+      .select(`
+        *,
+        recipe_videos(id, processing_status)
+      `)
       .eq('user_id', user.id)
       .eq('source', 'uploaded')
       .order('created_at', { ascending: false });
@@ -518,6 +527,7 @@ export const getUserUploadedRecipes = async (): Promise<Meal[]> => {
     const recipesWithTags = await Promise.all(
       (data || []).map(async (meal: any) => {
         const tags = await getRecipeTags(meal.id);
+        const video = meal.recipe_videos?.[0];
         return {
           id: meal.id,
           name: meal.name,
@@ -531,7 +541,9 @@ export const getUserUploadedRecipes = async (): Promise<Meal[]> => {
           userId: meal.user_id,
           createdAt: meal.created_at,
           tags,
-          isFavorite: true
+          isFavorite: true,
+          videoId: video?.id,
+          hasVideo: video?.processing_status === 'complete',
         };
       })
     );
@@ -555,7 +567,10 @@ export const getUserGeneratedRecipes = async (): Promise<Meal[]> => {
 
     const { data, error } = await supabase
       .from('favorite_meals')
-      .select('*')
+      .select(`
+        *,
+        recipe_videos(id, processing_status)
+      `)
       .eq('user_id', user.id)
       .or('source.eq.generated,source.is.null')
       .order('created_at', { ascending: false });
@@ -566,6 +581,7 @@ export const getUserGeneratedRecipes = async (): Promise<Meal[]> => {
     const recipesWithTags = await Promise.all(
       (data || []).map(async (meal: any) => {
         const tags = await getRecipeTags(meal.id);
+        const video = meal.recipe_videos?.[0];
         return {
           id: meal.id,
           name: meal.name,
@@ -578,7 +594,9 @@ export const getUserGeneratedRecipes = async (): Promise<Meal[]> => {
           userId: meal.user_id,
           createdAt: meal.created_at,
           tags,
-          isFavorite: true
+          isFavorite: true,
+          videoId: video?.id,
+          hasVideo: video?.processing_status === 'complete',
         };
       })
     );

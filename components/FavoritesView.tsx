@@ -22,8 +22,11 @@ import RecipeAdjuster from './RecipeAdjuster';
 import {
   Trash2, Heart, ShoppingCart, ArrowLeft, X, ChefHat, Clock,
   Image as ImageIcon, Loader2, Search, Grid, List, Plus, Upload,
-  Globe, Lock, Tag, User, Sparkles, FileText, Pencil, RefreshCw, Star, Printer, Apple, SlidersHorizontal, Crown, AlertCircle
+  Globe, Lock, Tag, User, Sparkles, FileText, Pencil, RefreshCw, Star, Printer, Apple, SlidersHorizontal, Crown, AlertCircle, Video, Play
 } from 'lucide-react';
+import RecipeVideoPlayer from './RecipeVideoPlayer';
+import { getRecipeVideo, initiateVideoGeneration } from '../services/recipeVideoService';
+import type { RecipeVideo } from '../types';
 
 interface FavoritesViewProps {
   onBack: () => void;
@@ -72,6 +75,7 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const [minRating, setMinRating] = useState<number | undefined>(undefined);
+  const [hasVideoFilter, setHasVideoFilter] = useState(false);
 
   // Selection and modal state
   const [selectedMeals, setSelectedMeals] = useState<string[]>([]);
@@ -87,6 +91,11 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({
   // Images
   const [mealImages, setMealImages] = useState<Record<string, string>>({});
   const [loadingImages, setLoadingImages] = useState<Record<string, boolean>>({});
+
+  // Video state
+  const [currentVideo, setCurrentVideo] = useState<RecipeVideo | null>(null);
+  const [loadingVideo, setLoadingVideo] = useState(false);
+  const [generatingVideo, setGeneratingVideo] = useState(false);
 
   // Loading state
   const [isLoadingRecipes, setIsLoadingRecipes] = useState(true);
@@ -228,8 +237,15 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({
     else if (activeTab === 'public') recipes = publicRecipes;
 
     // Apply search, tag, and rating filters
-    return searchRecipes(recipes, searchQuery, selectedTags, minRating);
-  }, [activeTab, generatedRecipes, uploadedRecipes, publicRecipes, searchQuery, selectedTags, minRating]);
+    let filtered = searchRecipes(recipes, searchQuery, selectedTags, minRating);
+
+    // Apply video filter
+    if (hasVideoFilter) {
+      filtered = filtered.filter(r => r.hasVideo);
+    }
+
+    return filtered;
+  }, [activeTab, generatedRecipes, uploadedRecipes, publicRecipes, searchQuery, selectedTags, minRating, hasVideoFilter]);
 
   // Get unique tags from current recipes for filter pills
   const availableTags = useMemo(() => {
@@ -260,11 +276,21 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({
     }
   };
 
-  const handleOpenMeal = (meal: Meal) => {
+  const handleOpenMeal = async (meal: Meal) => {
     setOpenMeal(meal);
     setShowTagEditor(false);
     setShowImageEditor(false);
     setImageEditPrompt('');
+    setCurrentVideo(null);
+    setGeneratingVideo(false);
+
+    // Load video if recipe has one
+    if (meal.hasVideo && meal.id) {
+      setLoadingVideo(true);
+      const video = await getRecipeVideo(meal.id);
+      setCurrentVideo(video);
+      setLoadingVideo(false);
+    }
   };
 
   const handleCloseMeal = () => {
@@ -272,6 +298,9 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({
     setShowTagEditor(false);
     setShowImageEditor(false);
     setImageEditPrompt('');
+    setCurrentVideo(null);
+    setLoadingVideo(false);
+    // Note: We don't reset generatingVideo here to allow background generation
   };
 
   const handleGenerateImage = async (meal: Meal) => {
@@ -659,6 +688,19 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({
           </div>
         </div>
 
+        {/* Video Filter */}
+        <button
+          onClick={() => setHasVideoFilter(!hasVideoFilter)}
+          className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-full border transition-colors ${
+            hasVideoFilter
+              ? 'bg-purple-600 text-white border-purple-600'
+              : 'bg-white text-slate-600 border-slate-200 hover:border-purple-300'
+          }`}
+        >
+          <Video size={14} />
+          Has Video
+        </button>
+
         {/* Tag Filter Pills */}
         {availableTags.length > 0 && (
           <div className="flex flex-wrap items-center gap-2">
@@ -683,9 +725,9 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({
         )}
 
         {/* Clear filters */}
-        {(selectedTags.length > 0 || minRating) && (
+        {(selectedTags.length > 0 || minRating || hasVideoFilter) && (
           <button
-            onClick={() => { setSelectedTags([]); setMinRating(undefined); }}
+            onClick={() => { setSelectedTags([]); setMinRating(undefined); setHasVideoFilter(false); }}
             className="px-3 py-1 text-sm text-red-600 hover:bg-red-50 rounded-full"
           >
             Clear All
@@ -787,6 +829,12 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({
                       <h3 className="font-bold text-slate-800 line-clamp-1">{meal.name}</h3>
                     </div>
                     <div className="flex items-center gap-2">
+                      {/* Video badge */}
+                      {meal.hasVideo && (
+                        <div className="flex items-center gap-1 px-1.5 py-0.5 bg-purple-100 text-purple-700 rounded-full">
+                          <Video size={12} />
+                        </div>
+                      )}
                       {/* Rating display */}
                       {meal.averageRating && meal.averageRating > 0 && (
                         <div className="flex items-center gap-1 text-amber-500">
@@ -880,6 +928,12 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({
                         <Globe size={10} />
                         Shared
                       </span>
+                    )}
+                    {/* Video badge in list view */}
+                    {meal.hasVideo && (
+                      <div className="flex items-center gap-1 px-1.5 py-0.5 bg-purple-100 text-purple-700 rounded-full">
+                        <Video size={10} />
+                      </div>
                     )}
                     {/* Rating display in list view */}
                     {meal.averageRating && meal.averageRating > 0 && (
@@ -1117,6 +1171,81 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({
               </div>
 
               <p className="text-slate-600 italic mb-4">{openMeal.description}</p>
+
+              {/* Video Section */}
+              {(openMeal.hasVideo || isAdmin) && (
+                <div className="mb-6">
+                  {loadingVideo ? (
+                    <div className="bg-slate-100 rounded-xl p-8 flex items-center justify-center">
+                      <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
+                    </div>
+                  ) : currentVideo ? (
+                    <RecipeVideoPlayer
+                      video={currentVideo}
+                      hasPro={hasPro}
+                      onUpgradeClick={onUpgradeClick}
+                      isAdmin={isAdmin}
+                      onRegenerate={async () => {
+                        if (!openMeal.id) return;
+                        setGeneratingVideo(true);
+                        try {
+                          await initiateVideoGeneration(openMeal.id, 'supabase');
+                          const video = await getRecipeVideo(openMeal.id);
+                          setCurrentVideo(video);
+                        } catch (err) {
+                          console.error('Error regenerating video:', err);
+                        }
+                        setGeneratingVideo(false);
+                      }}
+                      onDelete={async () => {
+                        setCurrentVideo(null);
+                        // Refresh the recipes to update hasVideo status
+                        if (activeTab === 'generated') {
+                          setGeneratedRecipes(prev => prev.map(r =>
+                            r.id === openMeal.id ? { ...r, hasVideo: false, videoId: undefined } : r
+                          ));
+                        }
+                      }}
+                    />
+                  ) : isAdmin && !generatingVideo ? (
+                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-6 text-center">
+                      <Video className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+                      <p className="text-slate-600 font-medium mb-2">No video for this recipe</p>
+                      <p className="text-sm text-slate-500 mb-4">Generate an AI cooking video for this recipe</p>
+                      <button
+                        onClick={async () => {
+                          if (!openMeal.id) return;
+                          setGeneratingVideo(true);
+                          try {
+                            await initiateVideoGeneration(openMeal.id, 'supabase');
+                            const video = await getRecipeVideo(openMeal.id);
+                            setCurrentVideo(video);
+                            // Update recipe in list
+                            if (activeTab === 'generated') {
+                              setGeneratedRecipes(prev => prev.map(r =>
+                                r.id === openMeal.id ? { ...r, hasVideo: true, videoId: video?.id } : r
+                              ));
+                            }
+                          } catch (err) {
+                            console.error('Error generating video:', err);
+                          }
+                          setGeneratingVideo(false);
+                        }}
+                        className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white font-medium rounded-lg transition-colors mx-auto"
+                      >
+                        <Play size={18} />
+                        Generate Video
+                      </button>
+                    </div>
+                  ) : generatingVideo ? (
+                    <div className="bg-slate-50 border border-slate-200 rounded-xl p-8 text-center">
+                      <Loader2 className="w-10 h-10 animate-spin text-purple-500 mx-auto mb-3" />
+                      <p className="text-slate-600 font-medium">Generating video...</p>
+                      <p className="text-sm text-slate-500 mt-1">This may take a few minutes</p>
+                    </div>
+                  ) : null}
+                </div>
+              )}
 
               {/* Owner name for public recipes */}
               {activeTab === 'public' && openMeal.ownerName && (

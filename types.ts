@@ -118,6 +118,9 @@ export interface Meal {
   // Rating fields
   averageRating?: number; // 1-5 stars average
   ratingCount?: number; // Number of ratings
+  // Video fields
+  videoId?: string; // Reference to recipe_videos.id
+  hasVideo?: boolean; // Whether this recipe has a completed video
 }
 
 export interface DayPlan {
@@ -293,7 +296,7 @@ export interface AdminInstructionCategory {
   createdAt: string;
 }
 
-export type InstructionTag = 'meal_planner' | 'recipe_generation' | 'pantry_scanning';
+export type InstructionTag = 'meal_planner' | 'recipe_generation' | 'pantry_scanning' | 'video_generation';
 
 export interface AdminInstruction {
   id: string;
@@ -343,6 +346,52 @@ export interface ScannedPantryResult {
 }
 
 export type PantryUploadMode = 'replace' | 'add_new';
+
+// ============================================
+// RECIPE VIDEO TYPES
+// ============================================
+
+export type VideoStorageType = 'google_drive' | 'supabase';
+export type VideoProcessingStatus = 'pending' | 'generating' | 'uploading' | 'complete' | 'failed';
+
+export interface RecipeVideo {
+  id: string;
+  mealId: string;
+  mealName?: string; // Joined from favorite_meals for display
+  storageType: VideoStorageType;
+  // Google Drive fields
+  googleDriveFileId?: string;
+  googleDriveUrl?: string;
+  // Supabase Storage fields
+  supabaseStoragePath?: string;
+  // Common fields
+  videoUrl?: string; // Resolved playable URL
+  thumbnailUrl?: string;
+  durationSeconds?: number;
+  fileSizeBytes?: number;
+  processingStatus: VideoProcessingStatus;
+  generationPrompt?: string;
+  instructionsUsed?: AdminInstruction[];
+  errorMessage?: string;
+  createdBy?: string;
+  createdByName?: string;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface GoogleDriveConfig {
+  isConfigured: boolean;
+  driveFolderId?: string;
+  driveFolderName?: string;
+  configuredBy?: string;
+  configuredAt?: string;
+}
+
+export interface VideoGenerationRequest {
+  mealId: string;
+  storageType: VideoStorageType;
+  customPrompt?: string;
+}
 
 // ============================================
 // LOGIN HISTORY TYPES
