@@ -4,7 +4,7 @@ import {
   Tag, Globe, Lock, Settings, Image, Link, FileText, FileType,
   Sparkles, Bell, MessageSquare, User, ChevronRight, ChevronDown,
   Star, ImagePlus, Edit2, Camera, Apple, Utensils, SlidersHorizontal,
-  Beef, Flame, Printer
+  Beef, Flame, Printer, Mic, Timer, Volume2, Play, Pause
 } from 'lucide-react';
 
 interface HelpModalProps {
@@ -248,6 +248,58 @@ const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
           </div>
           <p className="mt-3 text-slate-500">
             Nutrition is AI-estimated based on typical ingredient values. Use as a guide, not medical advice.
+          </p>
+        </>
+      )
+    },
+    {
+      id: 'cook-mode',
+      title: 'Voice Cook Mode',
+      icon: <Mic size={20} />,
+      keywords: ['voice', 'cook', 'mode', 'hands-free', 'timer', 'timers', 'speak', 'talk', 'microphone', 'assistant', 'read', 'recipe', 'step'],
+      content: (
+        <>
+          <p>Use voice commands to get hands-free help while cooking:</p>
+          <ol className="list-decimal list-inside space-y-2 ml-2 mt-2">
+            <li>Open any recipe from your cookbook</li>
+            <li>Click the <strong>"Cook Mode"</strong> button (microphone icon)</li>
+            <li>Grant microphone permission when prompted</li>
+            <li>Start talking to get help!</li>
+          </ol>
+          <div className="space-y-3 mt-4">
+            <div className="flex items-start gap-2">
+              <Volume2 size={16} className="text-emerald-600 mt-0.5" />
+              <div>
+                <strong>Read Recipe</strong> - Say "read the recipe", "what's step 3?", "read the ingredients", or "next step" to hear instructions read aloud.
+              </div>
+            </div>
+            <div className="flex items-start gap-2">
+              <MessageSquare size={16} className="text-blue-600 mt-0.5" />
+              <div>
+                <strong>Ask Questions</strong> - Ask anything about the recipe: "Can I substitute butter for oil?", "What temperature should the oven be?", "How do I know when it's done?"
+              </div>
+            </div>
+            <div className="flex items-start gap-2">
+              <Timer size={16} className="text-orange-600 mt-0.5" />
+              <div>
+                <strong>Named Timers</strong> - Set multiple timers with names:
+                <ul className="list-disc list-inside ml-4 mt-1 text-slate-500">
+                  <li>"Set a 10 minute timer for the pasta"</li>
+                  <li>"Start a 5 minute timer for the sauce"</li>
+                  <li>"How much time on the pasta?"</li>
+                  <li>"Stop the sauce timer"</li>
+                </ul>
+              </div>
+            </div>
+            <div className="flex items-start gap-2">
+              <Play size={16} className="text-purple-600 mt-0.5" />
+              <div>
+                <strong>Timer Controls</strong> - Visual timer bar shows all active timers. Pause <Pause size={12} className="inline" />, resume <Play size={12} className="inline" />, or delete timers. When a timer completes, the assistant announces it by name.
+              </div>
+            </div>
+          </div>
+          <p className="mt-3 text-slate-500">
+            <strong>Tip:</strong> Enable "Auto-speak responses" to hear answers without looking at your screen. Toggle the microphone on/off as needed.
           </p>
         </>
       )

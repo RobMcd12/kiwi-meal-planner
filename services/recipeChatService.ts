@@ -30,40 +30,61 @@ export interface RecipeChatState {
 const parseTimerCommand = (text: string): { action: 'start' | 'stop' | 'check' | null; name?: string; minutes?: number } => {
   const lowerText = text.toLowerCase();
 
+  // IMPORTANT: First check if this is a cooking question, NOT a timer command
+  // These should go to the AI, not the timer system
+  const cookingQuestionPatterns = [
+    /how\s+long\s+(?:do\s+i\s+|should\s+i\s+|to\s+)?(?:cook|bake|roast|fry|grill|boil|simmer|steam)/i,
+    /how\s+long\s+(?:does|will|should)\s+(?:the\s+|it\s+)?(?:\w+\s+)?(?:cook|bake|take)/i,
+    /what\s+(?:is\s+)?(?:the\s+)?(?:cook|cooking|baking)\s*(?:time|duration)/i,
+    /how\s+many\s+minutes?\s+(?:do\s+i\s+|should\s+i\s+|to\s+)?cook/i,
+  ];
+
+  for (const pattern of cookingQuestionPatterns) {
+    if (pattern.test(lowerText)) {
+      return { action: null }; // Let the AI handle cooking questions
+    }
+  }
+
   // Start timer patterns - support various ways to specify names
-  // "Set a 10 minute timer for the pasta"
-  // "Timer 5 minutes for the sauce"
-  // "Start a 15 minute rice timer"
-  // "Set timer for pasta 10 minutes"
+  // Must have explicit timer-related words AND a number
   const startPatterns = [
+    // "set a timer for the lamb for 10 minutes" or "start a timer for pasta for 5 minutes"
+    /(?:set|start)\s+(?:a\s+)?timer\s+(?:for\s+)?(?:the\s+)?(.+?)\s+(?:for\s+)?(\d+)\s*(?:minute|min)s?/i,
     // "set timer for 10 minutes for pasta" or "set a timer for 10 minutes for the pasta"
-    /set\s+(?:a\s+)?timer\s+(?:for\s+)?(\d+)\s*(?:minute|min)s?\s*(?:for\s+)?(?:the\s+)?(.+)?/i,
-    // "start a 10 minute timer for pasta"
-    /start\s+(?:a\s+)?(\d+)\s*(?:minute|min)s?\s+timer\s*(?:for\s+)?(?:the\s+)?(.+)?/i,
-    // "10 minute timer for pasta" or "10 minutes for the pasta"
-    /(\d+)\s*(?:minute|min)s?\s+(?:timer\s+)?(?:for\s+)?(?:the\s+)?(.+)/i,
-    // "timer 10 minutes pasta"
-    /timer\s+(\d+)\s*(?:minute|min)s?\s*(.+)?/i,
-    // "set pasta timer for 10 minutes" or "start the rice timer 15 minutes"
+    /(?:set|start)\s+(?:a\s+)?timer\s+(?:for\s+)?(\d+)\s*(?:minute|min)s?\s+(?:for\s+)?(?:the\s+)?(.+)/i,
+    // "set a 10 minute timer for pasta"
+    /(?:set|start)\s+(?:a\s+)?(\d+)\s*(?:minute|min)s?\s+timer\s+(?:for\s+)?(?:the\s+)?(.+)/i,
+    // "set a 10 minute timer" (no name)
+    /(?:set|start)\s+(?:a\s+)?(\d+)\s*(?:minute|min)s?\s+timer(?:\s*$)/i,
+    // "10 minute timer for pasta" (must have "timer" word)
+    /^(\d+)\s*(?:minute|min)s?\s+timer\s+(?:for\s+)?(?:the\s+)?(.+)/i,
+    // "timer for 10 minutes for the pasta" or "timer 10 minutes for pasta"
+    /^timer\s+(?:for\s+)?(\d+)\s*(?:minute|min)s?\s+(?:for\s+)?(?:the\s+)?(.+)?/i,
+    // "set pasta timer for 10 minutes" or "start the lamb timer for 15 minutes"
     /(?:set|start)\s+(?:a\s+|the\s+)?(.+?)\s+timer\s+(?:for\s+)?(\d+)\s*(?:minute|min)s?/i,
   ];
 
   for (const pattern of startPatterns) {
     const match = lowerText.match(pattern);
     if (match) {
-      // Check if this pattern has name before minutes (last pattern)
-      if (pattern.source.includes('(.+?)\\s+timer')) {
-        return {
-          action: 'start',
-          minutes: parseInt(match[2]),
-          name: match[1]?.trim() || 'Cooking timer'
-        };
+      // Determine which capture group has minutes vs name based on pattern
+      let minutes: number;
+      let name: string;
+
+      // Check if first group is a number (minutes) or text (name)
+      if (/^\d+$/.test(match[1])) {
+        minutes = parseInt(match[1]);
+        name = match[2]?.trim() || 'Cooking timer';
+      } else {
+        // First group is name, second is minutes
+        name = match[1]?.trim() || 'Cooking timer';
+        minutes = parseInt(match[2]);
       }
-      return {
-        action: 'start',
-        minutes: parseInt(match[1]),
-        name: match[2]?.trim() || 'Cooking timer'
-      };
+
+      // Validate we have valid minutes
+      if (!isNaN(minutes) && minutes > 0) {
+        return { action: 'start', minutes, name };
+      }
     }
   }
 
@@ -73,18 +94,42 @@ const parseTimerCommand = (text: string): { action: 'start' | 'stop' | 'check' |
   if (stopNameMatch) {
     return { action: 'stop', name: stopNameMatch[1]?.trim() };
   }
-  if (/stop\s+(?:the\s+)?timer|cancel\s+(?:the\s+)?timer|timer\s+off/i.test(lowerText)) {
+  if (/^(?:stop|cancel)\s+(?:the\s+)?timer$|^timer\s+off$/i.test(lowerText)) {
     return { action: 'stop' };
   }
 
-  // Check timer patterns - can check specific timer by name
-  // "how much time on the pasta" or "check the rice timer" or "how long for the sauce"
-  const checkNameMatch = lowerText.match(/(?:how\s+(?:much\s+)?time\s+(?:on|for|left\s+on)\s+(?:the\s+)?|check\s+(?:the\s+)?|how\s+long\s+(?:for\s+)?(?:the\s+)?)(.+?)(?:\s+timer)?$/i);
-  if (checkNameMatch && checkNameMatch[1] && !checkNameMatch[1].match(/^(left|remaining|timer)$/i)) {
-    return { action: 'check', name: checkNameMatch[1]?.trim() };
-  }
-  if (/(?:how\s+(?:much\s+)?time|check\s+(?:the\s+)?timer|timer\s+status|time\s+left|how\s+long)/i.test(lowerText)) {
+  // Check timer patterns - ONLY match explicit timer status requests
+  // Must include "timer" word or be specifically about time remaining
+  // "how much time left on the timer" or "check the pasta timer" or "how much time on the pasta timer"
+
+  // First, check for explicit timer status requests
+  if (/^(?:check|what'?s?)\s+(?:the\s+)?timer(?:s)?(?:\s+status)?$/i.test(lowerText)) {
     return { action: 'check' };
+  }
+
+  if (/^(?:how\s+much\s+)?time\s+(?:left|remaining)(?:\s+on\s+(?:the\s+)?timer)?$/i.test(lowerText)) {
+    return { action: 'check' };
+  }
+
+  if (/^timer\s+status$/i.test(lowerText)) {
+    return { action: 'check' };
+  }
+
+  // Check for named timer status: "check the pasta timer" or "how much time on the pasta"
+  // But ONLY if it ends with "timer" or explicitly asks about time remaining
+  const checkNamedTimerMatch = lowerText.match(/^(?:check|what'?s?)\s+(?:the\s+)?(.+?)\s+timer$/i);
+  if (checkNamedTimerMatch) {
+    return { action: 'check', name: checkNamedTimerMatch[1]?.trim() };
+  }
+
+  // "how much time left on the pasta" or "how much time on the lamb timer"
+  const timeLeftMatch = lowerText.match(/^how\s+(?:much\s+)?time\s+(?:left\s+)?(?:on|for)\s+(?:the\s+)?(.+?)(?:\s+timer)?$/i);
+  if (timeLeftMatch) {
+    const name = timeLeftMatch[1]?.trim();
+    // Only treat as timer check if it's not a cooking question
+    if (name && !name.match(/cook|bake|roast|fry|grill|boil|simmer/i)) {
+      return { action: 'check', name };
+    }
   }
 
   return { action: null };
@@ -181,30 +226,89 @@ export class RecipeSpeaker {
   private synth: SpeechSynthesis;
   private utterance: SpeechSynthesisUtterance | null = null;
   private onStateChange: (speaking: boolean) => void;
+  private selectedVoice: SpeechSynthesisVoice | null = null;
 
   constructor(onStateChange: (speaking: boolean) => void) {
     this.synth = window.speechSynthesis;
     this.onStateChange = onStateChange;
+    this.initVoice();
   }
 
-  speak(text: string, rate: number = 0.9): Promise<void> {
+  private initVoice() {
+    // Voices may not be loaded immediately, so we need to wait
+    const loadVoices = () => {
+      const voices = this.synth.getVoices();
+      if (voices.length > 0) {
+        this.selectedVoice = this.findBestVoice(voices);
+      }
+    };
+
+    loadVoices();
+    // Chrome loads voices asynchronously
+    if (this.synth.onvoiceschanged !== undefined) {
+      this.synth.onvoiceschanged = loadVoices;
+    }
+  }
+
+  private findBestVoice(voices: SpeechSynthesisVoice[]): SpeechSynthesisVoice | null {
+    // Filter to English voices only
+    const englishVoices = voices.filter(v => v.lang.startsWith('en'));
+
+    // Priority order for natural-sounding voices (highest priority first)
+    const voicePreferences = [
+      // Premium/Neural voices (most natural)
+      (v: SpeechSynthesisVoice) => v.name.includes('Premium') || v.name.includes('Neural') || v.name.includes('Enhanced'),
+      // Google voices (generally good quality)
+      (v: SpeechSynthesisVoice) => v.name.includes('Google') && v.name.includes('UK'),
+      (v: SpeechSynthesisVoice) => v.name.includes('Google') && v.name.includes('US'),
+      (v: SpeechSynthesisVoice) => v.name.includes('Google'),
+      // macOS high-quality voices
+      (v: SpeechSynthesisVoice) => v.name === 'Karen' || v.name === 'Daniel' || v.name === 'Moira',
+      (v: SpeechSynthesisVoice) => v.name === 'Samantha' || v.name === 'Alex',
+      // Microsoft natural voices
+      (v: SpeechSynthesisVoice) => v.name.includes('Microsoft') && (v.name.includes('Online') || v.name.includes('Natural')),
+      (v: SpeechSynthesisVoice) => v.name.includes('Microsoft'),
+      // iOS voices
+      (v: SpeechSynthesisVoice) => v.name.includes('Siri'),
+      // Any other English voice
+      (v: SpeechSynthesisVoice) => v.lang.startsWith('en'),
+    ];
+
+    for (const preference of voicePreferences) {
+      const match = englishVoices.find(preference);
+      if (match) {
+        console.log('Selected voice:', match.name, match.lang);
+        return match;
+      }
+    }
+
+    // Fallback to first English voice or any voice
+    return englishVoices[0] || voices[0] || null;
+  }
+
+  speak(text: string, rate: number = 1.0): Promise<void> {
     return new Promise((resolve, reject) => {
       // Cancel any ongoing speech
       this.stop();
 
       this.utterance = new SpeechSynthesisUtterance(text);
+      // Slightly slower for clarity but not too slow
       this.utterance.rate = rate;
-      this.utterance.pitch = 1;
+      // Slightly lower pitch sounds more natural and less robotic
+      this.utterance.pitch = 0.95;
       this.utterance.volume = 1;
 
-      // Try to use a natural voice
-      const voices = this.synth.getVoices();
-      const preferredVoice = voices.find(v =>
-        v.name.includes('Google') || v.name.includes('Natural') || v.name.includes('Samantha')
-      ) || voices.find(v => v.lang.startsWith('en'));
-
-      if (preferredVoice) {
-        this.utterance.voice = preferredVoice;
+      // Use the pre-selected best voice
+      if (this.selectedVoice) {
+        this.utterance.voice = this.selectedVoice;
+      } else {
+        // Try to find a voice now if not already selected
+        const voices = this.synth.getVoices();
+        const bestVoice = this.findBestVoice(voices);
+        if (bestVoice) {
+          this.utterance.voice = bestVoice;
+          this.selectedVoice = bestVoice;
+        }
       }
 
       this.utterance.onstart = () => this.onStateChange(true);

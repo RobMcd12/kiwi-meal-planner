@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ChefHat, Sparkles, ShoppingCart, Heart, ArrowRight, Camera, Package, Upload, Apple, Users, SlidersHorizontal, Video, Mic, Crown, Check, Infinity } from 'lucide-react';
+import { ChefHat, Sparkles, ShoppingCart, Heart, ArrowRight, Camera, Package, Upload, Apple, Users, SlidersHorizontal, Video, Mic, Crown, Check, Infinity, Timer, Volume2, MessageSquare } from 'lucide-react';
 import LegalPages from './LegalPages';
 import { getSubscriptionConfig, formatPrice } from '../services/subscriptionService';
 import type { SubscriptionConfig } from '../types';
@@ -216,6 +216,43 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin }) => {
                 Generate recipes that prioritize your existing ingredients.
               </p>
             </div>
+
+            {/* Voice Cook Mode - Featured */}
+            <div className="bg-gradient-to-br from-orange-50 to-amber-50 p-6 rounded-2xl shadow-sm border border-orange-100 hover:shadow-md transition-shadow md:col-span-2 lg:col-span-2">
+              <div className="flex items-start gap-4">
+                <div className="bg-orange-100 w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0">
+                  <Mic className="text-orange-600" size={28} />
+                </div>
+                <div>
+                  <div className="inline-flex items-center gap-1 bg-orange-100 text-orange-700 px-2 py-0.5 rounded text-xs font-medium mb-2">
+                    <Sparkles size={12} />
+                    Hands-Free Cooking
+                  </div>
+                  <h3 className="text-xl font-bold text-slate-800 mb-2">Voice Cook Mode</h3>
+                  <p className="text-slate-600 mb-3">
+                    Talk to your recipes while you cook. Ask questions, get step-by-step guidance read aloud, and set named timers - all hands-free with voice commands.
+                  </p>
+                  <div className="flex flex-wrap items-center gap-3 text-sm text-slate-500">
+                    <span className="flex items-center gap-1">
+                      <Volume2 size={14} className="text-orange-500" />
+                      Read Aloud
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <MessageSquare size={14} className="text-orange-500" />
+                      Ask Questions
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Timer size={14} className="text-orange-500" />
+                      Named Timers
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Mic size={14} className="text-orange-500" />
+                      Voice Control
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </section>
@@ -411,6 +448,10 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin }) => {
                 <li className="flex items-start gap-3">
                   <Upload size={20} className="text-emerald-600 flex-shrink-0 mt-0.5" />
                   <span className="text-slate-700">Audio file upload</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <Mic size={20} className="text-emerald-600 flex-shrink-0 mt-0.5" />
+                  <span className="text-slate-700">Voice Cook Mode with AI assistant</span>
                 </li>
               </ul>
 
