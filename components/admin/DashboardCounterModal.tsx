@@ -46,6 +46,7 @@ const DashboardCounterModal: React.FC<DashboardCounterModalProps> = ({
   const [items, setItems] = useState<any[]>([]);
   const [displayLimit, setDisplayLimit] = useState(20);
   const [generatingIds, setGeneratingIds] = useState<Set<string>>(new Set());
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     loadItems();
@@ -90,14 +91,17 @@ const DashboardCounterModal: React.FC<DashboardCounterModalProps> = ({
 
   const handleGenerateVideo = async (recipeId: string) => {
     setGeneratingIds(prev => new Set(prev).add(recipeId));
+    setError(null);
     try {
       await initiateVideoGeneration(recipeId, 'supabase');
       // Update the item's video status
       setItems(prev => prev.map(item =>
         item.id === recipeId ? { ...item, hasVideo: true, videoStatus: 'pending' } : item
       ));
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error generating video:', err);
+      const errorMessage = err?.message || err?.error?.message || 'Failed to generate video';
+      setError(errorMessage);
     } finally {
       setGeneratingIds(prev => {
         const next = new Set(prev);
@@ -351,6 +355,16 @@ const DashboardCounterModal: React.FC<DashboardCounterModalProps> = ({
             />
           </div>
         </div>
+
+        {/* Error Banner */}
+        {error && (
+          <div className="mx-4 mt-2 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm flex items-center justify-between">
+            <span>{error}</span>
+            <button onClick={() => setError(null)} className="text-red-500 hover:text-red-700">
+              <X size={16} />
+            </button>
+          </div>
+        )}
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-4">
