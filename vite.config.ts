@@ -117,6 +117,8 @@ export default defineConfig(({ mode }) => {
         'import.meta.env.NEXT_PUBLIC_SUPABASE_URL': JSON.stringify(supabaseUrl),
         'import.meta.env.NEXT_PUBLIC_SUPABASE_ANON_KEY': JSON.stringify(supabaseAnonKey),
         'import.meta.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY': JSON.stringify(supabaseAnonKey),
+        // Build version for cache busting - unique per build
+        '__APP_VERSION__': JSON.stringify(Date.now().toString()),
       },
       resolve: {
         alias: {
