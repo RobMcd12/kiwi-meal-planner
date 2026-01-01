@@ -82,3 +82,13 @@ verify_jwt = false
 
 [functions.cancel-subscription]
 verify_jwt = false
+
+# Video and instructions functions do their own auth verification
+[functions.create-video-record]
+verify_jwt = false
+
+[functions.generate-recipe-video]
+verify_jwt = false
+
+[functions.manage-instructions]
+verify_jwt = false
