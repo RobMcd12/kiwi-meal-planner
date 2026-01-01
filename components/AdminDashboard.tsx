@@ -33,7 +33,8 @@ import {
   RefreshCw,
   ChefHat,
   Play,
-  Film
+  Film,
+  AlertCircle
 } from 'lucide-react';
 import { useAuth } from './AuthProvider';
 import { supabase, isSupabaseConfigured } from '../services/authService';
@@ -1262,7 +1263,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
             <Settings className="text-blue-600 flex-shrink-0 mt-0.5" size={20} />
             <div>
               <p className="text-blue-800 font-medium">How Instructions Work</p>
-              <p className="text-blue-700 text-sm">Instructions are automatically applied to AI prompts based on their tags: <strong>Meal Planner</strong> for weekly meal plan generation, <strong>Recipe Generation</strong> for recipe creation, <strong>Pantry Scanning</strong> for pantry item detection, and <strong>Cookbook Video</strong> for AI video generation.</p>
+              <p className="text-blue-700 text-sm">Instructions are automatically applied to AI prompts based on their category. Assign each instruction to one or more AI features: <strong>Meal Planner</strong>, <strong>Recipe Generation</strong>, <strong>Pantry Scanning</strong>, or <strong>Cookbook Video</strong>.</p>
             </div>
           </div>
 
@@ -1278,20 +1279,19 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
                 className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
               />
             </div>
-            <div className="flex gap-2 flex-wrap">
-              {(['all', 'meal_planner', 'recipe_generation', 'pantry_scanning', 'video_generation'] as const).map((tag) => (
-                <button
-                  key={tag}
-                  onClick={() => setInstructionTagFilter(tag)}
-                  className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                    instructionTagFilter === tag
-                      ? 'bg-emerald-600 text-white'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                  }`}
-                >
-                  {tag === 'all' ? 'All' : getTagDisplayName(tag)}
-                </button>
-              ))}
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-sm text-slate-500">Filter by:</span>
+              <select
+                value={instructionTagFilter}
+                onChange={(e) => setInstructionTagFilter(e.target.value as InstructionTag | 'all')}
+                className="px-3 py-2 border border-slate-200 rounded-lg text-sm font-medium bg-white focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
+              >
+                <option value="all">All Categories</option>
+                <option value="meal_planner">Meal Planner</option>
+                <option value="recipe_generation">Recipe Generation</option>
+                <option value="pantry_scanning">Pantry Scanning</option>
+                <option value="video_generation">Cookbook Video</option>
+              </select>
             </div>
           </div>
 
@@ -1349,12 +1349,12 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
                               {instruction.instructionText}
                             </p>
                             <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-xs text-slate-400">Applies to:</span>
                               {instruction.tags.map((tag) => (
                                 <span
                                   key={tag}
-                                  className="px-2 py-0.5 bg-slate-100 text-slate-600 text-xs font-medium rounded-full flex items-center gap-1"
+                                  className="px-2 py-1 bg-emerald-50 text-emerald-700 text-xs font-medium rounded-md border border-emerald-200"
                                 >
-                                  <Tag size={10} />
                                   {getTagDisplayName(tag)}
                                 </span>
                               ))}
@@ -1495,27 +1495,41 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
                     />
                   </div>
 
-                  {/* Tags */}
+                  {/* AI Feature Categories */}
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-2">
-                      Tags (select where this applies)
+                      Apply to AI Features (select all that apply)
                     </label>
-                    <div className="flex gap-2 flex-wrap">
-                      {(['meal_planner', 'recipe_generation', 'pantry_scanning', 'video_generation'] as const).map((tag) => (
-                        <button
-                          key={tag}
-                          type="button"
-                          onClick={() => toggleInstructionTag(tag)}
-                          className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                            instructionForm.tags.includes(tag)
-                              ? 'bg-emerald-600 text-white'
-                              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                          }`}
+                    <div className="space-y-2 bg-slate-50 rounded-xl p-4 border border-slate-200">
+                      {([
+                        { value: 'meal_planner', label: 'Meal Planner', description: 'Weekly meal plan generation' },
+                        { value: 'recipe_generation', label: 'Recipe Generation', description: 'Creating new recipes from ingredients' },
+                        { value: 'pantry_scanning', label: 'Pantry Scanning', description: 'Detecting items from photos' },
+                        { value: 'video_generation', label: 'Cookbook Video', description: 'AI-generated cooking videos' },
+                      ] as const).map((category) => (
+                        <label
+                          key={category.value}
+                          className="flex items-start gap-3 p-3 bg-white rounded-lg border border-slate-200 cursor-pointer hover:border-emerald-300 transition-colors"
                         >
-                          {getTagDisplayName(tag)}
-                        </button>
+                          <input
+                            type="checkbox"
+                            checked={instructionForm.tags.includes(category.value)}
+                            onChange={() => toggleInstructionTag(category.value)}
+                            className="mt-0.5 w-5 h-5 text-emerald-600 border-slate-300 rounded focus:ring-emerald-500"
+                          />
+                          <div className="flex-1">
+                            <span className="font-medium text-slate-800">{category.label}</span>
+                            <p className="text-sm text-slate-500">{category.description}</p>
+                          </div>
+                        </label>
                       ))}
                     </div>
+                    {instructionForm.tags.length === 0 && (
+                      <p className="text-amber-600 text-sm mt-2 flex items-center gap-1">
+                        <AlertCircle size={14} />
+                        Select at least one AI feature for this instruction to apply
+                      </p>
+                    )}
                   </div>
 
                   {/* Priority */}
