@@ -42,7 +42,7 @@ async function getVideoInstructions(): Promise<string[]> {
   const supabase = getSupabaseAdmin();
 
   const { data } = await supabase
-    .from('admin_ai_instructions')
+    .from('admin_instructions')
     .select('instruction_text, title')
     .contains('tags', ['video_generation'])
     .eq('is_active', true)

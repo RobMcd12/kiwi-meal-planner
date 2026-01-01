@@ -136,7 +136,7 @@ export const generateMealPlan = async (
   const ai = new GoogleGenAI({ apiKey });
 
   const pantryListString = pantryItems.map((p) => p.name).join(", ");
-  
+
   const requestedMeals = [];
   if (config.includeBreakfast) requestedMeals.push("Breakfast");
   if (config.includeLunch) requestedMeals.push("Lunch");
@@ -154,6 +154,12 @@ Design meals that use as many of these items as possible. Minimize shopping list
 Only add items to shopping list if absolutely necessary to complete recipes. Goal: reduce food waste and shopping.`
     : `Pantry (exclude from list): ${pantryListString || "none"}.`;
 
+  // Get admin instructions for meal planning
+  const adminInstructions = await getInstructionsByTag('meal_planner');
+  const adminInstructionsText = adminInstructions.length > 0
+    ? `\n\nADDITIONAL INSTRUCTIONS:\n${adminInstructions.join('\n')}`
+    : '';
+
   // Concise prompt for faster generation
   const prompt = `${config.days}-day meal plan, ${config.peopleCount} people. Meals: ${requestedMeals.join(", ")} only.
 Diet: ${preferences.dietaryRestrictions || "None"}. Likes: ${preferences.likes || "Any"}. Dislikes: ${preferences.dislikes || "None"}.
@@ -161,7 +167,7 @@ Units: ${preferences.unitSystem}. Temps: ${preferences.temperatureScale}.
 Portions: Meat/protein ${meatServing}g per person. Target ~${calorieTarget} kcal/day per person.
 ${modeInstructions}
 Each meal = complete dish with sides (e.g. "Grilled Salmon with Rice and Vegetables"). Include all ingredients/instructions for full meal.
-IMPORTANT: Shopping list MUST include ingredients from ALL ${config.days * requestedMeals.length} meals. Combine quantities, organize by aisle, scale for ${config.peopleCount} people.`;
+IMPORTANT: Shopping list MUST include ingredients from ALL ${config.days * requestedMeals.length} meals. Combine quantities, organize by aisle, scale for ${config.peopleCount} people.${adminInstructionsText}`;
 
   try {
     const response = await ai.models.generateContent({
@@ -446,12 +452,18 @@ export const extractRecipeFromText = async (textContent: string): Promise<Extrac
 
   const ai = new GoogleGenAI({ apiKey });
 
+  // Get admin instructions for recipe generation
+  const adminInstructions = await getInstructionsByTag('recipe_generation');
+  const adminInstructionsText = adminInstructions.length > 0
+    ? `\n\nADDITIONAL INSTRUCTIONS:\n${adminInstructions.join('\n')}`
+    : '';
+
   const prompt = `Extract the recipe information from the following text. If the text contains multiple recipes, extract only the first/main one.
 
 Text:
 ${textContent}
 
-Extract the recipe name, a brief description, ingredients (with quantities), and step-by-step instructions. Also suggest relevant tags from: ${ALL_TAGS.join(", ")}`;
+Extract the recipe name, a brief description, ingredients (with quantities), and step-by-step instructions. Also suggest relevant tags from: ${ALL_TAGS.join(", ")}${adminInstructionsText}`;
 
   try {
     const response = await ai.models.generateContent({
@@ -483,6 +495,12 @@ export const extractRecipeFromImage = async (base64Data: string, mimeType: strin
 
   const ai = new GoogleGenAI({ apiKey });
 
+  // Get admin instructions for recipe generation
+  const adminInstructions = await getInstructionsByTag('recipe_generation');
+  const adminInstructionsText = adminInstructions.length > 0
+    ? `\n\nADDITIONAL INSTRUCTIONS:\n${adminInstructions.join('\n')}`
+    : '';
+
   try {
     const response = await ai.models.generateContent({
       model: "gemini-2.0-flash",
@@ -496,7 +514,7 @@ export const extractRecipeFromImage = async (base64Data: string, mimeType: strin
         {
           text: `Extract the recipe from this image. Return the recipe name, a brief description, ingredients list (with quantities), and step-by-step instructions. Also suggest relevant tags from: ${ALL_TAGS.join(", ")}
 
-Return as JSON with fields: name, description, ingredients (array of strings), instructions (string), suggestedTags (array of strings).`
+Return as JSON with fields: name, description, ingredients (array of strings), instructions (string), suggestedTags (array of strings).${adminInstructionsText}`
         },
       ],
       config: {
@@ -526,6 +544,12 @@ export const extractRecipeFromPDF = async (base64Data: string): Promise<Extracte
 
   const ai = new GoogleGenAI({ apiKey });
 
+  // Get admin instructions for recipe generation
+  const adminInstructions = await getInstructionsByTag('recipe_generation');
+  const adminInstructionsText = adminInstructions.length > 0
+    ? `\n\nADDITIONAL INSTRUCTIONS:\n${adminInstructions.join('\n')}`
+    : '';
+
   try {
     const response = await ai.models.generateContent({
       model: "gemini-2.0-flash",
@@ -539,7 +563,7 @@ export const extractRecipeFromPDF = async (base64Data: string): Promise<Extracte
         {
           text: `Extract the recipe from this PDF document. If there are multiple recipes, extract only the first/main one. Return the recipe name, a brief description, ingredients list (with quantities), and step-by-step instructions. Also suggest relevant tags from: ${ALL_TAGS.join(", ")}
 
-Return as JSON with fields: name, description, ingredients (array of strings), instructions (string), suggestedTags (array of strings).`
+Return as JSON with fields: name, description, ingredients (array of strings), instructions (string), suggestedTags (array of strings).${adminInstructionsText}`
         },
       ],
       config: {
@@ -592,6 +616,12 @@ export const extractRecipeFromURL = async (url: string): Promise<ExtractedRecipe
     throw new Error("Failed to fetch the webpage. The site may be blocking access.");
   }
 
+  // Get admin instructions for recipe generation
+  const adminInstructions = await getInstructionsByTag('recipe_generation');
+  const adminInstructionsText = adminInstructions.length > 0
+    ? `\n\nADDITIONAL INSTRUCTIONS:\n${adminInstructions.join('\n')}`
+    : '';
+
   // Use AI to extract the recipe from the HTML content
   const prompt = `Extract the recipe from the following webpage HTML content.
 Ignore all navigation, ads, comments, related recipes, and other non-recipe content.
@@ -607,7 +637,7 @@ Extract and return:
 - description: A brief description of the dish
 - ingredients: Array of ingredients with quantities (e.g., "2 cups flour", "1 tsp salt")
 - instructions: Step-by-step cooking instructions as a single string
-- suggestedTags: Relevant tags from this list: ${ALL_TAGS.join(", ")}`;
+- suggestedTags: Relevant tags from this list: ${ALL_TAGS.join(", ")}${adminInstructionsText}`;
 
   try {
     const response = await ai.models.generateContent({

@@ -244,8 +244,20 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
   };
 
   const handleSaveInstruction = async () => {
-    if (!instructionForm.title.trim() || !instructionForm.instructionText.trim() || !instructionForm.categoryId) {
-      setMessage({ type: 'error', text: 'Please fill in all required fields.' });
+    if (!instructionForm.title.trim() || !instructionForm.instructionText.trim()) {
+      setMessage({ type: 'error', text: 'Please fill in title and instruction text.' });
+      return;
+    }
+
+    if (instructionForm.tags.length === 0) {
+      setMessage({ type: 'error', text: 'Please select at least one AI feature category.' });
+      return;
+    }
+
+    // Use the first category as default (or create one if none exist)
+    const categoryId = instructionForm.categoryId || categoriesList[0]?.id;
+    if (!categoryId) {
+      setMessage({ type: 'error', text: 'No category available. Please create a category first.' });
       return;
     }
 
@@ -255,7 +267,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
         await updateInstruction(editingInstruction.id, {
           title: instructionForm.title.trim(),
           instructionText: instructionForm.instructionText.trim(),
-          categoryId: instructionForm.categoryId,
+          categoryId: categoryId,
           tags: instructionForm.tags,
           priority: instructionForm.priority,
           isActive: instructionForm.isActive
@@ -265,7 +277,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
         const newInstruction = await createInstruction({
           title: instructionForm.title.trim(),
           instructionText: instructionForm.instructionText.trim(),
-          categoryId: instructionForm.categoryId,
+          categoryId: categoryId,
           tags: instructionForm.tags,
           priority: instructionForm.priority,
         });
@@ -1463,23 +1475,6 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
                       placeholder="e.g., Generic Item Prevention"
                       className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
                     />
-                  </div>
-
-                  {/* Category */}
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-2">
-                      Category *
-                    </label>
-                    <select
-                      value={instructionForm.categoryId}
-                      onChange={(e) => setInstructionForm(prev => ({ ...prev, categoryId: e.target.value }))}
-                      className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
-                    >
-                      <option value="">Select a category</option>
-                      {categoriesList.map(cat => (
-                        <option key={cat.id} value={cat.id}>{cat.name}</option>
-                      ))}
-                    </select>
                   </div>
 
                   {/* Instruction Text */}
