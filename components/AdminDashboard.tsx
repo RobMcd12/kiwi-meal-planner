@@ -254,17 +254,23 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
       return;
     }
 
-    // Use the first category as default (or create one if none exist)
-    const categoryId = instructionForm.categoryId || categoriesList[0]?.id;
-    if (!categoryId) {
-      setMessage({ type: 'error', text: 'No category available. Please create a category first.' });
-      return;
-    }
-
     setSavingInstruction(true);
     try {
+      // Use the first category as default, or create one if none exist
+      let categoryId = instructionForm.categoryId || categoriesList[0]?.id;
+
+      if (!categoryId) {
+        // Create a default category
+        const defaultCategory = await createCategory('General', 'Default category for AI instructions');
+        if (!defaultCategory) {
+          throw new Error('Failed to create default category');
+        }
+        categoryId = defaultCategory.id;
+        setCategoriesList(prev => [...prev, defaultCategory]);
+      }
+
       if (editingInstruction) {
-        await updateInstruction(editingInstruction.id, {
+        const success = await updateInstruction(editingInstruction.id, {
           title: instructionForm.title.trim(),
           instructionText: instructionForm.instructionText.trim(),
           categoryId: categoryId,
@@ -272,6 +278,9 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
           priority: instructionForm.priority,
           isActive: instructionForm.isActive
         });
+        if (!success) {
+          throw new Error('Failed to update instruction');
+        }
         setMessage({ type: 'success', text: 'Instruction updated successfully!' });
       } else {
         const newInstruction = await createInstruction({
@@ -281,8 +290,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
           tags: instructionForm.tags,
           priority: instructionForm.priority,
         });
+        if (!newInstruction) {
+          throw new Error('Failed to create instruction');
+        }
         // If user unchecked "Active", immediately update the newly created instruction
-        if (newInstruction && !instructionForm.isActive) {
+        if (!instructionForm.isActive) {
           await updateInstruction(newInstruction.id, { isActive: false });
         }
         setMessage({ type: 'success', text: 'Instruction created successfully!' });
