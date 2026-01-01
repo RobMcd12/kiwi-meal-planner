@@ -11,12 +11,15 @@ function getSupabaseAdmin() {
 
 // Verify user is admin
 async function verifyAdmin(req: Request): Promise<{ userId: string } | null> {
+  const authHeader = req.headers.get('Authorization');
+  if (!authHeader) return null;
+
   const supabaseClient = createClient(
     Deno.env.get('SUPABASE_URL') ?? '',
     Deno.env.get('SUPABASE_ANON_KEY') ?? '',
     {
       global: {
-        headers: { Authorization: req.headers.get('Authorization') ?? '' },
+        headers: { Authorization: authHeader },
       },
     }
   );
@@ -30,7 +33,7 @@ async function verifyAdmin(req: Request): Promise<{ userId: string } | null> {
     .from('profiles')
     .select('is_admin')
     .eq('id', user.id)
-    .single();
+    .maybeSingle(); // Use maybeSingle to handle missing profiles
 
   if (!profile?.is_admin) return null;
 
