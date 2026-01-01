@@ -48,7 +48,7 @@ async function verifyAdmin(req: Request): Promise<{ userId: string } | { error: 
     .from('profiles')
     .select('is_admin')
     .eq('id', user.id)
-    .single();
+    .maybeSingle(); // Use maybeSingle to handle missing profiles
 
   console.log('Profile check:', { is_admin: profile?.is_admin, error: profileError?.message });
 
@@ -56,9 +56,13 @@ async function verifyAdmin(req: Request): Promise<{ userId: string } | { error: 
     return { error: 'Profile lookup failed', details: profileError.message };
   }
 
-  if (!profile?.is_admin) {
+  if (!profile) {
+    return { error: 'No profile found', details: `User ${user.id} has no profile record. Please contact support.` };
+  }
+
+  if (!profile.is_admin) {
     console.log('User is not admin');
-    return { error: 'Not admin', details: `User ${user.id} is_admin: ${profile?.is_admin}` };
+    return { error: 'Not admin', details: `User ${user.id} is_admin: ${profile.is_admin}` };
   }
 
   return { userId: user.id };
