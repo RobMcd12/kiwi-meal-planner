@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { AppStep, PantryItem, UserPreferences, MealPlanResponse, MealConfig, Meal } from './types';
+import { AppStep, PantryItem, UserPreferences, MealPlanResponse, MealConfig, Meal, SideDish } from './types';
 import PantryManager from './components/PantryManager';
 import PreferenceForm from './components/PreferenceForm';
 import PlanDisplay from './components/PlanDisplay';
@@ -22,7 +22,8 @@ import { UploadProvider } from './contexts/UploadContext';
 import { ToastContainer } from './components/Toast';
 import { useToast } from './hooks/useToast';
 import { useNavigationHistory, pathToStep, isOAuthCallback } from './hooks/useNavigationHistory';
-import { generateMealPlan, generateShoppingListFromFavorites, generateDishImage } from './services/geminiService';
+import { generateMealPlan, generateShoppingListFromFavorites, generateDishImage, MealWithSidesForShopping } from './services/geminiService';
+import { getSidesForRecipe } from './services/suggestSidesService';
 import {
   saveConfig,
   loadConfig,
@@ -300,7 +301,18 @@ const AppContent: React.FC = () => {
   const handleGenerateFromFavorites = async (meals: Meal[]) => {
     setLoading(true);
     try {
-      const data = await generateShoppingListFromFavorites(meals, config.peopleCount, pantryItems);
+      // Fetch sides for each meal to include in shopping list
+      const mealsWithSides: MealWithSidesForShopping[] = await Promise.all(
+        meals.map(async (meal) => {
+          if (meal.id) {
+            const sides = await getSidesForRecipe(meal.id);
+            return { ...meal, sides };
+          }
+          return meal;
+        })
+      );
+
+      const data = await generateShoppingListFromFavorites(mealsWithSides, config.peopleCount, pantryItems);
       setPlanData(data);
       setStep(AppStep.RESULTS);
       success('Shopping list generated from favorites!');

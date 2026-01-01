@@ -4,7 +4,7 @@ import {
   Tag, Globe, Lock, Settings, Image, Link, FileText, FileType,
   Sparkles, Bell, MessageSquare, User, ChevronRight, ChevronDown,
   Star, ImagePlus, Edit2, Camera, Apple, Utensils, SlidersHorizontal,
-  Beef, Flame, Printer, Mic, Timer, Volume2, Play, Pause
+  Beef, Flame, Printer, Mic, Timer, Volume2, Play, Pause, UtensilsCrossed
 } from 'lucide-react';
 
 interface HelpModalProps {
@@ -349,6 +349,45 @@ const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
               <Globe size={16} className="text-blue-600 mt-0.5" />
               <div>
                 <strong>Public Recipes</strong> - Recipes shared by other users
+              </div>
+            </div>
+          </div>
+        </>
+      )
+    },
+    {
+      id: 'suggest-sides',
+      title: 'Suggest Side Dishes',
+      icon: <UtensilsCrossed size={20} />,
+      keywords: ['sides', 'side dish', 'accompaniment', 'pairing', 'vegetable', 'salad', 'suggest', 'ai'],
+      content: (
+        <>
+          <p>Get AI-powered side dish suggestions for any recipe in your cookbook:</p>
+          <ol className="list-decimal list-inside space-y-2 ml-2 mt-2">
+            <li>Open any recipe from your cookbook</li>
+            <li>Click the <strong>"Sides"</strong> button (fork and knife icon)</li>
+            <li>Click <strong>"Suggest Side Dishes"</strong> to get 4 AI recommendations</li>
+            <li>Review each suggestion - click to expand for ingredients and instructions</li>
+            <li>Select the sides you want by clicking the + button</li>
+            <li>Click <strong>"Save"</strong> to add them to your recipe</li>
+          </ol>
+          <div className="space-y-3 mt-4">
+            <div className="flex items-start gap-2">
+              <Sparkles size={16} className="text-amber-600 mt-0.5" />
+              <div>
+                <strong>Smart Pairing</strong> - The AI considers your main dish's flavor profile, cuisine, and cooking style to suggest complementary sides.
+              </div>
+            </div>
+            <div className="flex items-start gap-2">
+              <ShoppingCart size={16} className="text-indigo-600 mt-0.5" />
+              <div>
+                <strong>Shopping Integration</strong> - When you generate a shopping list, ingredients from your saved sides are automatically included.
+              </div>
+            </div>
+            <div className="flex items-start gap-2">
+              <Edit2 size={16} className="text-purple-600 mt-0.5" />
+              <div>
+                <strong>Edit Anytime</strong> - Return to the Sides modal to add, remove, or get new suggestions.
               </div>
             </div>
           </div>

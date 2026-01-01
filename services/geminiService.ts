@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type, Schema } from "@google/genai";
-import { UserPreferences, PantryItem, MealPlanResponse, MealConfig, Meal, ExtractedRecipe, ScannedPantryResult } from "../types";
+import { UserPreferences, PantryItem, MealPlanResponse, MealConfig, Meal, ExtractedRecipe, ScannedPantryResult, SideDish } from "../types";
 import { supabase, isSupabaseConfigured } from "./authService";
 import { getInstructionsByTag, buildPromptWithInstructions } from "./adminInstructionsService";
 
@@ -217,8 +217,12 @@ IMPORTANT: Shopping list MUST include ingredients from ALL ${config.days * reque
   }
 };
 
+export interface MealWithSidesForShopping extends Meal {
+  sides?: SideDish[];
+}
+
 export const generateShoppingListFromFavorites = async (
-  meals: Meal[],
+  meals: MealWithSidesForShopping[],
   peopleCount: number,
   pantryItems: PantryItem[]
 ): Promise<MealPlanResponse> => {
@@ -230,12 +234,38 @@ export const generateShoppingListFromFavorites = async (
     // Fall back to client-side API call
     const apiKey = process.env.API_KEY;
     if (!apiKey) throw new Error("API Key is missing.");
-  
+
     const ai = new GoogleGenAI({ apiKey });
-    const mealNames = meals.map(m => m.name).join(", ");
+
+    // Build detailed meal info including side dishes
+    const mealDescriptions = meals.map(m => {
+      let desc = `${m.name}`;
+      if (m.sides && m.sides.length > 0) {
+        const sideNames = m.sides.map(s => s.name).join(', ');
+        desc += ` (with sides: ${sideNames})`;
+      }
+      return desc;
+    }).join("; ");
+
+    // Collect all ingredients from both main meals and sides
+    const allIngredients: string[] = [];
+    meals.forEach(m => {
+      allIngredients.push(...m.ingredients);
+      if (m.sides) {
+        m.sides.forEach(side => {
+          allIngredients.push(...side.ingredients);
+        });
+      }
+    });
+
     const pantryListString = pantryItems.map((p) => p.name).join(", ");
 
-    const prompt = `Shopping list for meals: ${mealNames}. ${peopleCount} people. Exclude pantry: ${pantryListString || "none"}. Return weeklyPlan with meals on Day 1, Day 2, etc.`;
+    const prompt = `Generate a shopping list for these meals: ${mealDescriptions}.
+${peopleCount} people.
+Known ingredients needed: ${allIngredients.slice(0, 50).join(", ")}${allIngredients.length > 50 ? '...' : ''}.
+Exclude pantry items: ${pantryListString || "none"}.
+IMPORTANT: Include all ingredients from both main dishes AND their side dishes.
+Return weeklyPlan with meals on Day 1, Day 2, etc.`;
 
     try {
         const response = await ai.models.generateContent({

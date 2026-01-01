@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Meal, CookbookTab } from '../types';
+import { Meal, CookbookTab, SideDish } from '../types';
 import { getFavoriteMeals, removeFavoriteMeal, getCachedImage, cacheImage, updateFavoriteMealImage, saveFavoriteMeal } from '../services/storageService';
 import { useAuth } from './AuthProvider';
 import { generateDishImage, editDishImage, TAG_CATEGORIES } from '../services/geminiService';
@@ -19,15 +19,17 @@ import RecipePrintView from './RecipePrintView';
 import NutritionInfo from './NutritionInfo';
 import TagEditor from './TagEditor';
 import RecipeAdjuster from './RecipeAdjuster';
+import SuggestSidesModal from './SuggestSidesModal';
 import {
   Trash2, Heart, ShoppingCart, ArrowLeft, X, ChefHat, Clock,
   Image as ImageIcon, Loader2, Search, Grid, List, Plus, Upload,
-  Globe, Lock, Tag, User, Sparkles, FileText, Pencil, RefreshCw, Star, Printer, Apple, SlidersHorizontal, Crown, AlertCircle, Video, Play, MoreVertical, Mic, MessageCircle
+  Globe, Lock, Tag, User, Sparkles, FileText, Pencil, RefreshCw, Star, Printer, Apple, SlidersHorizontal, Crown, AlertCircle, Video, Play, MoreVertical, Mic, MessageCircle, UtensilsCrossed
 } from 'lucide-react';
 import RecipeVideoPlayer from './RecipeVideoPlayer';
 import RecipeChatModal from './RecipeChatModal';
 import { getRecipeVideo, initiateVideoGeneration } from '../services/recipeVideoService';
 import type { RecipeVideo } from '../types';
+import { getSidesForRecipe } from '../services/suggestSidesService';
 
 interface FavoritesViewProps {
   onBack: () => void;
@@ -101,6 +103,10 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({
 
   // Recipe chat state
   const [showRecipeChat, setShowRecipeChat] = useState(false);
+
+  // Side dishes state
+  const [showSidesModal, setShowSidesModal] = useState(false);
+  const [recipeSides, setRecipeSides] = useState<SideDish[]>([]);
 
   // Loading state
   const [isLoadingRecipes, setIsLoadingRecipes] = useState(true);
@@ -288,6 +294,7 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({
     setImageEditPrompt('');
     setCurrentVideo(null);
     setGeneratingVideo(false);
+    setRecipeSides([]);
 
     // Load video if recipe has one
     if (meal.hasVideo && meal.id) {
@@ -295,6 +302,12 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({
       const video = await getRecipeVideo(meal.id);
       setCurrentVideo(video);
       setLoadingVideo(false);
+    }
+
+    // Load sides if recipe has them
+    if (meal.id) {
+      const sides = await getSidesForRecipe(meal.id);
+      setRecipeSides(sides);
     }
   };
 
@@ -306,6 +319,8 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({
     setCurrentVideo(null);
     setShowMobileMenu(false);
     setLoadingVideo(false);
+    setShowSidesModal(false);
+    setRecipeSides([]);
     // Note: We don't reset generatingVideo here to allow background generation
   };
 
@@ -1163,6 +1178,18 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({
                           Adjust Recipe
                         </button>
                         <button
+                          onClick={() => { setShowSidesModal(true); setShowMobileMenu(false); }}
+                          className="w-full flex items-center gap-3 px-4 py-2.5 text-left text-amber-700 hover:bg-amber-50"
+                        >
+                          <UtensilsCrossed size={18} />
+                          Suggest Sides
+                          {recipeSides.length > 0 && (
+                            <span className="ml-auto px-1.5 py-0.5 bg-amber-500 text-white text-[10px] font-bold rounded-full">
+                              {recipeSides.length}
+                            </span>
+                          )}
+                        </button>
+                        <button
                           onClick={() => {
                             if (hasPro) {
                               setShowRecipeChat(true);
@@ -1229,6 +1256,21 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({
                   >
                     <SlidersHorizontal size={14} />
                     Adjust
+                  </button>
+
+                  {/* Suggest Sides button */}
+                  <button
+                    onClick={() => setShowSidesModal(true)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors bg-amber-100 text-amber-700 hover:bg-amber-200"
+                    title="Get AI side dish suggestions"
+                  >
+                    <UtensilsCrossed size={14} />
+                    Sides
+                    {recipeSides.length > 0 && (
+                      <span className="px-1.5 py-0.5 bg-amber-500 text-white text-[10px] font-bold rounded-full">
+                        {recipeSides.length}
+                      </span>
+                    )}
                   </button>
 
                   {/* Cooking Assistant button - Pro only */}
@@ -1428,6 +1470,47 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({
                 </div>
               </div>
 
+              {/* Saved Side Dishes Section */}
+              {recipeSides.length > 0 && (
+                <div className="mt-6 bg-amber-50/50 rounded-xl p-4 border border-amber-200">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="font-bold text-amber-800 flex items-center gap-2">
+                      <UtensilsCrossed size={18} />
+                      Side Dishes ({recipeSides.length})
+                    </h3>
+                    <button
+                      onClick={() => setShowSidesModal(true)}
+                      className="text-sm text-amber-600 hover:text-amber-700 font-medium"
+                    >
+                      Edit
+                    </button>
+                  </div>
+                  <div className="grid gap-3">
+                    {recipeSides.map(side => (
+                      <div key={side.id} className="bg-white rounded-lg p-3 border border-amber-100">
+                        <div className="flex items-start justify-between gap-3">
+                          <div>
+                            <h4 className="font-semibold text-slate-800">{side.name}</h4>
+                            <p className="text-sm text-slate-600 mt-1">{side.description}</p>
+                            <div className="mt-2 flex flex-wrap gap-2">
+                              {side.prepTime && (
+                                <span className="text-xs text-slate-500 flex items-center gap-1">
+                                  <Clock size={12} />
+                                  {side.prepTime}
+                                </span>
+                              )}
+                              <span className="text-xs text-slate-500">
+                                {side.ingredients.length} ingredients
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* AI Disclaimer for AI-generated or uploaded recipes */}
               {(openMeal.source === 'generated' || activeTab === 'generated') && (
                 <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mt-4">
@@ -1538,6 +1621,16 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({
           recipe={openMeal}
           isOpen={showRecipeChat}
           onClose={() => setShowRecipeChat(false)}
+        />
+      )}
+
+      {/* Suggest Sides Modal */}
+      {showSidesModal && openMeal && (
+        <SuggestSidesModal
+          isOpen={showSidesModal}
+          onClose={() => setShowSidesModal(false)}
+          meal={openMeal}
+          onSidesUpdated={(sides) => setRecipeSides(sides)}
         />
       )}
     </div>

@@ -508,3 +508,21 @@ export interface AdminUserWithDetails {
   subscription: UserSubscription | null;
   stats: UserStats | null;
 }
+
+// ============================================
+// SIDE DISH TYPES
+// ============================================
+
+export interface SideDish {
+  id: string;
+  name: string;
+  description: string;
+  ingredients: string[];
+  instructions: string;
+  prepTime?: string;
+  servings?: number;
+}
+
+export interface MealWithSides extends Meal {
+  sides?: SideDish[];
+}
