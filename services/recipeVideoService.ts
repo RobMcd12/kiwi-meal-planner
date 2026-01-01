@@ -182,25 +182,38 @@ export const initiateVideoGeneration = async (
   try {
     // Get current session to ensure we have auth token
     const { data: { session } } = await supabase.auth.getSession();
+    console.log('Video generation session check:', {
+      hasSession: !!session,
+      hasAccessToken: !!session?.access_token,
+      tokenPreview: session?.access_token?.substring(0, 20) + '...'
+    });
+
     if (!session) {
       throw new Error('Not authenticated');
     }
 
-    // Use Edge Function to create video record (bypasses RLS using service role)
-    const { data, error } = await supabase.functions.invoke('create-video-record', {
-      body: {
-        mealId,
-        storageType,
-        customPrompt,
-      },
+    // Use direct fetch for better error details
+    const supabaseUrl = 'https://wmpvawlyyaposeathxww.supabase.co';
+    const response = await fetch(`${supabaseUrl}/functions/v1/create-video-record`, {
+      method: 'POST',
       headers: {
-        Authorization: `Bearer ${session.access_token}`,
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`,
       },
+      body: JSON.stringify({ mealId, storageType, customPrompt }),
     });
 
-    if (error) {
-      console.error('Edge function error:', error);
-      throw new Error(error.message || 'Failed to create video record');
+    const data = await response.json();
+    console.log('Create video record response:', { status: response.status, data });
+
+    if (!response.ok) {
+      console.error('Create video record error:', {
+        status: response.status,
+        error: data.error,
+        reason: data.reason,
+        details: data.details
+      });
+      throw new Error(`${data.error || 'Failed to create video record'}: ${data.details || ''}`);
     }
 
     if (data?.error) {

@@ -9,32 +9,35 @@ function getSupabaseAdmin() {
   );
 }
 
-// Verify user is admin
-async function verifyAdmin(req: Request): Promise<{ userId: string; error?: string } | null> {
+// Verify user is admin - returns detailed error info for debugging
+async function verifyAdmin(req: Request): Promise<{ userId: string } | { error: string; details: string }> {
   const authHeader = req.headers.get('Authorization');
   console.log('Auth header present:', !!authHeader);
 
   if (!authHeader) {
     console.log('No Authorization header');
-    return null;
+    return { error: 'No Authorization header', details: 'Request missing Authorization header' };
   }
 
-  const supabaseClient = createClient(
-    Deno.env.get('SUPABASE_URL') ?? '',
-    Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-    {
-      global: {
-        headers: { Authorization: authHeader },
-      },
-    }
-  );
+  const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+  const anonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? '';
+
+  if (!supabaseUrl || !anonKey) {
+    return { error: 'Missing config', details: `URL: ${!!supabaseUrl}, ANON_KEY: ${!!anonKey}` };
+  }
+
+  const supabaseClient = createClient(supabaseUrl, anonKey, {
+    global: {
+      headers: { Authorization: authHeader },
+    },
+  });
 
   const { data: { user }, error } = await supabaseClient.auth.getUser();
   console.log('Auth result:', { userId: user?.id, error: error?.message });
 
   if (error || !user) {
     console.log('Auth failed:', error?.message || 'No user');
-    return null;
+    return { error: 'Auth failed', details: error?.message || 'No user returned from getUser()' };
   }
 
   // Check if user is admin using admin client
@@ -47,9 +50,13 @@ async function verifyAdmin(req: Request): Promise<{ userId: string; error?: stri
 
   console.log('Profile check:', { is_admin: profile?.is_admin, error: profileError?.message });
 
+  if (profileError) {
+    return { error: 'Profile lookup failed', details: profileError.message };
+  }
+
   if (!profile?.is_admin) {
     console.log('User is not admin');
-    return null;
+    return { error: 'Not admin', details: `User ${user.id} is_admin: ${profile?.is_admin}` };
   }
 
   return { userId: user.id };
@@ -62,17 +69,19 @@ Deno.serve(async (req) => {
 
   try {
     // Verify admin access
-    const admin = await verifyAdmin(req);
-    if (!admin) {
-      console.log('Admin verification failed');
+    const adminResult = await verifyAdmin(req);
+    if ('error' in adminResult) {
+      console.log('Admin verification failed:', adminResult);
       return new Response(
         JSON.stringify({
           error: 'Unauthorized - Admin access required',
-          details: 'User is not authenticated or is not an admin'
+          reason: adminResult.error,
+          details: adminResult.details
         }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+    const admin = adminResult;
     console.log('Admin verified:', admin.userId);
 
     const { mealId, storageType = 'supabase', customPrompt } = await req.json();
