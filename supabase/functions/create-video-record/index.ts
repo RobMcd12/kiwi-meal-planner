@@ -10,29 +10,47 @@ function getSupabaseAdmin() {
 }
 
 // Verify user is admin
-async function verifyAdmin(req: Request): Promise<{ userId: string } | null> {
+async function verifyAdmin(req: Request): Promise<{ userId: string; error?: string } | null> {
+  const authHeader = req.headers.get('Authorization');
+  console.log('Auth header present:', !!authHeader);
+
+  if (!authHeader) {
+    console.log('No Authorization header');
+    return null;
+  }
+
   const supabaseClient = createClient(
     Deno.env.get('SUPABASE_URL') ?? '',
     Deno.env.get('SUPABASE_ANON_KEY') ?? '',
     {
       global: {
-        headers: { Authorization: req.headers.get('Authorization') ?? '' },
+        headers: { Authorization: authHeader },
       },
     }
   );
 
   const { data: { user }, error } = await supabaseClient.auth.getUser();
-  if (error || !user) return null;
+  console.log('Auth result:', { userId: user?.id, error: error?.message });
+
+  if (error || !user) {
+    console.log('Auth failed:', error?.message || 'No user');
+    return null;
+  }
 
   // Check if user is admin using admin client
   const adminClient = getSupabaseAdmin();
-  const { data: profile } = await adminClient
+  const { data: profile, error: profileError } = await adminClient
     .from('profiles')
     .select('is_admin')
     .eq('id', user.id)
     .single();
 
-  if (!profile?.is_admin) return null;
+  console.log('Profile check:', { is_admin: profile?.is_admin, error: profileError?.message });
+
+  if (!profile?.is_admin) {
+    console.log('User is not admin');
+    return null;
+  }
 
   return { userId: user.id };
 }
@@ -46,11 +64,16 @@ Deno.serve(async (req) => {
     // Verify admin access
     const admin = await verifyAdmin(req);
     if (!admin) {
+      console.log('Admin verification failed');
       return new Response(
-        JSON.stringify({ error: 'Unauthorized - Admin access required' }),
+        JSON.stringify({
+          error: 'Unauthorized - Admin access required',
+          details: 'User is not authenticated or is not an admin'
+        }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+    console.log('Admin verified:', admin.userId);
 
     const { mealId, storageType = 'supabase', customPrompt } = await req.json();
 

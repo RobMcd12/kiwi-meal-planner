@@ -1251,7 +1251,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
             <Settings className="text-blue-600 flex-shrink-0 mt-0.5" size={20} />
             <div>
               <p className="text-blue-800 font-medium">How Instructions Work</p>
-              <p className="text-blue-700 text-sm">Instructions are automatically applied to AI prompts based on their tags. Active instructions with the "pantry_scanning" tag will be included when users scan their pantry.</p>
+              <p className="text-blue-700 text-sm">Instructions are automatically applied to AI prompts based on their tags: "meal_planner" for meal plan generation, "recipe_generation" for recipe creation, "pantry_scanning" for pantry scanning, and "video_generation" for cookbook video creation.</p>
             </div>
           </div>
 
