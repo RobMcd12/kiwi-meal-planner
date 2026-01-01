@@ -307,6 +307,88 @@ Respond helpfully and concisely:`;
   }
 };
 
+// Convert text to be more natural for speech synthesis
+// Handles decimals, time ranges, and common patterns
+const makeSpeechFriendly = (text: string): string => {
+  let result = text;
+
+  // Convert decimal hours to natural speech: "1.5 hours" -> "one and a half hours"
+  // "2.5 hours" -> "two and a half hours"
+  result = result.replace(/(\d+)\.5\s*(hour|hr)s?/gi, (_, whole, unit) => {
+    const num = parseInt(whole);
+    if (num === 1) return 'one and a half hours';
+    return `${numberToWords(num)} and a half hours`;
+  });
+
+  // Convert other decimal hours: "1.25 hours" -> "one point two five hours"
+  result = result.replace(/(\d+)\.(\d+)\s*(hour|hr)s?/gi, (_, whole, decimal, unit) => {
+    const wholeWords = numberToWords(parseInt(whole));
+    const decimalWords = decimal.split('').map((d: string) => numberToWords(parseInt(d))).join(' ');
+    return `${wholeWords} point ${decimalWords} hours`;
+  });
+
+  // Convert time ranges with dash/to: "1-2 hours" -> "one to two hours"
+  // Also handles "1.5-2 hours", "15-20 minutes"
+  result = result.replace(/(\d+(?:\.\d+)?)\s*[-–—]\s*(\d+(?:\.\d+)?)\s*(hour|hr|minute|min)s?/gi, (_, start, end, unit) => {
+    const startNum = parseFloat(start);
+    const endNum = parseFloat(end);
+    const unitWord = unit.toLowerCase().startsWith('hour') || unit.toLowerCase().startsWith('hr') ? 'hours' : 'minutes';
+
+    // Handle half hours specially
+    const formatTimeNum = (n: number) => {
+      if (n === Math.floor(n)) {
+        return numberToWords(n);
+      } else if (n - Math.floor(n) === 0.5) {
+        if (Math.floor(n) === 0) return 'half';
+        if (Math.floor(n) === 1) return 'one and a half';
+        return `${numberToWords(Math.floor(n))} and a half`;
+      } else {
+        const whole = Math.floor(n);
+        const decimal = n.toString().split('.')[1] || '';
+        const decimalWords = decimal.split('').map((d: string) => numberToWords(parseInt(d))).join(' ');
+        return `${numberToWords(whole)} point ${decimalWords}`;
+      }
+    };
+
+    return `${formatTimeNum(startNum)} to ${formatTimeNum(endNum)} ${unitWord}`;
+  });
+
+  // Convert standalone decimals with minutes: "1.5 minutes" -> "one and a half minutes"
+  result = result.replace(/(\d+)\.5\s*(minute|min)s?/gi, (_, whole) => {
+    const num = parseInt(whole);
+    if (num === 0) return 'half a minute';
+    if (num === 1) return 'one and a half minutes';
+    return `${numberToWords(num)} and a half minutes`;
+  });
+
+  // Convert temperature with degrees: "350°F" -> "350 degrees Fahrenheit"
+  result = result.replace(/(\d+)\s*°\s*F\b/gi, '$1 degrees Fahrenheit');
+  result = result.replace(/(\d+)\s*°\s*C\b/gi, '$1 degrees Celsius');
+
+  // Convert fractions: "1/2" -> "one half", "1/4" -> "one quarter", "3/4" -> "three quarters"
+  result = result.replace(/\b1\/2\b/g, 'one half');
+  result = result.replace(/\b1\/4\b/g, 'one quarter');
+  result = result.replace(/\b3\/4\b/g, 'three quarters');
+  result = result.replace(/\b1\/3\b/g, 'one third');
+  result = result.replace(/\b2\/3\b/g, 'two thirds');
+
+  return result;
+};
+
+// Helper to convert small numbers to words for speech
+const numberToWords = (n: number): string => {
+  const words = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten',
+    'eleven', 'twelve', 'thirteen', 'fourteen', 'fifteen', 'sixteen', 'seventeen', 'eighteen', 'nineteen', 'twenty'];
+  if (n >= 0 && n <= 20) return words[n];
+  if (n < 100) {
+    const tens = ['', '', 'twenty', 'thirty', 'forty', 'fifty', 'sixty', 'seventy', 'eighty', 'ninety'];
+    const t = Math.floor(n / 10);
+    const u = n % 10;
+    return u === 0 ? tens[t] : `${tens[t]} ${words[u]}`;
+  }
+  return n.toString(); // Fall back to number for larger values
+};
+
 // Text-to-Speech functionality
 export class RecipeSpeaker {
   private synth: SpeechSynthesis;
@@ -394,7 +476,10 @@ export class RecipeSpeaker {
       // iOS Safari fix: cancel and resume to ensure speech works
       this.synth.cancel();
 
-      this.utterance = new SpeechSynthesisUtterance(text);
+      // Convert text to be more natural for speech
+      const speechText = makeSpeechFriendly(text);
+
+      this.utterance = new SpeechSynthesisUtterance(speechText);
       // Slightly slower for clarity but not too slow
       this.utterance.rate = rate;
       // Slightly lower pitch sounds more natural and less robotic
