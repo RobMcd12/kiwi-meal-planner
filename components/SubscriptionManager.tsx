@@ -161,8 +161,15 @@ const SubscriptionManager: React.FC<SubscriptionManagerProps> = ({ onRefresh }) 
     setError(null);
     try {
       const result = await createPortalSession();
-      if (result?.url) {
+      if (result && 'url' in result) {
         window.location.href = result.url;
+      } else if (result && 'error' in result) {
+        // Handle structured errors
+        if (result.error === 'no_subscription') {
+          setError('You need to subscribe first before you can manage billing. Choose a plan below to get started!');
+        } else {
+          setError(result.message || 'Failed to open billing portal.');
+        }
       } else {
         setError('Failed to open billing portal. Please try again.');
       }

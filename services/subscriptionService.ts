@@ -419,8 +419,9 @@ export const syncSubscription = async (): Promise<{
 
 /**
  * Create a Stripe customer portal session
+ * Returns { url } on success, { error, message } on expected errors, or null on unexpected errors
  */
-export const createPortalSession = async (): Promise<{ url: string } | null> => {
+export const createPortalSession = async (): Promise<{ url: string } | { error: string; message: string } | null> => {
   if (!isSupabaseConfigured()) return null;
 
   try {
@@ -430,7 +431,23 @@ export const createPortalSession = async (): Promise<{ url: string } | null> => 
 
     if (error) {
       console.error('Error creating portal session:', error);
+      // Try to parse the error response for structured errors
+      if (error.context?.body) {
+        try {
+          const errorBody = JSON.parse(error.context.body);
+          if (errorBody.error === 'no_subscription') {
+            return { error: 'no_subscription', message: errorBody.message };
+          }
+        } catch {
+          // Ignore parse errors
+        }
+      }
       return null;
+    }
+
+    // Check if data contains an error (for non-throw errors)
+    if (data?.error) {
+      return { error: data.error, message: data.message || 'An error occurred' };
     }
 
     return data;

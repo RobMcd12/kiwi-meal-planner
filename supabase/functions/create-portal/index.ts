@@ -95,7 +95,7 @@ Deno.serve(async (req) => {
       .from('user_subscriptions')
       .select('stripe_customer_id')
       .eq('user_id', auth.userId)
-      .single();
+      .maybeSingle();
 
     if (subError) {
       console.error('Error fetching subscription:', subError);
@@ -108,7 +108,10 @@ Deno.serve(async (req) => {
     if (!subscription?.stripe_customer_id) {
       console.log('No Stripe customer ID found for user');
       return new Response(
-        JSON.stringify({ error: 'No active subscription found. Please subscribe first.' }),
+        JSON.stringify({
+          error: 'no_subscription',
+          message: 'No active subscription found. Please subscribe first to manage your billing.'
+        }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
