@@ -35,6 +35,8 @@ import {
 } from './services/storageService';
 import { signOut } from './services/authService';
 import { getNewResponseCount } from './services/feedbackService';
+import { getSubscriptionState } from './services/subscriptionService';
+import type { SubscriptionState } from './types';
 import { ChefHat, Settings, LogOut, User, Shield, MessageSquare, Bell, HelpCircle, Menu, X, CalendarPlus, BookHeart, FolderHeart, Sparkles, UserCircle } from 'lucide-react';
 import HelpModal from './components/HelpModal';
 
@@ -144,6 +146,10 @@ const AppContent: React.FC = () => {
   const [settingsInitialTab, setSettingsInitialTab] = useState<'general' | 'pantry' | 'prefs' | 'account'>('general');
   const [showMobileMenu, setShowMobileMenu] = useState(false);
 
+  // Subscription state
+  const [subscriptionState, setSubscriptionState] = useState<SubscriptionState | null>(null);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+
   // Load data from storage on mount and when auth/impersonation changes
   useEffect(() => {
     const loadData = async () => {
@@ -189,6 +195,25 @@ const AppContent: React.FC = () => {
       savePantry(pantryItems);
     }
   }, [pantryItems, dataLoaded]);
+
+  // Load subscription state when authenticated
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setSubscriptionState(null);
+      return;
+    }
+
+    const loadSubscription = async () => {
+      try {
+        const state = await getSubscriptionState(effectiveUserId);
+        setSubscriptionState(state);
+      } catch (error) {
+        console.error('Failed to fetch subscription state:', error);
+      }
+    };
+
+    loadSubscription();
+  }, [isAuthenticated, effectiveUserId]);
 
   // Poll for user's new feedback responses (all authenticated users)
   useEffect(() => {
@@ -419,6 +444,10 @@ const AppContent: React.FC = () => {
             isLoading={loading}
             isAdmin={isAdmin}
             onGenerateSingleRecipe={() => setStep(AppStep.SINGLE_RECIPE)}
+            hasPro={subscriptionState?.hasPro ?? false}
+            recipeCount={subscriptionState?.recipeCount ?? 0}
+            recipeLimit={subscriptionState?.recipeLimit ?? 20}
+            onUpgradeClick={() => setShowUpgradeModal(true)}
           />
         );
 

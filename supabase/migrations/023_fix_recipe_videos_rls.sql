@@ -16,15 +16,24 @@ END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
 -- ============================================
--- 2. DROP AND RECREATE RECIPE_VIDEOS POLICIES
+-- 2. DROP ALL EXISTING RECIPE_VIDEOS POLICIES AND RECREATE
 -- ============================================
 
--- Drop existing policies
-DROP POLICY IF EXISTS "Admins can insert recipe videos" ON public.recipe_videos;
-DROP POLICY IF EXISTS "Admins can update recipe videos" ON public.recipe_videos;
-DROP POLICY IF EXISTS "Admins can delete recipe videos" ON public.recipe_videos;
+-- Drop ALL existing policies on recipe_videos
+DO $$
+DECLARE
+    pol RECORD;
+BEGIN
+    FOR pol IN SELECT policyname FROM pg_policies WHERE tablename = 'recipe_videos' AND schemaname = 'public'
+    LOOP
+        EXECUTE format('DROP POLICY IF EXISTS %I ON public.recipe_videos', pol.policyname);
+    END LOOP;
+END $$;
 
--- Recreate with simpler function call
+-- Recreate all policies using the helper function
+CREATE POLICY "Anyone can view recipe videos" ON public.recipe_videos
+    FOR SELECT USING (true);
+
 CREATE POLICY "Admins can insert recipe videos" ON public.recipe_videos
     FOR INSERT WITH CHECK (public.is_admin());
 
@@ -38,9 +47,16 @@ CREATE POLICY "Admins can delete recipe videos" ON public.recipe_videos
 -- 3. FIX ADMIN GOOGLE DRIVE CONFIG POLICIES
 -- ============================================
 
--- Drop existing policies
-DROP POLICY IF EXISTS "Admins can view drive config" ON public.admin_google_drive_config;
-DROP POLICY IF EXISTS "Admins can update drive config" ON public.admin_google_drive_config;
+-- Drop ALL existing policies on admin_google_drive_config
+DO $$
+DECLARE
+    pol RECORD;
+BEGIN
+    FOR pol IN SELECT policyname FROM pg_policies WHERE tablename = 'admin_google_drive_config' AND schemaname = 'public'
+    LOOP
+        EXECUTE format('DROP POLICY IF EXISTS %I ON public.admin_google_drive_config', pol.policyname);
+    END LOOP;
+END $$;
 
 -- Recreate with function call
 CREATE POLICY "Admins can view drive config" ON public.admin_google_drive_config
@@ -49,7 +65,6 @@ CREATE POLICY "Admins can view drive config" ON public.admin_google_drive_config
 CREATE POLICY "Admins can update drive config" ON public.admin_google_drive_config
     FOR UPDATE USING (public.is_admin());
 
--- Also add INSERT policy for initial setup
 CREATE POLICY "Admins can insert drive config" ON public.admin_google_drive_config
     FOR INSERT WITH CHECK (public.is_admin());
 
