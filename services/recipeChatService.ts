@@ -26,9 +26,51 @@ export interface RecipeChatState {
   isSpeaking: boolean;
 }
 
+// Convert word numbers to digits (for voice recognition)
+const wordToNumber: Record<string, number> = {
+  'one': 1, 'two': 2, 'three': 3, 'four': 4, 'five': 5,
+  'six': 6, 'seven': 7, 'eight': 8, 'nine': 9, 'ten': 10,
+  'eleven': 11, 'twelve': 12, 'thirteen': 13, 'fourteen': 14, 'fifteen': 15,
+  'sixteen': 16, 'seventeen': 17, 'eighteen': 18, 'nineteen': 19, 'twenty': 20,
+  'twenty-one': 21, 'twenty-two': 22, 'twenty-three': 23, 'twenty-four': 24, 'twenty-five': 25,
+  'twenty-six': 26, 'twenty-seven': 27, 'twenty-eight': 28, 'twenty-nine': 29, 'thirty': 30,
+  'forty': 40, 'forty-five': 45, 'fifty': 50, 'sixty': 60,
+  // Common variations
+  'to': 2, 'too': 2, 'for': 4, 'fore': 4,
+};
+
+// Parse a number from text (handles both digits and words)
+const parseNumber = (text: string): number | null => {
+  if (!text) return null;
+  const trimmed = text.trim().toLowerCase();
+
+  // Try parsing as digit
+  const digit = parseInt(trimmed);
+  if (!isNaN(digit)) return digit;
+
+  // Try word lookup
+  if (wordToNumber[trimmed] !== undefined) {
+    return wordToNumber[trimmed];
+  }
+
+  // Handle "twenty one" style (without hyphen)
+  const parts = trimmed.split(/\s+/);
+  if (parts.length === 2) {
+    const tens = wordToNumber[parts[0]];
+    const ones = wordToNumber[parts[1]];
+    if (tens && ones && tens >= 20) {
+      return tens + ones;
+    }
+  }
+
+  return null;
+};
+
 // Parse timer commands from user input
 const parseTimerCommand = (text: string): { action: 'start' | 'stop' | 'check' | null; name?: string; minutes?: number } => {
-  const lowerText = text.toLowerCase();
+  const lowerText = text.toLowerCase().trim();
+
+  console.log('Parsing timer command:', lowerText);
 
   // IMPORTANT: First check if this is a cooking question, NOT a timer command
   // These should go to the AI, not the timer system
@@ -45,44 +87,51 @@ const parseTimerCommand = (text: string): { action: 'start' | 'stop' | 'check' |
     }
   }
 
+  // Number pattern that matches both digits and common word numbers
+  const numPattern = '(\\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|twenty[- ]?one|twenty[- ]?two|twenty[- ]?three|twenty[- ]?four|twenty[- ]?five|thirty|forty|forty[- ]?five|fifty|sixty)';
+
   // Start timer patterns - support various ways to specify names
   // Must have explicit timer-related words AND a number
   const startPatterns = [
     // "set a timer for the lamb for 10 minutes" or "start a timer for pasta for 5 minutes"
-    /(?:set|start)\s+(?:a\s+)?timer\s+(?:for\s+)?(?:the\s+)?(.+?)\s+(?:for\s+)?(\d+)\s*(?:minute|min)s?/i,
+    new RegExp(`(?:set|start)\\s+(?:a\\s+)?timer\\s+(?:for\\s+)?(?:the\\s+)?(.+?)\\s+(?:for\\s+)?${numPattern}\\s*(?:minute|min)s?`, 'i'),
     // "set timer for 10 minutes for pasta" or "set a timer for 10 minutes for the pasta"
-    /(?:set|start)\s+(?:a\s+)?timer\s+(?:for\s+)?(\d+)\s*(?:minute|min)s?\s+(?:for\s+)?(?:the\s+)?(.+)/i,
+    new RegExp(`(?:set|start)\\s+(?:a\\s+)?timer\\s+(?:for\\s+)?${numPattern}\\s*(?:minute|min)s?\\s+(?:for\\s+)?(?:the\\s+)?(.+)`, 'i'),
     // "set a 10 minute timer for pasta"
-    /(?:set|start)\s+(?:a\s+)?(\d+)\s*(?:minute|min)s?\s+timer\s+(?:for\s+)?(?:the\s+)?(.+)/i,
+    new RegExp(`(?:set|start)\\s+(?:a\\s+)?${numPattern}\\s*(?:minute|min)s?\\s+timer\\s+(?:for\\s+)?(?:the\\s+)?(.+)`, 'i'),
     // "set a 10 minute timer" (no name)
-    /(?:set|start)\s+(?:a\s+)?(\d+)\s*(?:minute|min)s?\s+timer(?:\s*$)/i,
+    new RegExp(`(?:set|start)\\s+(?:a\\s+)?${numPattern}\\s*(?:minute|min)s?\\s+timer(?:\\s*$)`, 'i'),
     // "10 minute timer for pasta" (must have "timer" word)
-    /^(\d+)\s*(?:minute|min)s?\s+timer\s+(?:for\s+)?(?:the\s+)?(.+)/i,
+    new RegExp(`^${numPattern}\\s*(?:minute|min)s?\\s+timer\\s+(?:for\\s+)?(?:the\\s+)?(.+)`, 'i'),
     // "timer for 10 minutes for the pasta" or "timer 10 minutes for pasta"
-    /^timer\s+(?:for\s+)?(\d+)\s*(?:minute|min)s?\s+(?:for\s+)?(?:the\s+)?(.+)?/i,
+    new RegExp(`^timer\\s+(?:for\\s+)?${numPattern}\\s*(?:minute|min)s?\\s+(?:for\\s+)?(?:the\\s+)?(.+)?`, 'i'),
     // "set pasta timer for 10 minutes" or "start the lamb timer for 15 minutes"
-    /(?:set|start)\s+(?:a\s+|the\s+)?(.+?)\s+timer\s+(?:for\s+)?(\d+)\s*(?:minute|min)s?/i,
+    new RegExp(`(?:set|start)\\s+(?:a\\s+|the\\s+)?(.+?)\\s+timer\\s+(?:for\\s+)?${numPattern}\\s*(?:minute|min)s?`, 'i'),
   ];
 
   for (const pattern of startPatterns) {
     const match = lowerText.match(pattern);
     if (match) {
+      console.log('Timer pattern matched:', pattern.source, 'Groups:', match.slice(1));
+
       // Determine which capture group has minutes vs name based on pattern
-      let minutes: number;
+      let minutes: number | null;
       let name: string;
 
       // Check if first group is a number (minutes) or text (name)
-      if (/^\d+$/.test(match[1])) {
-        minutes = parseInt(match[1]);
+      const firstNum = parseNumber(match[1]);
+      if (firstNum !== null) {
+        minutes = firstNum;
         name = match[2]?.trim() || 'Cooking timer';
       } else {
         // First group is name, second is minutes
         name = match[1]?.trim() || 'Cooking timer';
-        minutes = parseInt(match[2]);
+        minutes = parseNumber(match[2]);
       }
 
       // Validate we have valid minutes
-      if (!isNaN(minutes) && minutes > 0) {
+      if (minutes !== null && minutes > 0) {
+        console.log('Timer command parsed:', { action: 'start', minutes, name });
         return { action: 'start', minutes, name };
       }
     }
@@ -227,6 +276,8 @@ export class RecipeSpeaker {
   private utterance: SpeechSynthesisUtterance | null = null;
   private onStateChange: (speaking: boolean) => void;
   private selectedVoice: SpeechSynthesisVoice | null = null;
+  private isUnlocked: boolean = false;
+  private resumeInterval: number | null = null;
 
   constructor(onStateChange: (speaking: boolean) => void) {
     this.synth = window.speechSynthesis;
@@ -286,10 +337,25 @@ export class RecipeSpeaker {
     return englishVoices[0] || voices[0] || null;
   }
 
+  // Unlock audio on mobile - call this from a user gesture (tap/click)
+  unlock(): void {
+    if (this.isUnlocked) return;
+
+    // Speak empty string to unlock audio context on mobile
+    const unlockUtterance = new SpeechSynthesisUtterance('');
+    unlockUtterance.volume = 0;
+    this.synth.speak(unlockUtterance);
+    this.isUnlocked = true;
+    console.log('Speech synthesis unlocked for mobile');
+  }
+
   speak(text: string, rate: number = 1.0): Promise<void> {
     return new Promise((resolve, reject) => {
       // Cancel any ongoing speech
       this.stop();
+
+      // iOS Safari fix: cancel and resume to ensure speech works
+      this.synth.cancel();
 
       this.utterance = new SpeechSynthesisUtterance(text);
       // Slightly slower for clarity but not too slow
@@ -311,21 +377,59 @@ export class RecipeSpeaker {
         }
       }
 
-      this.utterance.onstart = () => this.onStateChange(true);
+      this.utterance.onstart = () => {
+        this.onStateChange(true);
+        // iOS fix: keep speech synthesis alive by periodically calling resume
+        // iOS pauses speechSynthesis after ~15 seconds
+        this.startResumeWorkaround();
+      };
+
       this.utterance.onend = () => {
+        this.stopResumeWorkaround();
         this.onStateChange(false);
         resolve();
       };
+
       this.utterance.onerror = (e) => {
+        this.stopResumeWorkaround();
         this.onStateChange(false);
-        reject(e);
+        // Don't reject on 'interrupted' or 'canceled' errors
+        if (e.error !== 'interrupted' && e.error !== 'canceled') {
+          console.error('Speech synthesis error:', e.error);
+          reject(e);
+        } else {
+          resolve();
+        }
       };
 
-      this.synth.speak(this.utterance);
+      // Small delay before speaking to ensure audio context is ready on mobile
+      setTimeout(() => {
+        this.synth.speak(this.utterance!);
+      }, 50);
     });
   }
 
+  // iOS workaround: periodically call resume() to prevent speech from stopping
+  private startResumeWorkaround(): void {
+    this.stopResumeWorkaround();
+    // Resume every 10 seconds to keep iOS speech alive
+    this.resumeInterval = window.setInterval(() => {
+      if (this.synth.speaking && !this.synth.paused) {
+        this.synth.pause();
+        this.synth.resume();
+      }
+    }, 10000);
+  }
+
+  private stopResumeWorkaround(): void {
+    if (this.resumeInterval) {
+      clearInterval(this.resumeInterval);
+      this.resumeInterval = null;
+    }
+  }
+
   stop() {
+    this.stopResumeWorkaround();
     if (this.synth.speaking) {
       this.synth.cancel();
     }

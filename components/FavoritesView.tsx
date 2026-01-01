@@ -1163,11 +1163,25 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({
                           Adjust Recipe
                         </button>
                         <button
-                          onClick={() => { setShowRecipeChat(true); setShowMobileMenu(false); }}
-                          className="w-full flex items-center gap-3 px-4 py-2.5 text-left text-emerald-700 hover:bg-emerald-50"
+                          onClick={() => {
+                            if (hasPro) {
+                              setShowRecipeChat(true);
+                              setShowMobileMenu(false);
+                            } else {
+                              setShowMobileMenu(false);
+                              onUpgradeClick?.();
+                            }
+                          }}
+                          className={`w-full flex items-center gap-3 px-4 py-2.5 text-left ${hasPro ? 'text-emerald-700 hover:bg-emerald-50' : 'text-slate-400'}`}
                         >
                           <Mic size={18} />
                           Cook Mode
+                          {!hasPro && (
+                            <span className="ml-auto inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[10px] font-bold rounded-full">
+                              <Crown size={10} />
+                              PRO
+                            </span>
+                          )}
                         </button>
                         {activeTab === 'uploaded' && openMeal.source === 'uploaded' && (
                           <button
@@ -1217,14 +1231,30 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({
                     Adjust
                   </button>
 
-                  {/* Cooking Assistant button */}
+                  {/* Cooking Assistant button - Pro only */}
                   <button
-                    onClick={() => setShowRecipeChat(true)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors bg-emerald-100 text-emerald-700 hover:bg-emerald-200"
-                    title="Talk to cooking assistant"
+                    onClick={() => {
+                      if (hasPro) {
+                        setShowRecipeChat(true);
+                      } else {
+                        onUpgradeClick?.();
+                      }
+                    }}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                      hasPro
+                        ? 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'
+                        : 'bg-slate-100 text-slate-400 hover:bg-slate-200'
+                    }`}
+                    title={hasPro ? "Talk to cooking assistant" : "Upgrade to Pro to use Cook Mode"}
                   >
                     <Mic size={14} />
                     Cook Mode
+                    {!hasPro && (
+                      <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[10px] font-bold rounded-full">
+                        <Crown size={10} />
+                        PRO
+                      </span>
+                    )}
                   </button>
 
                   {/* Public toggle for uploaded recipes */}

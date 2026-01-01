@@ -339,6 +339,11 @@ const RecipeChatModal: React.FC<RecipeChatModalProps> = ({ recipe, isOpen, onClo
       return;
     }
 
+    // Unlock speech synthesis on first user interaction (required for mobile)
+    if (speakerRef.current) {
+      speakerRef.current.unlock();
+    }
+
     if (isListening) {
       listenerRef.current.stop();
     } else {
@@ -353,6 +358,10 @@ const RecipeChatModal: React.FC<RecipeChatModalProps> = ({ recipe, isOpen, onClo
   // Handle text input submit
   const handleTextSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    // Unlock speech synthesis on first user interaction (required for mobile)
+    if (speakerRef.current) {
+      speakerRef.current.unlock();
+    }
     if (textInput.trim() && !isProcessing) {
       handleUserInput(textInput);
       setTextInput('');
