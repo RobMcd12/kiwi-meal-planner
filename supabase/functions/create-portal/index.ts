@@ -77,7 +77,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    console.log('create-portal invoked');
+    console.log('create-portal invoked v2');
 
     // Verify authentication
     const auth = await verifyAuth(req);

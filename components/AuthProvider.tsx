@@ -1,8 +1,9 @@
-import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, useCallback, ReactNode } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase, onAuthStateChange, isSupabaseConfigured } from '../services/authService';
 import { checkIsAdmin, isSuperAdmin, getUserForImpersonation } from '../services/adminService';
 import { recordLogin } from '../services/loginHistoryService';
+import { logAdminAction, ActionType, ResourceType } from '../services/adminActionLogService';
 
 // Impersonated user type
 export interface ImpersonatedUser {
@@ -49,6 +50,13 @@ interface AuthContextType {
   startImpersonation: (userId: string) => Promise<boolean>;
   stopImpersonation: () => void;
   effectiveUserId: string | null;
+  /** Log an action taken while impersonating - no-op if not impersonating */
+  logAction: (
+    actionType: ActionType,
+    resourceType: ResourceType,
+    resourceId?: string,
+    actionDetails?: Record<string, unknown>
+  ) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -65,6 +73,7 @@ const AuthContext = createContext<AuthContextType>({
   startImpersonation: async () => false,
   stopImpersonation: () => {},
   effectiveUserId: null,
+  logAction: async () => {},
 });
 
 interface AuthProviderProps {
@@ -155,6 +164,28 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   // Computed values
   const isImpersonating = !!impersonatedUser;
   const effectiveUserId = impersonatedUser?.id ?? user?.id ?? null;
+
+  // Log action function - only logs if impersonating
+  const logAction = useCallback(async (
+    actionType: ActionType,
+    resourceType: ResourceType,
+    resourceId?: string,
+    actionDetails?: Record<string, unknown>
+  ): Promise<void> => {
+    // Only log if we're impersonating
+    if (!isImpersonating || !user?.id || !impersonatedUser?.id) {
+      return;
+    }
+
+    await logAdminAction(
+      user.id,
+      impersonatedUser.id,
+      actionType,
+      resourceType,
+      resourceId,
+      actionDetails
+    );
+  }, [isImpersonating, user?.id, impersonatedUser?.id]);
 
   // Helper to detect login method from user data
   const detectLoginMethod = (user: User): 'email' | 'google' | 'apple' | 'github' => {
@@ -295,6 +326,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     startImpersonation,
     stopImpersonation,
     effectiveUserId,
+    logAction,
   };
 
   return (

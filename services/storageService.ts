@@ -78,18 +78,23 @@ export const savePantryItem = async (name: string): Promise<PantryItem | null> =
   return data;
 };
 
-export const loadPantry = async (): Promise<PantryItem[]> => {
+export const loadPantry = async (overrideUserId?: string): Promise<PantryItem[]> => {
   if (!isSupabaseConfigured()) {
     return loadPantryLocal();
   }
 
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return loadPantryLocal();
+  // Use override userId for impersonation, otherwise get current user
+  let userId = overrideUserId;
+  if (!userId) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return loadPantryLocal();
+    userId = user.id;
+  }
 
   const { data, error } = await supabase
     .from('pantry_items')
     .select('id, name, is_staple, needs_restock')
-    .eq('user_id', user.id)
+    .eq('user_id', userId)
     .order('created_at', { ascending: true });
 
   if (error) {
@@ -399,18 +404,23 @@ export const saveConfig = async (config: MealConfig): Promise<void> => {
   }, { onConflict: 'user_id' });
 };
 
-export const loadConfig = async (fallback: MealConfig): Promise<MealConfig> => {
+export const loadConfig = async (fallback: MealConfig, overrideUserId?: string): Promise<MealConfig> => {
   if (!isSupabaseConfigured()) {
     return loadConfigLocal(fallback);
   }
 
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return loadConfigLocal(fallback);
+  // Use override userId for impersonation, otherwise get current user
+  let userId = overrideUserId;
+  if (!userId) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return loadConfigLocal(fallback);
+    userId = user.id;
+  }
 
   const { data, error } = await supabase
     .from('meal_configs')
     .select('*')
-    .eq('user_id', user.id)
+    .eq('user_id', userId)
     .maybeSingle();
 
   if (error) {
@@ -452,18 +462,23 @@ export const savePreferences = async (prefs: UserPreferences): Promise<void> => 
   }, { onConflict: 'user_id' });
 };
 
-export const loadPreferences = async (fallback: UserPreferences): Promise<UserPreferences> => {
+export const loadPreferences = async (fallback: UserPreferences, overrideUserId?: string): Promise<UserPreferences> => {
   if (!isSupabaseConfigured()) {
     return loadPreferencesLocal(fallback);
   }
 
-  const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return loadPreferencesLocal(fallback);
+  // Use override userId for impersonation, otherwise get current user
+  let userId = overrideUserId;
+  if (!userId) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return loadPreferencesLocal(fallback);
+    userId = user.id;
+  }
 
   const { data, error } = await supabase
     .from('user_preferences')
     .select('*')
-    .eq('user_id', user.id)
+    .eq('user_id', userId)
     .maybeSingle();
 
   if (error) {

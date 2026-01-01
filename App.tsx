@@ -56,7 +56,7 @@ const DEFAULT_PREFERENCES: UserPreferences = {
 };
 
 const AppContent: React.FC = () => {
-  const { user, isAuthenticated, loading: authLoading, isAdmin, isImpersonating } = useAuth();
+  const { user, isAuthenticated, loading: authLoading, isAdmin, isImpersonating, impersonatedUser, effectiveUserId } = useAuth();
   const { toasts, dismissToast, success, error: showError } = useToast();
 
   // Determine initial step from URL or default to landing
@@ -144,14 +144,16 @@ const AppContent: React.FC = () => {
   const [settingsInitialTab, setSettingsInitialTab] = useState<'general' | 'pantry' | 'prefs' | 'account'>('general');
   const [showMobileMenu, setShowMobileMenu] = useState(false);
 
-  // Load data from storage on mount and when auth changes
+  // Load data from storage on mount and when auth/impersonation changes
   useEffect(() => {
     const loadData = async () => {
       try {
+        // Use effectiveUserId to load the correct user's data (supports impersonation)
+        const userIdToLoad = effectiveUserId || undefined;
         const [loadedPantry, loadedConfig, loadedPrefs] = await Promise.all([
-          loadPantry(),
-          loadConfig(DEFAULT_CONFIG),
-          loadPreferences(DEFAULT_PREFERENCES),
+          loadPantry(userIdToLoad),
+          loadConfig(DEFAULT_CONFIG, userIdToLoad),
+          loadPreferences(DEFAULT_PREFERENCES, userIdToLoad),
         ]);
 
         setPantryItems(loadedPantry);
@@ -167,7 +169,7 @@ const AppContent: React.FC = () => {
     if (!authLoading) {
       loadData();
     }
-  }, [authLoading, isAuthenticated]);
+  }, [authLoading, isAuthenticated, effectiveUserId]);
 
   // Persistence Effects - Automatically save on change
   useEffect(() => {
@@ -490,28 +492,53 @@ const AppContent: React.FC = () => {
 
           {/* Desktop Header Actions - hidden on mobile */}
           <div className="hidden md:flex items-center gap-3">
-            {/* User info if authenticated - clickable to go to Account settings */}
+            {/* User info if authenticated - shows impersonated user when impersonating */}
             {isAuthenticated && user && (
               <button
                 onClick={() => {
-                  setSettingsInitialTab('account');
-                  setStep(AppStep.SETTINGS);
+                  if (!isImpersonating) {
+                    setSettingsInitialTab('account');
+                    setStep(AppStep.SETTINGS);
+                  }
                 }}
-                className="flex items-center gap-2 text-sm text-slate-600 hover:text-slate-800 hover:bg-slate-100 px-2 py-1 rounded-lg transition-colors"
-                title="Account Settings"
+                className={`flex items-center gap-2 text-sm px-2 py-1 rounded-lg transition-colors ${
+                  isImpersonating
+                    ? 'text-amber-700 bg-amber-50 cursor-default'
+                    : 'text-slate-600 hover:text-slate-800 hover:bg-slate-100'
+                }`}
+                title={isImpersonating ? `Viewing as ${impersonatedUser?.fullName || impersonatedUser?.email}` : "Account Settings"}
               >
-                {user.user_metadata?.avatar_url ? (
-                  <img
-                    src={user.user_metadata.avatar_url}
-                    alt=""
-                    className="w-6 h-6 rounded-full"
-                  />
+                {isImpersonating && impersonatedUser ? (
+                  <>
+                    {impersonatedUser.avatarUrl ? (
+                      <img
+                        src={impersonatedUser.avatarUrl}
+                        alt=""
+                        className="w-6 h-6 rounded-full ring-2 ring-amber-400"
+                      />
+                    ) : (
+                      <User size={16} />
+                    )}
+                    <span className="max-w-[120px] truncate">
+                      {impersonatedUser.fullName || impersonatedUser.email}
+                    </span>
+                  </>
                 ) : (
-                  <User size={16} />
+                  <>
+                    {user.user_metadata?.avatar_url ? (
+                      <img
+                        src={user.user_metadata.avatar_url}
+                        alt=""
+                        className="w-6 h-6 rounded-full"
+                      />
+                    ) : (
+                      <User size={16} />
+                    )}
+                    <span className="max-w-[120px] truncate">
+                      {user.user_metadata?.full_name || user.email?.split('@')[0]}
+                    </span>
+                  </>
                 )}
-                <span className="max-w-[120px] truncate">
-                  {user.user_metadata?.full_name || user.email?.split('@')[0]}
-                </span>
               </button>
             )}
 
@@ -601,26 +628,52 @@ const AppContent: React.FC = () => {
         {showMobileMenu && (
           <div className="md:hidden absolute top-full left-0 right-0 bg-white border-b border-slate-200 shadow-lg z-30">
             <div className="max-w-5xl mx-auto p-4 space-y-2">
-              {/* User Info */}
+              {/* User Info - shows impersonated user when impersonating */}
               {isAuthenticated && user && (
-                <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl mb-4">
-                  {user.user_metadata?.avatar_url ? (
-                    <img
-                      src={user.user_metadata.avatar_url}
-                      alt=""
-                      className="w-10 h-10 rounded-full"
-                    />
+                <div className={`flex items-center gap-3 p-3 rounded-xl mb-4 ${
+                  isImpersonating ? 'bg-amber-50 border border-amber-200' : 'bg-slate-50'
+                }`}>
+                  {isImpersonating && impersonatedUser ? (
+                    <>
+                      {impersonatedUser.avatarUrl ? (
+                        <img
+                          src={impersonatedUser.avatarUrl}
+                          alt=""
+                          className="w-10 h-10 rounded-full ring-2 ring-amber-400"
+                        />
+                      ) : (
+                        <div className="w-10 h-10 rounded-full bg-amber-200 flex items-center justify-center">
+                          <UserCircle size={24} className="text-amber-600" />
+                        </div>
+                      )}
+                      <div>
+                        <p className="font-medium text-amber-800">
+                          {impersonatedUser.fullName || 'User'}
+                        </p>
+                        <p className="text-sm text-amber-600">{impersonatedUser.email}</p>
+                      </div>
+                    </>
                   ) : (
-                    <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center">
-                      <UserCircle size={24} className="text-slate-400" />
-                    </div>
+                    <>
+                      {user.user_metadata?.avatar_url ? (
+                        <img
+                          src={user.user_metadata.avatar_url}
+                          alt=""
+                          className="w-10 h-10 rounded-full"
+                        />
+                      ) : (
+                        <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center">
+                          <UserCircle size={24} className="text-slate-400" />
+                        </div>
+                      )}
+                      <div>
+                        <p className="font-medium text-slate-800">
+                          {user.user_metadata?.full_name || 'User'}
+                        </p>
+                        <p className="text-sm text-slate-500">{user.email}</p>
+                      </div>
+                    </>
                   )}
-                  <div>
-                    <p className="font-medium text-slate-800">
-                      {user.user_metadata?.full_name || 'User'}
-                    </p>
-                    <p className="text-sm text-slate-500">{user.email}</p>
-                  </div>
                 </div>
               )}
 
