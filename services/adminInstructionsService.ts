@@ -6,9 +6,13 @@ import type { AdminInstruction, AdminInstructionCategory, InstructionTag } from 
  */
 const callManageInstructionsFunction = async (action: string, data: Record<string, unknown>) => {
   const { data: { session } } = await supabase.auth.getSession();
+  console.log('Session check:', { hasSession: !!session, hasAccessToken: !!session?.access_token });
+
   if (!session) {
     throw new Error('Not authenticated');
   }
+
+  console.log('Calling manage-instructions edge function:', action);
 
   const { data: result, error } = await supabase.functions.invoke('manage-instructions', {
     body: { action, data },
@@ -17,9 +21,13 @@ const callManageInstructionsFunction = async (action: string, data: Record<strin
     },
   });
 
+  console.log('Edge function response:', { result, error, errorType: error?.constructor?.name });
+
   if (error) {
     console.error('Edge function error:', error);
-    throw new Error(error.message || 'Edge function failed');
+    // Try to extract more specific error message
+    const errorMessage = error.message || (typeof error === 'object' ? JSON.stringify(error) : 'Edge function failed');
+    throw new Error(errorMessage);
   }
 
   if (result?.error) {
