@@ -3,6 +3,7 @@ import type { AdminInstruction, AdminInstructionCategory, InstructionTag } from 
 
 /**
  * Helper to call the manage-instructions edge function
+ * Uses direct fetch to get better error details
  */
 const callManageInstructionsFunction = async (action: string, data: Record<string, unknown>) => {
   const { data: { session } } = await supabase.auth.getSession();
@@ -18,30 +19,32 @@ const callManageInstructionsFunction = async (action: string, data: Record<strin
 
   console.log('Calling manage-instructions edge function:', action);
 
-  const { data: result, error } = await supabase.functions.invoke('manage-instructions', {
-    body: { action, data },
+  // Use direct fetch instead of supabase.functions.invoke to get better error handling
+  const supabaseUrl = 'https://wmpvawlyyaposeathxww.supabase.co';
+  const response = await fetch(`${supabaseUrl}/functions/v1/manage-instructions`, {
+    method: 'POST',
     headers: {
-      Authorization: `Bearer ${session.access_token}`,
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${session.access_token}`,
     },
+    body: JSON.stringify({ action, data }),
   });
 
-  // Log the full response for debugging
-  console.log('Edge function full response:', JSON.stringify({ result, error }, null, 2));
+  const result = await response.json();
+  console.log('Edge function response:', { status: response.status, result });
 
-  if (error) {
-    console.error('Edge function error:', error);
-    // Try to extract more specific error message
-    const errorMessage = error.message || (typeof error === 'object' ? JSON.stringify(error) : 'Edge function failed');
-    throw new Error(errorMessage);
-  }
-
-  if (result?.error) {
-    // Log detailed error info if available
-    console.error('Edge function returned error:', {
+  if (!response.ok) {
+    console.error('Edge function error:', {
+      status: response.status,
       error: result.error,
       reason: result.reason,
       details: result.details
     });
+    throw new Error(`${result.error || 'Edge function failed'}: ${result.reason || ''} - ${result.details || ''}`);
+  }
+
+  if (result?.error) {
+    console.error('Edge function returned error:', result);
     throw new Error(`${result.error}: ${result.reason || ''} - ${result.details || ''}`);
   }
 
