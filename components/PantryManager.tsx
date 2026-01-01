@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { PantryItem, PantryUploadMode } from '../types';
-import { Plus, Trash2, Archive, Camera, Sparkles, Star, ShoppingCart, Check, Video, Mic, Upload, Lock, Crown } from 'lucide-react';
+import { Plus, Trash2, Archive, Camera, Sparkles, Star, ShoppingCart, Check, Video, Mic, Upload, Lock, Crown, Scale } from 'lucide-react';
 import PantryScanner from './PantryScanner';
 import VideoRecorder from './VideoRecorder';
 import LiveDictation from './LiveDictation';
 import AudioRecorder from './AudioRecorder';
-import { updatePantryItemStaple, togglePantryItemRestock, clearStaplesRestock } from '../services/storageService';
+import PantryItemEditModal from './PantryItemEditModal';
+import { updatePantryItemStaple, togglePantryItemRestock, clearStaplesRestock, updatePantryItemQuantity } from '../services/storageService';
 
 interface PantryManagerProps {
   items: PantryItem[];
@@ -14,6 +15,7 @@ interface PantryManagerProps {
   isSettingsMode?: boolean;
   hasPro?: boolean;
   onUpgradeClick?: () => void;
+  unitSystem?: 'metric' | 'imperial';
 }
 
 const COMMON_PANTRY_ITEMS = [
@@ -24,7 +26,7 @@ const COMMON_STAPLE_ITEMS = [
   "Salt", "Pepper", "Olive Oil", "Flour", "Sugar", "Rice", "Pasta", "Butter", "Soy Sauce", "Vinegar"
 ];
 
-const PantryManager: React.FC<PantryManagerProps> = ({ items, setItems, onNext, isSettingsMode = false, hasPro = false, onUpgradeClick }) => {
+const PantryManager: React.FC<PantryManagerProps> = ({ items, setItems, onNext, isSettingsMode = false, hasPro = false, onUpgradeClick, unitSystem = 'metric' }) => {
   const [newItem, setNewItem] = useState('');
   const [newStapleItem, setNewStapleItem] = useState('');
   const [showScanner, setShowScanner] = useState(false);
@@ -32,6 +34,7 @@ const PantryManager: React.FC<PantryManagerProps> = ({ items, setItems, onNext, 
   const [showLiveDictation, setShowLiveDictation] = useState(false);
   const [showAudioRecorder, setShowAudioRecorder] = useState(false);
   const [activeTab, setActiveTab] = useState<'pantry' | 'staples'>('pantry');
+  const [editingItem, setEditingItem] = useState<PantryItem | null>(null);
 
   // Separate items into regular pantry and staples
   const regularItems = items.filter(item => !item.isStaple);
@@ -123,6 +126,29 @@ const PantryManager: React.FC<PantryManagerProps> = ({ items, setItems, onNext, 
     if (success) {
       setItems(items.map(item => ({ ...item, needsRestock: false })));
     }
+  };
+
+  const handleQuantitySave = async (quantity: number | null, unit: string | null) => {
+    if (!editingItem) return;
+
+    const success = await updatePantryItemQuantity(editingItem.id, quantity, unit);
+    if (success) {
+      setItems(items.map(item =>
+        item.id === editingItem.id
+          ? { ...item, quantity: quantity || undefined, unit: unit || undefined }
+          : item
+      ));
+    }
+    setEditingItem(null);
+  };
+
+  // Format quantity display
+  const formatQuantity = (item: PantryItem): string | null => {
+    if (!item.quantity && !item.unit) return null;
+    if (item.quantity && item.unit) return `${item.quantity} ${item.unit}`;
+    if (item.quantity) return `${item.quantity}`;
+    if (item.unit) return item.unit;
+    return null;
   };
 
   return (
@@ -318,18 +344,29 @@ const PantryManager: React.FC<PantryManagerProps> = ({ items, setItems, onNext, 
             ) : (
               <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                 {regularItems.map(item => (
-                  <div key={item.id} className="group flex items-center justify-between bg-white px-3 py-2 rounded-md shadow-sm border border-slate-100">
-                    <span className="text-slate-700 truncate mr-2" title={item.name}>{item.name}</span>
-                    <div className="flex items-center gap-1">
+                  <div key={item.id} className="group flex items-center justify-between bg-white px-3 py-2 rounded-md shadow-sm border border-slate-100 hover:border-emerald-300 transition-colors">
+                    <button
+                      onClick={() => setEditingItem(item)}
+                      className="flex-1 text-left flex flex-col min-w-0"
+                      title="Click to edit quantity"
+                    >
+                      <span className="text-slate-700 truncate" title={item.name}>{item.name}</span>
+                      {formatQuantity(item) ? (
+                        <span className="text-xs text-emerald-600 font-medium">{formatQuantity(item)}</span>
+                      ) : (
+                        <span className="text-xs text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity">+ Add amount</span>
+                      )}
+                    </button>
+                    <div className="flex items-center gap-1 ml-2">
                       <button
-                        onClick={() => toggleStaple(item.id, item.isStaple || false)}
+                        onClick={(e) => { e.stopPropagation(); toggleStaple(item.id, item.isStaple || false); }}
                         className="text-slate-400 hover:text-amber-500 opacity-0 group-hover:opacity-100 transition-opacity"
                         title="Mark as staple"
                       >
                         <Star size={16} />
                       </button>
                       <button
-                        onClick={() => removeItem(item.id)}
+                        onClick={(e) => { e.stopPropagation(); removeItem(item.id); }}
                         className="text-slate-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
                       >
                         <Trash2 size={16} />
@@ -426,25 +463,36 @@ const PantryManager: React.FC<PantryManagerProps> = ({ items, setItems, onNext, 
             ) : (
               <div className="space-y-2">
                 {stapleItems.map(item => (
-                  <div key={item.id} className="group flex items-center justify-between bg-white px-4 py-3 rounded-md shadow-sm border border-slate-100">
-                    <div className="flex items-center gap-3">
+                  <div key={item.id} className="group flex items-center justify-between bg-white px-4 py-3 rounded-md shadow-sm border border-slate-100 hover:border-amber-300 transition-colors">
+                    <div className="flex items-center gap-3 flex-1 min-w-0">
                       <input
                         type="checkbox"
                         checked={item.needsRestock || false}
                         onChange={() => toggleRestock(item.id, item.needsRestock || false)}
-                        className="w-5 h-5 rounded border-slate-300 text-red-600 focus:ring-red-500"
+                        className="w-5 h-5 rounded border-slate-300 text-red-600 focus:ring-red-500 flex-shrink-0"
                         title="Check when you need to restock"
                       />
-                      <span className={`text-slate-700 ${item.needsRestock ? 'line-through text-slate-400' : ''}`}>
-                        {item.name}
-                      </span>
+                      <button
+                        onClick={() => setEditingItem(item)}
+                        className="flex-1 text-left flex flex-col min-w-0"
+                        title="Click to edit quantity"
+                      >
+                        <span className={`text-slate-700 truncate ${item.needsRestock ? 'line-through text-slate-400' : ''}`}>
+                          {item.name}
+                        </span>
+                        {formatQuantity(item) ? (
+                          <span className="text-xs text-amber-600 font-medium">{formatQuantity(item)}</span>
+                        ) : (
+                          <span className="text-xs text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity">+ Add amount</span>
+                        )}
+                      </button>
                       {item.needsRestock && (
-                        <span className="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full">
+                        <span className="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full flex-shrink-0">
                           Need to buy
                         </span>
                       )}
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 ml-2">
                       <button
                         onClick={() => toggleStaple(item.id, item.isStaple || false)}
                         className="text-amber-500 hover:text-slate-400"
@@ -510,6 +558,16 @@ const PantryManager: React.FC<PantryManagerProps> = ({ items, setItems, onNext, 
           onItemsScanned={handleScannedItems}
           onClose={() => setShowAudioRecorder(false)}
           existingItemCount={items.length}
+        />
+      )}
+
+      {/* Quantity Edit Modal */}
+      {editingItem && (
+        <PantryItemEditModal
+          item={editingItem}
+          unitSystem={unitSystem}
+          onSave={handleQuantitySave}
+          onClose={() => setEditingItem(null)}
         />
       )}
     </div>

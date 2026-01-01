@@ -199,7 +199,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({
             )}
             {activeTab === 'pantry' && (
                 <div className="animate-fadeIn">
-                    <PantryManager items={pantryItems} setItems={setPantryItems} isSettingsMode={true} />
+                    <PantryManager items={pantryItems} setItems={setPantryItems} isSettingsMode={true} unitSystem={preferences.unitSystem} />
                 </div>
             )}
             {activeTab === 'prefs' && (

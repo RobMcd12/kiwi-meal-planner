@@ -1,4 +1,5 @@
 import { supabase, isSupabaseConfigured } from './authService';
+import { isSuperAdmin } from './adminService';
 import type {
   SubscriptionConfig,
   UserSubscription,
@@ -7,6 +8,9 @@ import type {
   BillingInterval,
   AdminSubscriptionGrant
 } from '../types';
+
+// Super admin email - always has Pro
+const SUPER_ADMIN_EMAIL = 'rob@unicloud.co.nz';
 
 // ============================================
 // SUBSCRIPTION CONFIGURATION
@@ -133,6 +137,15 @@ export const getUserSubscription = async (userId?: string): Promise<UserSubscrip
  * Check if user has Pro access (considering all sources)
  */
 export const checkHasPro = async (userId?: string): Promise<boolean> => {
+  // First check if this is the super admin by getting current user's email
+  if (!userId) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user?.email === SUPER_ADMIN_EMAIL) {
+      return true;
+    }
+    userId = user?.id;
+  }
+
   const subscription = await getUserSubscription(userId);
   if (!subscription) return false;
 
@@ -225,13 +238,24 @@ export const canCreateRecipe = async (userId?: string): Promise<boolean> => {
  * Get full subscription state (for context providers)
  */
 export const getSubscriptionState = async (userId?: string): Promise<SubscriptionState> => {
+  // Check if super admin first
+  let isSuperAdminUser = false;
+  if (!userId) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user?.email === SUPER_ADMIN_EMAIL) {
+      isSuperAdminUser = true;
+    }
+    userId = user?.id;
+  }
+
   const [subscription, config, recipeCount] = await Promise.all([
     getUserSubscription(userId),
     getSubscriptionConfig(),
     getRecipeCount(userId)
   ]);
 
-  const hasPro = subscription ? await checkHasProFromSubscription(subscription) : false;
+  // Super admin always has Pro
+  const hasPro = isSuperAdminUser || (subscription ? checkHasProFromSubscription(subscription) : false);
   const recipeLimit = config?.freeRecipeLimit || 20;
 
   let daysLeftInTrial: number | null = null;

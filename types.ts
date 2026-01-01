@@ -19,7 +19,46 @@ export interface PantryItem {
   name: string;
   isStaple?: boolean;      // If true, this is a staple item the user always keeps
   needsRestock?: boolean;  // If true, this staple needs to be added to shopping list
+  quantity?: number;       // Numeric quantity (e.g., 2 for "2 kg")
+  unit?: string;           // Unit of measurement (e.g., "kg", "cups", "pieces")
 }
+
+// Units organized by measurement system
+export const METRIC_UNITS = [
+  { value: 'g', label: 'Grams (g)' },
+  { value: 'kg', label: 'Kilograms (kg)' },
+  { value: 'ml', label: 'Millilitres (ml)' },
+  { value: 'L', label: 'Litres (L)' },
+  { value: 'cm', label: 'Centimetres (cm)' },
+] as const;
+
+export const IMPERIAL_UNITS = [
+  { value: 'oz', label: 'Ounces (oz)' },
+  { value: 'lb', label: 'Pounds (lb)' },
+  { value: 'fl oz', label: 'Fluid Ounces (fl oz)' },
+  { value: 'cups', label: 'Cups' },
+  { value: 'pt', label: 'Pints (pt)' },
+  { value: 'qt', label: 'Quarts (qt)' },
+  { value: 'gal', label: 'Gallons (gal)' },
+  { value: 'in', label: 'Inches (in)' },
+] as const;
+
+export const UNIVERSAL_UNITS = [
+  { value: 'pieces', label: 'Pieces' },
+  { value: 'items', label: 'Items' },
+  { value: 'bunch', label: 'Bunch' },
+  { value: 'pack', label: 'Pack' },
+  { value: 'can', label: 'Can' },
+  { value: 'bottle', label: 'Bottle' },
+  { value: 'jar', label: 'Jar' },
+  { value: 'box', label: 'Box' },
+  { value: 'bag', label: 'Bag' },
+  { value: 'tbsp', label: 'Tablespoon (tbsp)' },
+  { value: 'tsp', label: 'Teaspoon (tsp)' },
+  { value: 'cloves', label: 'Cloves' },
+  { value: 'slices', label: 'Slices' },
+  { value: 'heads', label: 'Heads' },
+] as const;
 
 export interface MealConfig {
   days: number;

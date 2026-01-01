@@ -93,7 +93,7 @@ export const loadPantry = async (overrideUserId?: string): Promise<PantryItem[]>
 
   const { data, error } = await supabase
     .from('pantry_items')
-    .select('id, name, is_staple, needs_restock')
+    .select('id, name, is_staple, needs_restock, quantity, unit')
     .eq('user_id', userId)
     .order('created_at', { ascending: true });
 
@@ -108,6 +108,8 @@ export const loadPantry = async (overrideUserId?: string): Promise<PantryItem[]>
     name: item.name,
     isStaple: item.is_staple || false,
     needsRestock: item.needs_restock || false,
+    quantity: item.quantity || undefined,
+    unit: item.unit || undefined,
   }));
 };
 
@@ -154,13 +156,58 @@ export const updatePantryItemStaple = async (id: string, isStaple: boolean): Pro
     return true;
   }
 
+  // Build update object - set needs_restock to false when removing staple status
+  const updateData: { is_staple: boolean; needs_restock?: boolean } = { is_staple: isStaple };
+  if (!isStaple) {
+    updateData.needs_restock = false;
+  }
+
   const { error } = await supabase
     .from('pantry_items')
-    .update({ is_staple: isStaple, needs_restock: isStaple ? undefined : false })
-    .eq('id', id);
+    .update(updateData)
+    .eq('id', id)
+    .eq('user_id', user.id);
 
   if (error) {
     console.error('Error updating pantry item staple status:', error);
+    return false;
+  }
+  return true;
+};
+
+// Update a pantry item's quantity and unit
+export const updatePantryItemQuantity = async (
+  id: string,
+  quantity: number | null,
+  unit: string | null
+): Promise<boolean> => {
+  if (!isSupabaseConfigured()) {
+    const items = loadPantryLocal();
+    const updated = items.map(item =>
+      item.id === id ? { ...item, quantity: quantity || undefined, unit: unit || undefined } : item
+    );
+    savePantryLocal(updated);
+    return true;
+  }
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    const items = loadPantryLocal();
+    const updated = items.map(item =>
+      item.id === id ? { ...item, quantity: quantity || undefined, unit: unit || undefined } : item
+    );
+    savePantryLocal(updated);
+    return true;
+  }
+
+  const { error } = await supabase
+    .from('pantry_items')
+    .update({ quantity, unit })
+    .eq('id', id)
+    .eq('user_id', user.id);
+
+  if (error) {
+    console.error('Error updating pantry item quantity:', error);
     return false;
   }
   return true;
