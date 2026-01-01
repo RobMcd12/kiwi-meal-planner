@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { MealConfig, UserPreferences, PantryItem } from '../types';
+import { MealConfig, UserPreferences, PantryItem, SubscriptionState } from '../types';
 import ConfigForm from './ConfigForm';
 import PreferenceForm from './PreferenceForm';
 import PantryManager from './PantryManager';
@@ -7,6 +7,7 @@ import MediaFilesManager from './MediaFilesManager';
 import SubscriptionManager from './SubscriptionManager';
 import { useAuth } from './AuthProvider';
 import { supabase } from '../services/authService';
+import { getSubscriptionState } from '../services/subscriptionService';
 import { ArrowLeft, Check, Sliders, Archive, Utensils, UserCircle, Loader2, FileVideo, Crown } from 'lucide-react';
 
 interface SettingsViewProps {
@@ -37,6 +38,16 @@ const SettingsView: React.FC<SettingsViewProps> = ({
   const [isLinkingGoogle, setIsLinkingGoogle] = useState(false);
   const [linkError, setLinkError] = useState<string | null>(null);
   const [linkSuccess, setLinkSuccess] = useState(false);
+  const [subscriptionState, setSubscriptionState] = useState<SubscriptionState | null>(null);
+
+  // Load subscription state
+  useEffect(() => {
+    const loadSubscription = async () => {
+      const state = await getSubscriptionState();
+      setSubscriptionState(state);
+    };
+    loadSubscription();
+  }, [user]);
 
   // Check for auth callback errors in URL (e.g., after OAuth redirect)
   useEffect(() => {
@@ -199,7 +210,14 @@ const SettingsView: React.FC<SettingsViewProps> = ({
             )}
             {activeTab === 'pantry' && (
                 <div className="animate-fadeIn">
-                    <PantryManager items={pantryItems} setItems={setPantryItems} isSettingsMode={true} unitSystem={preferences.unitSystem} />
+                    <PantryManager
+                      items={pantryItems}
+                      setItems={setPantryItems}
+                      isSettingsMode={true}
+                      unitSystem={preferences.unitSystem}
+                      hasPro={subscriptionState?.hasPro ?? false}
+                      onUpgradeClick={() => setActiveTab('subscription')}
+                    />
                 </div>
             )}
             {activeTab === 'prefs' && (

@@ -1,5 +1,5 @@
 import { supabase, isSupabaseConfigured } from './authService';
-import type { Meal, MealPlanResponse, MealConfig, UserPreferences, PantryItem, SavedMealPlan } from '../types';
+import type { Meal, MealPlanResponse, MealConfig, UserPreferences, PantryItem, PantryCategory, SavedMealPlan } from '../types';
 import { CONSTANTS } from '../types';
 import { autoTagRecipe } from './geminiService';
 import { assignTagsToRecipe, getRecipeTags } from './recipeService';
@@ -43,10 +43,10 @@ const generateId = (): string => {
 // PANTRY - Supabase with LocalStorage fallback
 // ============================================
 
-export const savePantryItem = async (name: string): Promise<PantryItem | null> => {
+export const savePantryItem = async (name: string, isStaple: boolean = false): Promise<PantryItem | null> => {
   if (!isSupabaseConfigured()) {
     const items = loadPantryLocal();
-    const newItem: PantryItem = { id: generateId(), name };
+    const newItem: PantryItem = { id: generateId(), name, isStaple };
     if (!items.some(item => item.name.toLowerCase() === name.toLowerCase())) {
       savePantryLocal([...items, newItem]);
       return newItem;
@@ -57,7 +57,7 @@ export const savePantryItem = async (name: string): Promise<PantryItem | null> =
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
     const items = loadPantryLocal();
-    const newItem: PantryItem = { id: generateId(), name };
+    const newItem: PantryItem = { id: generateId(), name, isStaple };
     if (!items.some(item => item.name.toLowerCase() === name.toLowerCase())) {
       savePantryLocal([...items, newItem]);
       return newItem;
@@ -67,15 +67,15 @@ export const savePantryItem = async (name: string): Promise<PantryItem | null> =
 
   const { data, error } = await supabase
     .from('pantry_items')
-    .insert({ user_id: user.id, name })
-    .select('id, name')
+    .insert({ user_id: user.id, name, is_staple: isStaple })
+    .select('id, name, is_staple')
     .single();
 
   if (error) {
     console.error('Error saving pantry item:', error);
     return null;
   }
-  return data;
+  return { id: data.id, name: data.name, isStaple: data.is_staple };
 };
 
 export const loadPantry = async (overrideUserId?: string): Promise<PantryItem[]> => {
@@ -93,8 +93,9 @@ export const loadPantry = async (overrideUserId?: string): Promise<PantryItem[]>
 
   const { data, error } = await supabase
     .from('pantry_items')
-    .select('id, name, is_staple, needs_restock, quantity, unit')
+    .select('id, name, is_staple, needs_restock, quantity, unit, category_id, sort_order')
     .eq('user_id', userId)
+    .order('sort_order', { ascending: true })
     .order('created_at', { ascending: true });
 
   if (error) {
@@ -110,7 +111,216 @@ export const loadPantry = async (overrideUserId?: string): Promise<PantryItem[]>
     needsRestock: item.needs_restock || false,
     quantity: item.quantity || undefined,
     unit: item.unit || undefined,
+    categoryId: item.category_id || undefined,
+    sortOrder: item.sort_order || 0,
   }));
+};
+
+// ============================================
+// PANTRY CATEGORIES
+// ============================================
+
+export const loadPantryCategories = async (isStaple: boolean = false, overrideUserId?: string): Promise<PantryCategory[]> => {
+  if (!isSupabaseConfigured()) {
+    return [];
+  }
+
+  let userId = overrideUserId;
+  if (!userId) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return [];
+    userId = user.id;
+  }
+
+  const { data, error } = await supabase
+    .from('pantry_categories')
+    .select('id, name, sort_order, is_collapsed, is_staple_category')
+    .eq('user_id', userId)
+    .eq('is_staple_category', isStaple)
+    .order('sort_order', { ascending: true });
+
+  if (error) {
+    console.error('Error loading pantry categories:', error);
+    return [];
+  }
+
+  return (data || []).map(cat => ({
+    id: cat.id,
+    name: cat.name,
+    sortOrder: cat.sort_order || 0,
+    isCollapsed: cat.is_collapsed ?? true,
+    isStapleCategory: cat.is_staple_category || false,
+  }));
+};
+
+export const createPantryCategory = async (
+  name: string,
+  isStaple: boolean = false
+): Promise<PantryCategory | null> => {
+  if (!isSupabaseConfigured()) return null;
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return null;
+
+  // Get max sort order
+  const { data: existing } = await supabase
+    .from('pantry_categories')
+    .select('sort_order')
+    .eq('user_id', user.id)
+    .eq('is_staple_category', isStaple)
+    .order('sort_order', { ascending: false })
+    .limit(1);
+
+  const maxOrder = existing?.[0]?.sort_order || 0;
+
+  const { data, error } = await supabase
+    .from('pantry_categories')
+    .insert({
+      user_id: user.id,
+      name,
+      sort_order: maxOrder + 1,
+      is_collapsed: true,
+      is_staple_category: isStaple,
+    })
+    .select('id, name, sort_order, is_collapsed, is_staple_category')
+    .single();
+
+  if (error) {
+    console.error('Error creating pantry category:', error);
+    return null;
+  }
+
+  return {
+    id: data.id,
+    name: data.name,
+    sortOrder: data.sort_order || 0,
+    isCollapsed: data.is_collapsed ?? true,
+    isStapleCategory: data.is_staple_category || false,
+  };
+};
+
+export const updatePantryCategory = async (
+  id: string,
+  updates: Partial<{ name: string; isCollapsed: boolean; sortOrder: number }>
+): Promise<boolean> => {
+  if (!isSupabaseConfigured()) return false;
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return false;
+
+  const dbUpdates: Record<string, any> = {};
+  if (updates.name !== undefined) dbUpdates.name = updates.name;
+  if (updates.isCollapsed !== undefined) dbUpdates.is_collapsed = updates.isCollapsed;
+  if (updates.sortOrder !== undefined) dbUpdates.sort_order = updates.sortOrder;
+
+  const { error } = await supabase
+    .from('pantry_categories')
+    .update(dbUpdates)
+    .eq('id', id)
+    .eq('user_id', user.id);
+
+  if (error) {
+    console.error('Error updating pantry category:', error);
+    return false;
+  }
+  return true;
+};
+
+export const deletePantryCategory = async (id: string): Promise<boolean> => {
+  if (!isSupabaseConfigured()) return false;
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return false;
+
+  // Items in this category will have category_id set to null (ON DELETE SET NULL)
+  const { error } = await supabase
+    .from('pantry_categories')
+    .delete()
+    .eq('id', id)
+    .eq('user_id', user.id);
+
+  if (error) {
+    console.error('Error deleting pantry category:', error);
+    return false;
+  }
+  return true;
+};
+
+export const reorderCategories = async (categoryIds: string[]): Promise<boolean> => {
+  if (!isSupabaseConfigured()) return false;
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return false;
+
+  // Update each category with its new sort order
+  const updates = categoryIds.map((id, index) =>
+    supabase
+      .from('pantry_categories')
+      .update({ sort_order: index })
+      .eq('id', id)
+      .eq('user_id', user.id)
+  );
+
+  const results = await Promise.all(updates);
+  const hasError = results.some(r => r.error);
+
+  if (hasError) {
+    console.error('Error reordering categories');
+    return false;
+  }
+  return true;
+};
+
+export const updatePantryItemCategory = async (
+  itemId: string,
+  categoryId: string | null,
+  sortOrder?: number
+): Promise<boolean> => {
+  if (!isSupabaseConfigured()) return false;
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return false;
+
+  const updates: Record<string, any> = { category_id: categoryId };
+  if (sortOrder !== undefined) updates.sort_order = sortOrder;
+
+  const { error } = await supabase
+    .from('pantry_items')
+    .update(updates)
+    .eq('id', itemId)
+    .eq('user_id', user.id);
+
+  if (error) {
+    console.error('Error updating pantry item category:', error);
+    return false;
+  }
+  return true;
+};
+
+export const reorderPantryItems = async (
+  itemUpdates: { id: string; sortOrder: number; categoryId: string | null }[]
+): Promise<boolean> => {
+  if (!isSupabaseConfigured()) return false;
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return false;
+
+  const updates = itemUpdates.map(item =>
+    supabase
+      .from('pantry_items')
+      .update({ sort_order: item.sortOrder, category_id: item.categoryId })
+      .eq('id', item.id)
+      .eq('user_id', user.id)
+  );
+
+  const results = await Promise.all(updates);
+  const hasError = results.some(r => r.error);
+
+  if (hasError) {
+    console.error('Error reordering pantry items');
+    return false;
+  }
+  return true;
 };
 
 export const removePantryItem = async (id: string): Promise<void> => {

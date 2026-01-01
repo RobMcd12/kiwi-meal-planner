@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { PantryItem, PantryUploadMode } from '../types';
-import { Plus, Trash2, Archive, Camera, Sparkles, Star, ShoppingCart, Check, Video, Mic, Upload, Lock, Crown, Scale } from 'lucide-react';
+import { Plus, Trash2, Archive, Camera, Sparkles, Star, ShoppingCart, Check, Video, Mic, Upload, Lock, Crown } from 'lucide-react';
 import PantryScanner from './PantryScanner';
 import VideoRecorder from './VideoRecorder';
 import LiveDictation from './LiveDictation';
 import AudioRecorder from './AudioRecorder';
 import PantryItemEditModal from './PantryItemEditModal';
-import { updatePantryItemStaple, togglePantryItemRestock, clearStaplesRestock, updatePantryItemQuantity } from '../services/storageService';
+import PantryCategorizedList from './PantryCategorizedList';
+import { savePantryItem, updatePantryItemStaple, togglePantryItemRestock, clearStaplesRestock, updatePantryItemQuantity, removePantryItem } from '../services/storageService';
 
 interface PantryManagerProps {
   items: PantryItem[];
@@ -41,29 +42,41 @@ const PantryManager: React.FC<PantryManagerProps> = ({ items, setItems, onNext, 
   const stapleItems = items.filter(item => item.isStaple);
   const staplesNeedingRestock = stapleItems.filter(item => item.needsRestock);
 
-  const addItem = () => {
+  const addItem = async () => {
     if (newItem.trim()) {
-      setItems([...items, { id: Date.now().toString(), name: newItem.trim() }]);
+      const savedItem = await savePantryItem(newItem.trim(), false);
+      if (savedItem) {
+        setItems([...items, savedItem]);
+      }
       setNewItem('');
     }
   };
 
-  const addCommonItem = (name: string) => {
-    if (!items.find(i => i.name === name)) {
-      setItems([...items, { id: Date.now().toString(), name }]);
+  const addCommonItem = async (name: string) => {
+    if (!items.find(i => i.name.toLowerCase() === name.toLowerCase())) {
+      const savedItem = await savePantryItem(name, false);
+      if (savedItem) {
+        setItems([...items, savedItem]);
+      }
     }
   };
 
-  const addStapleItem = () => {
+  const addStapleItem = async () => {
     if (newStapleItem.trim()) {
-      setItems([...items, { id: Date.now().toString(), name: newStapleItem.trim(), isStaple: true }]);
+      const savedItem = await savePantryItem(newStapleItem.trim(), true);
+      if (savedItem) {
+        setItems([...items, savedItem]);
+      }
       setNewStapleItem('');
     }
   };
 
-  const addCommonStaple = (name: string) => {
-    if (!items.find(i => i.name === name)) {
-      setItems([...items, { id: Date.now().toString(), name, isStaple: true }]);
+  const addCommonStaple = async (name: string) => {
+    if (!items.find(i => i.name.toLowerCase() === name.toLowerCase())) {
+      const savedItem = await savePantryItem(name, true);
+      if (savedItem) {
+        setItems([...items, savedItem]);
+      }
     }
   };
 
@@ -73,7 +86,8 @@ const PantryManager: React.FC<PantryManagerProps> = ({ items, setItems, onNext, 
     }
   };
 
-  const removeItem = (id: string) => {
+  const removeItem = async (id: string) => {
+    await removePantryItem(id);
     setItems(items.filter(item => item.id !== id));
   };
 
@@ -335,47 +349,17 @@ const PantryManager: React.FC<PantryManagerProps> = ({ items, setItems, onNext, 
             </div>
           </div>
 
-          <div className="bg-slate-50 rounded-lg p-4 min-h-[200px] max-h-[400px] overflow-y-auto mb-8 border border-slate-200">
-            {regularItems.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full text-slate-400 py-8">
-                <Archive size={40} className="mb-2 opacity-20" />
-                <p>Your pantry list is empty.</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                {regularItems.map(item => (
-                  <div key={item.id} className="group flex items-center justify-between bg-white px-3 py-2 rounded-md shadow-sm border border-slate-100 hover:border-emerald-300 transition-colors">
-                    <button
-                      onClick={() => setEditingItem(item)}
-                      className="flex-1 text-left flex flex-col min-w-0"
-                      title="Click to edit quantity"
-                    >
-                      <span className="text-slate-700 truncate" title={item.name}>{item.name}</span>
-                      {formatQuantity(item) ? (
-                        <span className="text-xs text-emerald-600 font-medium">{formatQuantity(item)}</span>
-                      ) : (
-                        <span className="text-xs text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity">+ Add amount</span>
-                      )}
-                    </button>
-                    <div className="flex items-center gap-1 ml-2">
-                      <button
-                        onClick={(e) => { e.stopPropagation(); toggleStaple(item.id, item.isStaple || false); }}
-                        className="text-slate-400 hover:text-amber-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                        title="Mark as staple"
-                      >
-                        <Star size={16} />
-                      </button>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); removeItem(item.id); }}
-                        className="text-slate-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+          <div className="bg-slate-50 rounded-lg p-4 min-h-[200px] max-h-[500px] overflow-y-auto mb-8 border border-slate-200">
+            <PantryCategorizedList
+              items={items}
+              setItems={setItems}
+              isStaple={false}
+              onItemClick={(item) => setEditingItem(item)}
+              onToggleStaple={(id, isStaple) => toggleStaple(id, isStaple)}
+              onToggleRestock={(id, needsRestock) => toggleRestock(id, needsRestock)}
+              onRemoveItem={removeItem}
+              formatQuantity={formatQuantity}
+            />
           </div>
         </>
       )}
@@ -453,65 +437,17 @@ const PantryManager: React.FC<PantryManagerProps> = ({ items, setItems, onNext, 
             </div>
           )}
 
-          <div className="bg-slate-50 rounded-lg p-4 min-h-[200px] max-h-[400px] overflow-y-auto border border-slate-200">
-            {stapleItems.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full text-slate-400 py-8">
-                <Star size={40} className="mb-2 opacity-20" />
-                <p>No staples yet.</p>
-                <p className="text-sm mt-1">Add items above or click the star on pantry items.</p>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {stapleItems.map(item => (
-                  <div key={item.id} className="group flex items-center justify-between bg-white px-4 py-3 rounded-md shadow-sm border border-slate-100 hover:border-amber-300 transition-colors">
-                    <div className="flex items-center gap-3 flex-1 min-w-0">
-                      <input
-                        type="checkbox"
-                        checked={item.needsRestock || false}
-                        onChange={() => toggleRestock(item.id, item.needsRestock || false)}
-                        className="w-5 h-5 rounded border-slate-300 text-red-600 focus:ring-red-500 flex-shrink-0"
-                        title="Check when you need to restock"
-                      />
-                      <button
-                        onClick={() => setEditingItem(item)}
-                        className="flex-1 text-left flex flex-col min-w-0"
-                        title="Click to edit quantity"
-                      >
-                        <span className={`text-slate-700 truncate ${item.needsRestock ? 'line-through text-slate-400' : ''}`}>
-                          {item.name}
-                        </span>
-                        {formatQuantity(item) ? (
-                          <span className="text-xs text-amber-600 font-medium">{formatQuantity(item)}</span>
-                        ) : (
-                          <span className="text-xs text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity">+ Add amount</span>
-                        )}
-                      </button>
-                      {item.needsRestock && (
-                        <span className="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full flex-shrink-0">
-                          Need to buy
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2 ml-2">
-                      <button
-                        onClick={() => toggleStaple(item.id, item.isStaple || false)}
-                        className="text-amber-500 hover:text-slate-400"
-                        title="Move to pantry"
-                      >
-                        <Star size={16} fill="currentColor" />
-                      </button>
-                      <button
-                        onClick={() => removeItem(item.id)}
-                        className="text-slate-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-opacity"
-                        title="Remove item"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+          <div className="bg-slate-50 rounded-lg p-4 min-h-[200px] max-h-[500px] overflow-y-auto border border-slate-200">
+            <PantryCategorizedList
+              items={items}
+              setItems={setItems}
+              isStaple={true}
+              onItemClick={(item) => setEditingItem(item)}
+              onToggleStaple={(id, isStaple) => toggleStaple(id, isStaple)}
+              onToggleRestock={(id, needsRestock) => toggleRestock(id, needsRestock)}
+              onRemoveItem={removeItem}
+              formatQuantity={formatQuantity}
+            />
           </div>
         </div>
       )}

@@ -21,6 +21,16 @@ export interface PantryItem {
   needsRestock?: boolean;  // If true, this staple needs to be added to shopping list
   quantity?: number;       // Numeric quantity (e.g., 2 for "2 kg")
   unit?: string;           // Unit of measurement (e.g., "kg", "cups", "pieces")
+  categoryId?: string;     // Optional category this item belongs to
+  sortOrder?: number;      // Sort order within category
+}
+
+export interface PantryCategory {
+  id: string;
+  name: string;
+  sortOrder: number;
+  isCollapsed: boolean;
+  isStapleCategory: boolean; // If true, this category is for staples
 }
 
 // Units organized by measurement system
