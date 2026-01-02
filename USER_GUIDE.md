@@ -20,6 +20,9 @@
 12. [Sharing Recipes](#sharing-recipes)
 13. [Notes & Comments](#notes--comments)
 14. [Shopping Lists](#shopping-lists)
+    - [Master Shopping List](#master-shopping-list)
+    - [Supermarket Layouts](#supermarket-layouts)
+    - [Exporting Shopping Lists](#exporting-shopping-lists)
 15. [Settings & Preferences](#settings--preferences)
 16. [Feedback & Support](#feedback--support)
 17. [Installing as an App](#installing-as-an-app)
@@ -564,9 +567,52 @@ Leave feedback on public recipes:
 
 ## Shopping Lists
 
-Generate smart shopping lists from your cookbook:
+Generate smart shopping lists from your cookbook and meal plans.
 
-### Selecting Recipes
+### Master Shopping List
+
+The Master Shopping List consolidates everything you need to buy in one place:
+
+#### What's Included
+- **Meal plan ingredients** - Items from any meal plans you've added
+- **Cookbook recipe ingredients** - Items from selected recipes
+- **Pantry staples for restock** - Staples marked as needing purchase
+- **Pantry items for restock** - Regular pantry items flagged for restocking
+
+#### Sorting Options
+
+Choose how to organize your shopping list:
+
+| Sort Mode | Description |
+|-----------|-------------|
+| **Source** | Group by where items came from (plans, recipes, staples, pantry) |
+| **Category** | Group by food type (Produce, Dairy, Meat, etc.) |
+| **Store Layout** | Group by your custom supermarket aisle order |
+
+### Supermarket Layouts
+
+Create custom layouts that match how your local store is organized:
+
+#### Creating a Layout
+1. In the Master Shopping List, select **Store Layout** sort mode
+2. Click **Manage Layouts**
+3. Click **+ New Layout** and give it a name
+4. **Drag and drop** categories to match your store's aisle order
+5. Click **Save** when done
+
+#### Managing Layouts
+- **Multiple layouts** - Save layouts for different stores you shop at
+- **Set default** - Click the star icon to set your preferred layout
+- **Edit anytime** - Reorder categories as stores change
+- **Delete** - Remove layouts you no longer need
+
+#### Using Layouts
+1. Select **Store Layout** from the sort options
+2. Choose your layout from the dropdown
+3. Items are now grouped by your custom aisle order
+4. Shop efficiently by following your store's layout
+
+### Selecting Recipes for Shopping
 1. Go to **My Cookbook**
 2. Click the circle on each recipe card to select it
 3. Selected recipes show a filled circle and highlighted border
@@ -584,6 +630,28 @@ Generate smart shopping lists from your cookbook:
 - Check off items as you shop
 - List persists until you generate a new one
 - Works offline on installed app
+
+### Exporting Shopping Lists
+
+Export your shopping list to take with you:
+
+#### Export to iOS Reminders
+1. Click the **Share** button in the Master Shopping List
+2. Select **Reminders** or your preferred app
+3. Items are formatted as a checklist you can mark off while shopping
+
+#### Export to PDF
+1. Click the **PDF** button in the Master Shopping List
+2. A branded PDF is generated with:
+   - Kiwi Meal Planner header
+   - Items organized by your selected sort mode
+   - Professional formatting for easy reading
+3. Save or print the PDF to take shopping
+
+#### Print Preview
+1. Click the **Print** button to open print preview
+2. Review the formatted list
+3. Print directly or save as PDF from your browser
 
 ---
 
@@ -703,7 +771,20 @@ Note: Generating new meal plans requires an internet connection.
 
 ## Version History
 
-### v2.0 (Current)
+### v2.2.0 (Current)
+- **Master Shopping List** - Consolidated shopping list from meal plans, recipes, staples, and pantry
+- **Supermarket Layouts** - Save custom store layouts with drag-and-drop category ordering
+- **Multiple Sort Modes** - Sort by source, category, or store layout
+- **Export to iOS Reminders** - Share shopping list to Reminders app
+- **Export to PDF** - Generate branded PDF shopping lists
+- **Print Preview** - Print-friendly shopping list view
+
+### v2.1.0
+- **Shopping List Selections** - Persist selected plans and recipes for shopping lists
+- **Checked Items Sync** - Remember checked-off items across sessions
+- **Database Integration** - Shopping list selections saved to cloud
+
+### v2.0.0
 - **Video Pantry Scanning** - Record or upload videos to scan your kitchen
 - **Voice Dictation** - Talk to the app to add pantry items in real-time
 - **Audio Upload** - Upload pre-recorded audio files for AI transcription
