@@ -17,6 +17,7 @@ const stepToPath: Record<AppStep, string> = {
   [AppStep.SAVED_PLANS]: '/saved-plans',
   [AppStep.SINGLE_RECIPE]: '/recipe',
   [AppStep.SHOPPING_LIST]: '/shopping-list',
+  [AppStep.FEATURES]: '/features',
 };
 
 // Check if current URL is an OAuth callback

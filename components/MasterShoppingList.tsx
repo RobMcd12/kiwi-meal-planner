@@ -39,7 +39,7 @@ interface ShoppingItem {
   originalItem?: PantryItem;
 }
 
-type SortMode = 'source' | 'category' | 'layout';
+type SortMode = 'list' | 'category' | 'supermarket';
 
 const MasterShoppingList: React.FC<MasterShoppingListProps> = ({
   onBack,
@@ -68,13 +68,17 @@ const MasterShoppingList: React.FC<MasterShoppingListProps> = ({
   const printRef = useRef<HTMLDivElement>(null);
 
   // Sorting & Layout state
-  const [sortMode, setSortMode] = useState<SortMode>('source');
+  const [sortMode, setSortMode] = useState<SortMode>('list');
   const [layouts, setLayouts] = useState<SupermarketLayout[]>([]);
   const [selectedLayoutId, setSelectedLayoutId] = useState<string | null>(null);
   const [editingLayout, setEditingLayout] = useState<SupermarketLayout | null>(null);
   const [newLayoutName, setNewLayoutName] = useState('');
   const [editingCategories, setEditingCategories] = useState<string[]>([]);
   const [draggedCategoryIndex, setDraggedCategoryIndex] = useState<number | null>(null);
+
+  // Drag-and-drop for items in list mode
+  const [draggedItemIndex, setDraggedItemIndex] = useState<number | null>(null);
+  const [customItemOrder, setCustomItemOrder] = useState<string[]>([]); // Array of item IDs in custom order
 
   // Save selections to database
   const saveSelections = useCallback(async (planIds: Set<string>, recipeIds: Set<string>, checked: Set<string>) => {
@@ -326,19 +330,56 @@ const MasterShoppingList: React.FC<MasterShoppingListProps> = ({
 
   // Get sorted items based on sort mode
   const getSortedItems = useCallback(() => {
-    if (sortMode === 'source') {
-      // Original grouping by source type
+    if (sortMode === 'list') {
+      // Simple list view - items in custom order or default order
+      let orderedItems: ShoppingItem[];
+      if (customItemOrder.length > 0) {
+        // Sort by custom order
+        const orderMap = new Map(customItemOrder.map((id, idx) => [id, idx]));
+        orderedItems = [...items].sort((a, b) => {
+          const orderA = orderMap.get(a.id) ?? 999;
+          const orderB = orderMap.get(b.id) ?? 999;
+          return orderA - orderB;
+        });
+      } else {
+        orderedItems = items;
+      }
       return {
-        mode: 'source' as const,
-        groups: [
-          { title: 'Staples to Restock', items: items.filter(i => i.source === 'staple'), color: 'amber' },
-          { title: 'Pantry Items to Restock', items: items.filter(i => i.source === 'pantry'), color: 'green' },
-          { title: 'Ingredients', items: items.filter(i => i.source === 'plan' || i.source === 'recipe'), color: 'indigo' }
-        ].filter(g => g.items.length > 0)
+        mode: 'list' as const,
+        groups: [{ title: 'Shopping List', items: orderedItems, color: 'slate' }]
       };
     }
 
-    // Group by category
+    if (sortMode === 'category') {
+      // Group by category with default category order
+      const categoryMap = new Map<string, ShoppingItem[]>();
+      items.forEach(item => {
+        const cat = item.category || 'Other';
+        if (!categoryMap.has(cat)) {
+          categoryMap.set(cat, []);
+        }
+        categoryMap.get(cat)!.push(item);
+      });
+
+      const sortedCategories = Array.from(categoryMap.keys()).sort((a, b) => {
+        const indexA = DEFAULT_CATEGORIES.findIndex(c => c.toLowerCase() === a.toLowerCase());
+        const indexB = DEFAULT_CATEGORIES.findIndex(c => c.toLowerCase() === b.toLowerCase());
+        const orderA = indexA === -1 ? 999 : indexA;
+        const orderB = indexB === -1 ? 999 : indexB;
+        return orderA - orderB;
+      });
+
+      return {
+        mode: 'category' as const,
+        groups: sortedCategories.map(cat => ({
+          title: cat,
+          items: categoryMap.get(cat) || [],
+          color: 'slate'
+        }))
+      };
+    }
+
+    // Supermarket mode - group by category using selected layout order
     const categoryMap = new Map<string, ShoppingItem[]>();
     items.forEach(item => {
       const cat = item.category || 'Other';
@@ -348,16 +389,16 @@ const MasterShoppingList: React.FC<MasterShoppingListProps> = ({
       categoryMap.get(cat)!.push(item);
     });
 
-    // Get category order
+    // Get category order from selected layout
     let categoryOrder: string[];
-    if (sortMode === 'layout' && selectedLayoutId) {
+    if (selectedLayoutId) {
       const layout = layouts.find(l => l.id === selectedLayoutId);
       categoryOrder = layout?.categoryOrder || DEFAULT_CATEGORIES;
     } else {
       categoryOrder = DEFAULT_CATEGORIES;
     }
 
-    // Sort categories by order
+    // Sort categories by layout order
     const sortedCategories = Array.from(categoryMap.keys()).sort((a, b) => {
       const indexA = categoryOrder.findIndex(c => c.toLowerCase() === a.toLowerCase());
       const indexB = categoryOrder.findIndex(c => c.toLowerCase() === b.toLowerCase());
@@ -367,14 +408,14 @@ const MasterShoppingList: React.FC<MasterShoppingListProps> = ({
     });
 
     return {
-      mode: 'category' as const,
+      mode: 'supermarket' as const,
       groups: sortedCategories.map(cat => ({
         title: cat,
         items: categoryMap.get(cat) || [],
         color: 'slate'
       }))
     };
-  }, [items, sortMode, selectedLayoutId, layouts]);
+  }, [items, sortMode, selectedLayoutId, layouts, customItemOrder]);
 
   const sortedData = getSortedItems();
 
@@ -424,7 +465,7 @@ const MasterShoppingList: React.FC<MasterShoppingListProps> = ({
       setLayouts(layouts.filter(l => l.id !== layoutId));
       if (selectedLayoutId === layoutId) {
         setSelectedLayoutId(null);
-        setSortMode('source');
+        setSortMode('list');
       }
     }
   };
@@ -470,6 +511,39 @@ const MasterShoppingList: React.FC<MasterShoppingListProps> = ({
   const removeCategoryFromLayout = (index: number) => {
     setEditingCategories(editingCategories.filter((_, i) => i !== index));
   };
+
+  // Item drag handlers for list mode
+  const handleItemDragStart = (e: React.DragEvent, index: number, itemId: string) => {
+    setDraggedItemIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', itemId);
+  };
+
+  const handleItemDragOver = (e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    if (draggedItemIndex === null || draggedItemIndex === index) return;
+
+    // Get current order
+    const currentOrder = customItemOrder.length > 0
+      ? [...customItemOrder]
+      : items.map(i => i.id);
+
+    const [removed] = currentOrder.splice(draggedItemIndex, 1);
+    currentOrder.splice(index, 0, removed);
+    setCustomItemOrder(currentOrder);
+    setDraggedItemIndex(index);
+  };
+
+  const handleItemDragEnd = () => {
+    setDraggedItemIndex(null);
+  };
+
+  // Initialize custom order when items change (if not already set)
+  useEffect(() => {
+    if (items.length > 0 && customItemOrder.length === 0) {
+      // Don't auto-initialize - let user reorder from default
+    }
+  }, [items, customItemOrder.length]);
 
   // Generate plain text list for sharing
   const generateListText = () => {
@@ -955,15 +1029,16 @@ const MasterShoppingList: React.FC<MasterShoppingListProps> = ({
       {/* Sort Mode & Layout Selector */}
       {items.length > 0 && (
         <div className="flex flex-wrap items-center gap-2 mb-4">
-          <span className="text-sm text-slate-500">Sort by:</span>
+          <span className="text-sm text-slate-500">View:</span>
           <div className="flex bg-slate-100 rounded-lg p-1">
             <button
-              onClick={() => setSortMode('source')}
-              className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
-                sortMode === 'source' ? 'bg-white shadow text-slate-800' : 'text-slate-500 hover:text-slate-700'
+              onClick={() => setSortMode('list')}
+              className={`px-3 py-1.5 text-sm rounded-md transition-colors flex items-center gap-1 ${
+                sortMode === 'list' ? 'bg-white shadow text-slate-800' : 'text-slate-500 hover:text-slate-700'
               }`}
             >
-              Source
+              <LayoutList size={14} />
+              List
             </button>
             <button
               onClick={() => setSortMode('category')}
@@ -973,31 +1048,42 @@ const MasterShoppingList: React.FC<MasterShoppingListProps> = ({
             >
               Category
             </button>
-            {layouts.length > 0 && (
-              <button
-                onClick={() => setSortMode('layout')}
-                className={`px-3 py-1.5 text-sm rounded-md transition-colors flex items-center gap-1 ${
-                  sortMode === 'layout' ? 'bg-white shadow text-slate-800' : 'text-slate-500 hover:text-slate-700'
-                }`}
-              >
-                <Store size={14} />
-                Store Layout
-              </button>
-            )}
+            <button
+              onClick={() => setSortMode('supermarket')}
+              className={`px-3 py-1.5 text-sm rounded-md transition-colors flex items-center gap-1 ${
+                sortMode === 'supermarket' ? 'bg-white shadow text-slate-800' : 'text-slate-500 hover:text-slate-700'
+              }`}
+            >
+              <Store size={14} />
+              Supermarket
+            </button>
           </div>
 
-          {sortMode === 'layout' && layouts.length > 0 && (
-            <select
-              value={selectedLayoutId || ''}
-              onChange={(e) => setSelectedLayoutId(e.target.value)}
-              className="px-3 py-1.5 text-sm border border-slate-200 rounded-lg bg-white"
-            >
-              {layouts.map(layout => (
-                <option key={layout.id} value={layout.id}>
-                  {layout.name} {layout.isDefault ? '(Default)' : ''}
-                </option>
-              ))}
-            </select>
+          {sortMode === 'supermarket' && (
+            <>
+              {layouts.length > 0 ? (
+                <select
+                  value={selectedLayoutId || ''}
+                  onChange={(e) => setSelectedLayoutId(e.target.value)}
+                  className="px-3 py-1.5 text-sm border border-slate-200 rounded-lg bg-white"
+                >
+                  {layouts.map(layout => (
+                    <option key={layout.id} value={layout.id}>
+                      {layout.name} {layout.isDefault ? '(Default)' : ''}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <span className="text-xs text-slate-400">No layouts - using default order</span>
+              )}
+            </>
+          )}
+
+          {sortMode === 'list' && (
+            <span className="text-xs text-slate-400 flex items-center gap-1">
+              <GripVertical size={12} />
+              Drag items to reorder
+            </span>
           )}
 
           <button
@@ -1027,40 +1113,42 @@ const MasterShoppingList: React.FC<MasterShoppingListProps> = ({
         <div className="space-y-6">
           {/* Dynamic groups based on sort mode */}
           {sortedData.groups.map((group, groupIndex) => {
-            const getGroupColors = () => {
-              if (sortMode === 'source') {
-                switch (group.title) {
-                  case 'Staples to Restock': return { bg: 'bg-amber-50', border: 'border-amber-200', headerBg: 'bg-amber-100', text: 'text-amber-800', accent: 'text-amber-600', checkBg: 'bg-amber-500', checkBorder: 'border-amber-500', uncheckedBorder: 'border-amber-300 hover:border-amber-500' };
-                  case 'Pantry Items to Restock': return { bg: 'bg-green-50', border: 'border-green-200', headerBg: 'bg-green-100', text: 'text-green-800', accent: 'text-green-600', checkBg: 'bg-green-500', checkBorder: 'border-green-500', uncheckedBorder: 'border-green-300 hover:border-green-500' };
-                  default: return { bg: 'bg-white', border: 'border-slate-200', headerBg: 'bg-slate-50', text: 'text-slate-700', accent: 'text-slate-500', checkBg: 'bg-emerald-500', checkBorder: 'border-emerald-500', uncheckedBorder: 'border-slate-300 hover:border-emerald-500' };
-                }
-              }
-              // Category/Layout mode - use consistent styling
-              return { bg: 'bg-white', border: 'border-slate-200', headerBg: 'bg-slate-50', text: 'text-slate-700', accent: 'text-slate-500', checkBg: 'bg-emerald-500', checkBorder: 'border-emerald-500', uncheckedBorder: 'border-slate-300 hover:border-emerald-500' };
-            };
+            const colors = { bg: 'bg-white', border: 'border-slate-200', headerBg: 'bg-slate-50', text: 'text-slate-700', accent: 'text-slate-500', checkBg: 'bg-emerald-500', checkBorder: 'border-emerald-500', uncheckedBorder: 'border-slate-300 hover:border-emerald-500' };
 
-            const colors = getGroupColors();
             const uncheckedCount = group.items.filter(i => !checkedItems.has(i.id)).length;
 
             return (
               <div key={`${group.title}-${groupIndex}`} className={`${colors.bg} rounded-xl border ${colors.border} overflow-hidden`}>
-                <div className={`px-4 py-3 ${colors.headerBg} border-b ${colors.border} flex items-center gap-2`}>
-                  {sortMode === 'source' && group.title === 'Staples to Restock' && <Star size={18} className={colors.accent} fill="currentColor" />}
-                  {sortMode !== 'source' && <LayoutList size={18} className={colors.accent} />}
-                  {(sortMode === 'source' && group.title !== 'Staples to Restock') && <Package size={18} className={colors.accent} />}
-                  <h3 className={`font-semibold ${colors.text}`}>{group.title}</h3>
-                  <span className={`ml-auto text-sm ${colors.accent}`}>
-                    {uncheckedCount} items
-                  </span>
-                </div>
+                {/* Only show header for category/supermarket modes, or if it's not the main list group */}
+                {(sortMode !== 'list' || group.title !== 'Shopping List') && (
+                  <div className={`px-4 py-3 ${colors.headerBg} border-b ${colors.border} flex items-center gap-2`}>
+                    {sortMode === 'list' && <LayoutList size={18} className={colors.accent} />}
+                    {sortMode === 'category' && <Package size={18} className={colors.accent} />}
+                    {sortMode === 'supermarket' && <Store size={18} className={colors.accent} />}
+                    <h3 className={`font-semibold ${colors.text}`}>{group.title}</h3>
+                    <span className={`ml-auto text-sm ${colors.accent}`}>
+                      {uncheckedCount} items
+                    </span>
+                  </div>
+                )}
                 <div className="divide-y divide-slate-100">
-                  {group.items.map(item => (
+                  {group.items.map((item, itemIndex) => (
                     <div
                       key={item.id}
+                      draggable={sortMode === 'list'}
+                      onDragStart={sortMode === 'list' ? (e) => handleItemDragStart(e, itemIndex, item.id) : undefined}
+                      onDragOver={sortMode === 'list' ? (e) => handleItemDragOver(e, itemIndex) : undefined}
+                      onDragEnd={sortMode === 'list' ? handleItemDragEnd : undefined}
                       className={`flex items-center gap-3 px-4 py-3 transition-all ${
                         checkedItems.has(item.id) ? 'bg-slate-50/50 opacity-60' : 'bg-white'
+                      } ${sortMode === 'list' ? 'cursor-move' : ''} ${
+                        draggedItemIndex === itemIndex ? 'opacity-50 bg-emerald-50' : ''
                       }`}
                     >
+                      {/* Drag handle for list mode */}
+                      {sortMode === 'list' && (
+                        <GripVertical size={16} className="text-slate-300 flex-shrink-0" />
+                      )}
                       <button
                         onClick={() => toggleItem(item.id)}
                         className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-colors flex-shrink-0 ${
@@ -1084,12 +1172,21 @@ const MasterShoppingList: React.FC<MasterShoppingListProps> = ({
                             </span>
                           )}
                         </span>
-                        {item.sourceName && sortMode === 'source' && (
-                          <span className={`text-xs ${item.source === 'plan' ? 'text-indigo-500' : 'text-rose-500'}`}>
-                            {item.source === 'plan' ? 'Plan: ' : 'Recipe: '}{item.sourceName}
+                        {/* Show source info in list mode */}
+                        {sortMode === 'list' && (
+                          <span className="text-xs text-slate-400">
+                            {item.source === 'staple' && 'Staple to restock'}
+                            {item.source === 'pantry' && 'Pantry to restock'}
+                            {item.source === 'plan' && `From plan: ${item.sourceName}`}
+                            {item.source === 'recipe' && `From recipe: ${item.sourceName}`}
                           </span>
                         )}
-                        {sortMode !== 'source' && (
+                        {/* Show category in list mode */}
+                        {sortMode === 'list' && item.category && (
+                          <span className="text-xs text-slate-300 ml-2">• {item.category}</span>
+                        )}
+                        {/* Show source in category/supermarket modes */}
+                        {(sortMode === 'category' || sortMode === 'supermarket') && (
                           <span className="text-xs text-slate-400">
                             {item.source === 'staple' && 'Staple'}
                             {item.source === 'pantry' && 'Pantry'}

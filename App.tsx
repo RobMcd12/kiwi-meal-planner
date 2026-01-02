@@ -9,6 +9,7 @@ import FavoritesView from './components/FavoritesView';
 import SettingsView from './components/SettingsView';
 import AuthScreen from './components/AuthScreen';
 import LandingPage from './components/LandingPage';
+import FeaturesPage from './components/FeaturesPage';
 import AdminDashboard from './components/AdminDashboard';
 import MyFeedback from './components/MyFeedback';
 import SavedPlansView from './components/SavedPlansView';
@@ -43,7 +44,7 @@ import { getNewResponseCount } from './services/feedbackService';
 import { getSubscriptionState } from './services/subscriptionService';
 import { getUserProfile } from './services/profileService';
 import type { SubscriptionState } from './types';
-import { ChefHat, Settings, LogOut, User, Shield, MessageSquare, Bell, HelpCircle, Menu, X, CalendarPlus, BookHeart, FolderHeart, Sparkles, UserCircle, RefreshCw } from 'lucide-react';
+import { ChefHat, Settings, LogOut, User, Shield, MessageSquare, Bell, HelpCircle, Menu, X, CalendarPlus, BookHeart, FolderHeart, Sparkles, UserCircle, RefreshCw, List } from 'lucide-react';
 import HelpModal from './components/HelpModal';
 
 // --- Default States ---
@@ -379,6 +380,17 @@ const AppContent: React.FC = () => {
           <LandingPage
             onGetStarted={() => setStep(AppStep.AUTH)}
             onLogin={() => setStep(AppStep.AUTH)}
+            onViewFeatures={() => setStep(AppStep.FEATURES)}
+          />
+        );
+
+      case AppStep.FEATURES:
+        return (
+          <FeaturesPage
+            onBack={() => setStep(isAuthenticated ? AppStep.WELCOME : AppStep.LANDING)}
+            onGetStarted={() => setStep(AppStep.AUTH)}
+            onLogin={() => setStep(AppStep.AUTH)}
+            isAuthenticated={isAuthenticated}
           />
         );
 
@@ -536,8 +548,8 @@ const AppContent: React.FC = () => {
     }
   };
 
-  // Landing and Auth pages have their own layout
-  if (step === AppStep.LANDING || step === AppStep.AUTH) {
+  // Landing, Auth, and Features pages have their own layout
+  if (step === AppStep.LANDING || step === AppStep.AUTH || step === AppStep.FEATURES) {
     return (
       <div className="min-h-screen">
         {renderStep()}
@@ -618,6 +630,15 @@ const AppContent: React.FC = () => {
                 )}
               </button>
             )}
+
+            {/* Features link */}
+            <button
+              onClick={() => setStep(AppStep.FEATURES)}
+              className="text-slate-400 hover:text-slate-700 transition-colors p-1"
+              title="Features"
+            >
+              <List size={20} />
+            </button>
 
             {/* Help button */}
             <button
@@ -817,6 +838,13 @@ const AppContent: React.FC = () => {
               {/* Help & Feedback */}
               <div className="border-b border-slate-100 pb-3 mb-3">
                 <p className="text-xs font-medium text-slate-400 uppercase tracking-wide px-3 mb-2">Support</p>
+                <button
+                  onClick={() => { setStep(AppStep.FEATURES); setShowMobileMenu(false); }}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+                >
+                  <List size={20} className="text-emerald-600" />
+                  All Features
+                </button>
                 <button
                   onClick={() => { setShowHelpModal(true); setShowMobileMenu(false); }}
                   className="w-full flex items-center gap-3 px-3 py-2.5 text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"

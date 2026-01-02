@@ -9,9 +9,10 @@ type LegalPageType = 'privacy' | 'terms' | 'data' | null;
 interface LandingPageProps {
   onGetStarted: () => void;
   onLogin: () => void;
+  onViewFeatures: () => void;
 }
 
-const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin }) => {
+const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin, onViewFeatures }) => {
   const [showLegalPage, setShowLegalPage] = useState<LegalPageType>(null);
   const [subscriptionConfig, setSubscriptionConfig] = useState<SubscriptionConfig | null>(null);
 
@@ -39,12 +40,20 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin }) => {
               Kiwi<span className="text-emerald-600">MealPlanner</span>
             </span>
           </div>
-          <button
-            onClick={onLogin}
-            className="text-slate-600 hover:text-emerald-600 font-medium transition-colors"
-          >
-            Sign In
-          </button>
+          <div className="flex items-center gap-6">
+            <button
+              onClick={onViewFeatures}
+              className="text-slate-600 hover:text-emerald-600 font-medium transition-colors"
+            >
+              Features
+            </button>
+            <button
+              onClick={onLogin}
+              className="text-slate-600 hover:text-emerald-600 font-medium transition-colors"
+            >
+              Sign In
+            </button>
+          </div>
         </div>
       </header>
 
