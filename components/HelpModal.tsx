@@ -802,7 +802,6 @@ const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
           {/* Version Info */}
           <div className="text-center text-xs text-slate-400 pt-4 border-t border-slate-100">
             <p>Kiwi Meal Planner v1.0.8</p>
-            <p className="mt-1">Powered by Google Gemini AI</p>
           </div>
         </div>
 
