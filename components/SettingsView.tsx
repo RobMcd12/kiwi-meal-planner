@@ -296,6 +296,22 @@ const SettingsView: React.FC<SettingsViewProps> = ({
                                         />
                                     </div>
 
+                                    {/* Email (read-only) */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">
+                                            Email Address
+                                        </label>
+                                        <input
+                                            type="email"
+                                            value={user.email || ''}
+                                            disabled
+                                            className="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-100 text-slate-500 cursor-not-allowed"
+                                        />
+                                        <p className="text-xs text-slate-400 mt-1">
+                                            Email cannot be changed here. Contact support if you need to update your email.
+                                        </p>
+                                    </div>
+
                                     {/* Country Selection */}
                                     <div>
                                         <label className="block text-sm font-medium text-slate-700 mb-1">
@@ -381,10 +397,11 @@ const SettingsView: React.FC<SettingsViewProps> = ({
                                         </div>
                                         <button
                                             onClick={() => setIsEditingProfile(true)}
-                                            className="p-2 hover:bg-slate-200 rounded-lg transition-colors text-slate-600"
+                                            className="px-3 py-2 bg-blue-100 hover:bg-blue-200 rounded-lg transition-colors text-blue-700 flex items-center gap-2 font-medium text-sm"
                                             title="Edit profile"
                                         >
-                                            <Pencil size={18} />
+                                            <Pencil size={16} />
+                                            Edit
                                         </button>
                                     </div>
                                     {profileSaveSuccess && (
