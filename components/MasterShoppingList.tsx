@@ -545,57 +545,127 @@ const MasterShoppingList: React.FC<MasterShoppingListProps> = ({
     }
   }, [items, customItemOrder.length]);
 
-  // Generate plain text list for sharing
+  // Generate plain text list for sharing - organized by category for iOS Reminders
   const generateListText = () => {
-    const lines: string[] = ['SHOPPING LIST', ''];
+    // Get items grouped by category (use supermarket layout order if available)
+    const categoryMap = new Map<string, ShoppingItem[]>();
+    items.forEach(item => {
+      if (checkedItems.has(item.id)) return; // Skip checked items
+      const cat = item.category || 'Other';
+      if (!categoryMap.has(cat)) {
+        categoryMap.set(cat, []);
+      }
+      categoryMap.get(cat)!.push(item);
+    });
 
-    if (groupedItems.staples.length > 0) {
-      lines.push('STAPLES TO RESTOCK:');
-      groupedItems.staples.forEach(item => {
-        if (!checkedItems.has(item.id)) {
-          const qty = item.quantity && item.unit ? ` (${item.quantity} ${item.unit})` : '';
-          lines.push(`- [ ] ${item.name}${qty}`);
-        }
-      });
-      lines.push('');
+    // Get category order - prefer supermarket layout if in that mode
+    let categoryOrder: string[];
+    if (sortMode === 'supermarket' && selectedLayoutId) {
+      const layout = layouts.find(l => l.id === selectedLayoutId);
+      categoryOrder = layout?.categoryOrder || DEFAULT_CATEGORIES;
+    } else {
+      categoryOrder = DEFAULT_CATEGORIES;
     }
 
-    if (groupedItems.pantry.length > 0) {
-      lines.push('PANTRY ITEMS TO RESTOCK:');
-      groupedItems.pantry.forEach(item => {
-        if (!checkedItems.has(item.id)) {
-          const qty = item.quantity && item.unit ? ` (${item.quantity} ${item.unit})` : '';
-          lines.push(`- [ ] ${item.name}${qty}`);
+    // Sort categories by order
+    const sortedCategories = Array.from(categoryMap.keys()).sort((a, b) => {
+      const indexA = categoryOrder.findIndex(c => c.toLowerCase() === a.toLowerCase());
+      const indexB = categoryOrder.findIndex(c => c.toLowerCase() === b.toLowerCase());
+      const orderA = indexA === -1 ? 999 : indexA;
+      const orderB = indexB === -1 ? 999 : indexB;
+      return orderA - orderB;
+    });
+
+    const lines: string[] = [];
+
+    // For iOS Reminders: each line becomes a separate reminder item
+    // Section headers are marked with === to stand out
+    sortedCategories.forEach(category => {
+      const categoryItems = categoryMap.get(category) || [];
+      if (categoryItems.length === 0) return;
+
+      // Add section header
+      lines.push(`=== ${category.toUpperCase()} ===`);
+
+      // Add each item as a simple line (iOS Reminders will make each a checkable item)
+      categoryItems.forEach(item => {
+        let itemText = item.name;
+        if (item.quantity) {
+          itemText += ` (${item.quantity}${item.unit ? ` ${item.unit}` : ''})`;
         }
+        lines.push(itemText);
       });
-      lines.push('');
+
+      lines.push(''); // Empty line between sections
+    });
+
+    return lines.join('\n').trim();
+  };
+
+  // Generate simple list (one item per line) for iOS Reminders import
+  const generateRemindersText = () => {
+    // Get items grouped by category
+    const categoryMap = new Map<string, ShoppingItem[]>();
+    items.forEach(item => {
+      if (checkedItems.has(item.id)) return;
+      const cat = item.category || 'Other';
+      if (!categoryMap.has(cat)) {
+        categoryMap.set(cat, []);
+      }
+      categoryMap.get(cat)!.push(item);
+    });
+
+    // Get category order
+    let categoryOrder: string[];
+    if (sortMode === 'supermarket' && selectedLayoutId) {
+      const layout = layouts.find(l => l.id === selectedLayoutId);
+      categoryOrder = layout?.categoryOrder || DEFAULT_CATEGORIES;
+    } else {
+      categoryOrder = DEFAULT_CATEGORIES;
     }
 
-    if (groupedItems.planAndRecipe.length > 0) {
-      lines.push('INGREDIENTS:');
-      groupedItems.planAndRecipe.forEach(item => {
-        if (!checkedItems.has(item.id)) {
-          const qty = item.quantity ? ` (${item.quantity}${item.unit ? ` ${item.unit}` : ''})` : '';
-          lines.push(`- [ ] ${item.name}${qty}`);
+    const sortedCategories = Array.from(categoryMap.keys()).sort((a, b) => {
+      const indexA = categoryOrder.findIndex(c => c.toLowerCase() === a.toLowerCase());
+      const indexB = categoryOrder.findIndex(c => c.toLowerCase() === b.toLowerCase());
+      return (indexA === -1 ? 999 : indexA) - (indexB === -1 ? 999 : indexB);
+    });
+
+    const lines: string[] = [];
+
+    sortedCategories.forEach(category => {
+      const categoryItems = categoryMap.get(category) || [];
+      if (categoryItems.length === 0) return;
+
+      // Add category as a header item (will appear as first reminder in section)
+      lines.push(`📍 ${category}`);
+
+      categoryItems.forEach(item => {
+        let itemText = item.name;
+        if (item.quantity) {
+          itemText += ` - ${item.quantity}${item.unit ? ` ${item.unit}` : ''}`;
         }
+        lines.push(`  • ${itemText}`);
       });
-    }
+    });
 
     return lines.join('\n');
   };
 
   // Share/Export to iOS Reminders
   const handleShare = async () => {
-    const text = generateListText();
-    if (!text.includes('- [ ]')) {
+    // Check if there are any unchecked items
+    const uncheckedItems = items.filter(i => !checkedItems.has(i.id));
+    if (uncheckedItems.length === 0) {
       alert('All items are checked off!');
       return;
     }
 
+    const text = generateRemindersText();
+
     if (navigator.share) {
       try {
         await navigator.share({
-          title: 'Kiwi Meal Planner Shopping List',
+          title: 'Shopping List',
           text: text,
         });
       } catch (err) {

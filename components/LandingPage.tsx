@@ -43,7 +43,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin, onView
           <div className="flex items-center gap-6">
             <button
               onClick={onViewFeatures}
-              className="text-slate-600 hover:text-emerald-600 font-medium transition-colors"
+              className="hidden md:block text-slate-600 hover:text-emerald-600 font-medium transition-colors"
             >
               Features
             </button>
