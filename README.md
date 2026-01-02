@@ -87,8 +87,87 @@ See [MIGRATION_GUIDE.md](MIGRATION_GUIDE.md) for details.
 ├── contexts/           # React contexts
 ├── hooks/              # Custom hooks
 ├── supabase/           # Database migrations
+│   └── functions/      # Edge functions
 └── types.ts            # TypeScript types
 ```
+
+## Email Service
+
+The app includes an edge function for sending emails via [Resend](https://resend.com/).
+
+### Setup
+
+1. Create a Resend account and get your API key
+2. Add your domain `kiwimealplans.co.nz` to Resend and verify DNS records
+3. Set the secret in Supabase:
+   ```bash
+   npx supabase secrets set RESEND_API_KEY="re_xxxxx"
+   ```
+4. Deploy the function:
+   ```bash
+   npx supabase functions deploy send-email
+   ```
+
+### Usage
+
+The `send-email` function accepts POST requests with the following payload:
+
+```typescript
+interface EmailRequest {
+  to: string | string[];    // Recipient email(s)
+  subject: string;          // Email subject
+  html?: string;            // HTML content
+  text?: string;            // Plain text content (fallback)
+  replyTo?: string;         // Reply-to address (optional)
+}
+```
+
+### Example: Calling from Frontend
+
+```typescript
+import { supabase } from './services/authService';
+
+async function sendEmail(to: string, subject: string, html: string) {
+  const { data, error } = await supabase.functions.invoke('send-email', {
+    body: { to, subject, html }
+  });
+
+  if (error) throw error;
+  return data;
+}
+```
+
+### Example: Calling from Another Edge Function
+
+```typescript
+// Internal call using service role key
+const response = await fetch(
+  `${Deno.env.get('SUPABASE_URL')}/functions/v1/send-email`,
+  {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-service-key': Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '',
+    },
+    body: JSON.stringify({
+      to: 'user@example.com',
+      subject: 'Your Meal Plan is Ready!',
+      html: '<h1>Hello!</h1><p>Your weekly meal plan has been generated.</p>',
+    }),
+  }
+);
+```
+
+### Access Control
+
+- **Admin users**: Can send emails via authenticated requests
+- **Service calls**: Other edge functions can call using the service role key
+- **Regular users**: Cannot send emails directly (prevents abuse)
+
+### Sender Details
+
+- **From**: `Kiwi Meal Planner <noreply@kiwimealplans.co.nz>`
+- All emails are sent from this address to maintain brand consistency
 
 ## Styling Guidelines
 

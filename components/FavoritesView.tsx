@@ -631,22 +631,19 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({
             id: 'generated',
             label: 'AI Generated',
             icon: <Sparkles size={16} />,
-            color: 'emerald',
-            badge: generatedRecipes.length > 0 ? generatedRecipes.length : undefined
+            color: 'emerald'
           },
           {
             id: 'uploaded',
             label: 'My Uploads',
             icon: <Upload size={16} />,
-            color: 'purple',
-            badge: uploadedRecipes.length > 0 ? uploadedRecipes.length : undefined
+            color: 'purple'
           },
           {
             id: 'public',
             label: 'Public Recipes',
             icon: <Globe size={16} />,
-            color: 'blue',
-            badge: publicRecipes.length > 0 ? publicRecipes.length : undefined
+            color: 'blue'
           },
         ]}
         activeTab={activeTab}
