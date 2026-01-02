@@ -529,9 +529,12 @@ Extract the recipe name, a brief description, ingredients (with quantities), and
 };
 
 /**
- * Extract recipe from an image (photo of recipe card, cookbook page, screenshot)
+ * Extract recipe from one or more images (photo of recipe card, cookbook page, screenshot)
+ * Supports multi-page recipes by accepting an array of images
  */
-export const extractRecipeFromImage = async (base64Data: string, mimeType: string): Promise<ExtractedRecipe> => {
+export const extractRecipeFromImage = async (
+  images: { base64: string; mimeType: string }[]
+): Promise<ExtractedRecipe> => {
   const apiKey = process.env.API_KEY;
   if (!apiKey) throw new Error("API Key is missing.");
 
@@ -543,22 +546,26 @@ export const extractRecipeFromImage = async (base64Data: string, mimeType: strin
     ? `\n\nADDITIONAL INSTRUCTIONS:\n${adminInstructions.join('\n')}`
     : '';
 
+  // Build content array with all images
+  const contents: any[] = images.map((img, index) => ({
+    inlineData: {
+      mimeType: img.mimeType,
+      data: img.base64,
+    },
+  }));
+
+  // Add the extraction prompt at the end
+  const isMultiPage = images.length > 1;
+  contents.push({
+    text: `Extract the recipe from ${isMultiPage ? 'these images (they form a multi-page recipe - combine all content into a single recipe)' : 'this image'}. Return the recipe name, a brief description, ingredients list (with quantities), and step-by-step instructions. Also suggest relevant tags from: ${ALL_TAGS.join(", ")}
+${isMultiPage ? '\nIMPORTANT: These images show different pages of the SAME recipe. Combine all ingredients and instructions into a single complete recipe.' : ''}
+Return as JSON with fields: name, description, ingredients (array of strings), instructions (string), suggestedTags (array of strings).${adminInstructionsText}`
+  });
+
   try {
     const response = await ai.models.generateContent({
       model: "gemini-2.0-flash",
-      contents: [
-        {
-          inlineData: {
-            mimeType: mimeType,
-            data: base64Data,
-          },
-        },
-        {
-          text: `Extract the recipe from this image. Return the recipe name, a brief description, ingredients list (with quantities), and step-by-step instructions. Also suggest relevant tags from: ${ALL_TAGS.join(", ")}
-
-Return as JSON with fields: name, description, ingredients (array of strings), instructions (string), suggestedTags (array of strings).${adminInstructionsText}`
-        },
-      ],
+      contents: contents,
       config: {
         responseMimeType: "application/json",
         responseSchema: extractedRecipeSchema,

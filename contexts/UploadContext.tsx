@@ -6,7 +6,7 @@ import { useToast } from '../hooks/useToast';
 
 interface UploadContextType {
   uploads: UploadTask[];
-  startUpload: (file: File | string, type: 'image' | 'text' | 'pdf' | 'url') => Promise<string | null>;
+  startUpload: (file: File | File[] | string, type: 'image' | 'text' | 'pdf' | 'url') => Promise<string | null>;
   getUploadStatus: (id: string) => UploadTask | undefined;
   clearCompletedUploads: () => void;
   hasActiveUploads: boolean;
@@ -66,7 +66,7 @@ export const UploadProvider: React.FC<UploadProviderProps> = ({ children }) => {
    */
   const processUploadAsync = useCallback(async (
     taskId: string,
-    content: File | string,
+    content: File | File[] | string,
     type: 'image' | 'text' | 'pdf' | 'url',
     placeholderId: string
   ) => {
@@ -87,11 +87,20 @@ export const UploadProvider: React.FC<UploadProviderProps> = ({ children }) => {
         const file = content as File;
         const base64 = await fileToBase64(file);
         extracted = await extractRecipeFromPDF(base64);
+      } else if (type === 'image' && Array.isArray(content)) {
+        // Multiple images for multi-page recipe
+        const images = await Promise.all(
+          (content as File[]).map(async (file) => ({
+            base64: await fileToBase64(file),
+            mimeType: file.type
+          }))
+        );
+        extracted = await extractRecipeFromImage(images);
       } else {
-        // Image file
+        // Single image file (backwards compatibility)
         const file = content as File;
         const base64 = await fileToBase64(file);
-        extracted = await extractRecipeFromImage(base64, file.type);
+        extracted = await extractRecipeFromImage([{ base64, mimeType: file.type }]);
       }
 
       // Auto-tag the extracted recipe
@@ -147,15 +156,24 @@ export const UploadProvider: React.FC<UploadProviderProps> = ({ children }) => {
    * Returns the task ID or null if failed
    */
   const startUpload = useCallback(async (
-    content: File | string,
+    content: File | File[] | string,
     type: 'image' | 'text' | 'pdf' | 'url'
   ): Promise<string | null> => {
     const taskId = crypto.randomUUID();
-    const fileName = type === 'text'
-      ? 'Pasted Text'
-      : type === 'url'
-        ? `Recipe from ${new URL(content as string).hostname}`
-        : (content as File).name;
+    let fileName: string;
+
+    if (type === 'text') {
+      fileName = 'Pasted Text';
+    } else if (type === 'url') {
+      fileName = `Recipe from ${new URL(content as string).hostname}`;
+    } else if (Array.isArray(content)) {
+      // Multiple images - use first file name or indicate multi-page
+      fileName = content.length > 1
+        ? `Multi-page Recipe (${content.length} images)`
+        : content[0].name;
+    } else {
+      fileName = (content as File).name;
+    }
 
     // Add to uploads state immediately
     setUploads(prev => [...prev, {

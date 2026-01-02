@@ -39,7 +39,7 @@ import { getNewResponseCount } from './services/feedbackService';
 import { getSubscriptionState } from './services/subscriptionService';
 import { getUserProfile } from './services/profileService';
 import type { SubscriptionState } from './types';
-import { ChefHat, Settings, LogOut, User, Shield, MessageSquare, Bell, HelpCircle, Menu, X, CalendarPlus, BookHeart, FolderHeart, Sparkles, UserCircle } from 'lucide-react';
+import { ChefHat, Settings, LogOut, User, Shield, MessageSquare, Bell, HelpCircle, Menu, X, CalendarPlus, BookHeart, FolderHeart, Sparkles, UserCircle, RefreshCw } from 'lucide-react';
 import HelpModal from './components/HelpModal';
 
 // --- Default States ---
@@ -802,6 +802,13 @@ const AppContent: React.FC = () => {
                 >
                   <HelpCircle size={20} className="text-slate-500" />
                   Help & Guide
+                </button>
+                <button
+                  onClick={() => { window.location.reload(); }}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+                >
+                  <RefreshCw size={20} className="text-slate-500" />
+                  Refresh App
                 </button>
                 {isAuthenticated && (
                   <button
