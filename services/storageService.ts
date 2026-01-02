@@ -345,29 +345,61 @@ export const savePantry = async (items: PantryItem[]): Promise<void> => {
   savePantryLocal(items);
 };
 
-// Update a pantry item's staple status
-export const updatePantryItemStaple = async (id: string, isStaple: boolean): Promise<boolean> => {
+// Update a pantry item's staple status with optional category transfer
+// Returns the new category ID if category was transferred, or undefined
+export const updatePantryItemStaple = async (
+  id: string,
+  isStaple: boolean,
+  categoryName?: string
+): Promise<{ success: boolean; newCategoryId?: string }> => {
   if (!isSupabaseConfigured()) {
     const items = loadPantryLocal();
     const updated = items.map(item =>
-      item.id === id ? { ...item, isStaple, needsRestock: isStaple ? item.needsRestock : false } : item
+      item.id === id ? { ...item, isStaple, needsRestock: isStaple ? item.needsRestock : false, categoryId: undefined } : item
     );
     savePantryLocal(updated);
-    return true;
+    return { success: true };
   }
 
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
     const items = loadPantryLocal();
     const updated = items.map(item =>
-      item.id === id ? { ...item, isStaple, needsRestock: isStaple ? item.needsRestock : false } : item
+      item.id === id ? { ...item, isStaple, needsRestock: isStaple ? item.needsRestock : false, categoryId: undefined } : item
     );
     savePantryLocal(updated);
-    return true;
+    return { success: true };
   }
 
-  // Build update object - set needs_restock to false when removing staple status
-  const updateData: { is_staple: boolean; needs_restock?: boolean } = { is_staple: isStaple };
+  let newCategoryId: string | undefined = undefined;
+
+  // If item has a category, find or create matching category in destination tab
+  if (categoryName) {
+    // First, check if a category with the same name already exists in the destination tab
+    const { data: existingCategory } = await supabase
+      .from('pantry_categories')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('name', categoryName)
+      .eq('is_staple_category', isStaple)
+      .single();
+
+    if (existingCategory) {
+      newCategoryId = existingCategory.id;
+    } else {
+      // Create a new category in the destination tab
+      const newCategory = await createPantryCategory(categoryName, isStaple);
+      if (newCategory) {
+        newCategoryId = newCategory.id;
+      }
+    }
+  }
+
+  // Build update object
+  const updateData: { is_staple: boolean; needs_restock?: boolean; category_id: string | null } = {
+    is_staple: isStaple,
+    category_id: newCategoryId || null
+  };
   if (!isStaple) {
     updateData.needs_restock = false;
   }
@@ -380,9 +412,9 @@ export const updatePantryItemStaple = async (id: string, isStaple: boolean): Pro
 
   if (error) {
     console.error('Error updating pantry item staple status:', error);
-    return false;
+    return { success: false };
   }
-  return true;
+  return { success: true, newCategoryId };
 };
 
 // Update a pantry item's quantity and unit

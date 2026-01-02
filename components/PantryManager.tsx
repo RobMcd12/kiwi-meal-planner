@@ -114,13 +114,13 @@ const PantryManager: React.FC<PantryManagerProps> = ({ items, setItems, onNext, 
     setShowScanner(false);
   };
 
-  const toggleStaple = async (id: string, currentStaple: boolean) => {
+  const toggleStaple = async (id: string, currentStaple: boolean, categoryName?: string) => {
     const newIsStaple = !currentStaple;
-    const success = await updatePantryItemStaple(id, newIsStaple);
-    if (success) {
+    const result = await updatePantryItemStaple(id, newIsStaple, categoryName);
+    if (result.success) {
       setItems(items.map(item =>
         item.id === id
-          ? { ...item, isStaple: newIsStaple, needsRestock: newIsStaple ? item.needsRestock : false }
+          ? { ...item, isStaple: newIsStaple, needsRestock: newIsStaple ? item.needsRestock : false, categoryId: result.newCategoryId }
           : item
       ));
     }
@@ -338,7 +338,7 @@ const PantryManager: React.FC<PantryManagerProps> = ({ items, setItems, onNext, 
               setItems={setItems}
               isStaple={false}
               onItemClick={(item) => setEditingItem(item)}
-              onToggleStaple={(id, isStaple) => toggleStaple(id, isStaple)}
+              onToggleStaple={(id, isStaple, categoryName) => toggleStaple(id, isStaple, categoryName)}
               onToggleRestock={(id, needsRestock) => toggleRestock(id, needsRestock)}
               onRemoveItem={removeItem}
               formatQuantity={formatQuantity}
@@ -426,7 +426,7 @@ const PantryManager: React.FC<PantryManagerProps> = ({ items, setItems, onNext, 
               setItems={setItems}
               isStaple={true}
               onItemClick={(item) => setEditingItem(item)}
-              onToggleStaple={(id, isStaple) => toggleStaple(id, isStaple)}
+              onToggleStaple={(id, isStaple, categoryName) => toggleStaple(id, isStaple, categoryName)}
               onToggleRestock={(id, needsRestock) => toggleRestock(id, needsRestock)}
               onRemoveItem={removeItem}
               formatQuantity={formatQuantity}

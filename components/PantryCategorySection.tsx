@@ -10,7 +10,7 @@ interface PantryCategorySectionProps {
   onDeleteCategory: (categoryId: string) => void;
   onRenameCategory: (categoryId: string, newName: string) => void;
   onItemClick: (item: PantryItem) => void;
-  onToggleStaple: (itemId: string, isStaple: boolean) => void;
+  onToggleStaple: (itemId: string, isStaple: boolean, categoryName?: string) => void;
   onToggleRestock: (itemId: string, needsRestock: boolean) => void;
   onRemoveItem: (itemId: string) => void;
   formatQuantity: (item: PantryItem) => string | null;
@@ -259,7 +259,7 @@ const PantryCategorySection: React.FC<PantryCategorySectionProps> = ({
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
-                    onToggleStaple(item.id, item.isStaple || false);
+                    onToggleStaple(item.id, item.isStaple || false, category?.name);
                   }}
                   className={`p-1 rounded ${
                     isStaple

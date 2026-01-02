@@ -16,7 +16,7 @@ interface PantryCategorizedListProps {
   setItems: React.Dispatch<React.SetStateAction<PantryItem[]>>;
   isStaple: boolean;
   onItemClick: (item: PantryItem) => void;
-  onToggleStaple: (itemId: string, isStaple: boolean) => void;
+  onToggleStaple: (itemId: string, isStaple: boolean, categoryName?: string) => void;
   onToggleRestock: (itemId: string, needsRestock: boolean) => void;
   onRemoveItem: (itemId: string) => void;
   formatQuantity: (item: PantryItem) => string | null;
