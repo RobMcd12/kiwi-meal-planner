@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ChefHat, Sparkles, ShoppingCart, Heart, ArrowRight, Camera, Package, Upload, Apple, Users, SlidersHorizontal, Video, Mic, Crown, Check, Infinity, Timer, Volume2, MessageSquare } from 'lucide-react';
+import { ChefHat, Sparkles, ShoppingCart, Heart, ArrowRight, Camera, Package, Upload, Apple, Users, SlidersHorizontal, Video, Mic, Crown, Check, Infinity, Timer, Volume2, MessageSquare, AlertTriangle } from 'lucide-react';
 import LegalPages from './LegalPages';
 import { getSubscriptionConfig, formatPrice } from '../services/subscriptionService';
 import type { SubscriptionConfig } from '../types';
@@ -214,6 +214,16 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin }) => {
               <h3 className="text-lg font-bold text-slate-800 mb-2">Use What I Have</h3>
               <p className="text-slate-600 text-sm">
                 Generate recipes that prioritize your existing ingredients.
+              </p>
+            </div>
+
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow">
+              <div className="bg-red-100 w-12 h-12 rounded-xl flex items-center justify-center mb-4">
+                <AlertTriangle className="text-red-600" size={24} />
+              </div>
+              <h3 className="text-lg font-bold text-slate-800 mb-2">Allergy Safe</h3>
+              <p className="text-slate-600 text-sm">
+                Set dietary restrictions and allergies. AI automatically avoids unsafe ingredients.
               </p>
             </div>
 
