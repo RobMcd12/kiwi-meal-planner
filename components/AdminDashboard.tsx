@@ -1277,7 +1277,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
             <Settings className="text-blue-600 flex-shrink-0 mt-0.5" size={20} />
             <div>
               <p className="text-blue-800 font-medium">How Instructions Work</p>
-              <p className="text-blue-700 text-sm">Instructions are automatically applied to AI prompts based on their category. Assign each instruction to one or more AI features: <strong>Meal Planner</strong>, <strong>Recipe Generation</strong>, <strong>Pantry Scanning</strong>, or <strong>Cookbook Video</strong>.</p>
+              <p className="text-blue-700 text-sm">Instructions are automatically applied to AI prompts based on their category. Assign each instruction to one or more AI features: <strong>Meal Planner</strong>, <strong>Recipe Generation</strong>, or <strong>Pantry Scanning</strong>.</p>
             </div>
           </div>
 
@@ -1304,7 +1304,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
                 <option value="meal_planner">Meal Planner</option>
                 <option value="recipe_generation">Recipe Generation</option>
                 <option value="pantry_scanning">Pantry Scanning</option>
-                <option value="video_generation">Cookbook Video</option>
+                {/* <option value="video_generation">Cookbook Video</option> - Hidden until video API is configured */}
               </select>
             </div>
           </div>
@@ -1502,7 +1502,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
                         { value: 'meal_planner', label: 'Meal Planner', description: 'Weekly meal plan generation' },
                         { value: 'recipe_generation', label: 'Recipe Generation', description: 'Creating new recipes from ingredients' },
                         { value: 'pantry_scanning', label: 'Pantry Scanning', description: 'Detecting items from photos' },
-                        { value: 'video_generation', label: 'Cookbook Video', description: 'AI-generated cooking videos' },
+                        // { value: 'video_generation', label: 'Cookbook Video', description: 'AI-generated cooking videos' }, - Hidden until video API is configured
                       ] as const).map((category) => (
                         <label
                           key={category.value}
