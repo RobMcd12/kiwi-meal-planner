@@ -290,7 +290,7 @@ export interface UploadTask {
 }
 
 export type RecipeSource = 'generated' | 'uploaded';
-export type CookbookTab = 'generated' | 'uploaded' | 'public';
+export type CookbookTab = 'all' | 'generated' | 'uploaded' | 'public';
 
 // ============================================
 // SAVED MEAL PLANS

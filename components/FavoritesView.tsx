@@ -67,7 +67,7 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({
   const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User';
 
   // Tab and view state
-  const [activeTab, setActiveTab] = useState<CookbookTab>('generated');
+  const [activeTab, setActiveTab] = useState<CookbookTab>('all');
   const [viewMode, setViewMode] = useState<ViewMode>('cards');
 
   // Recipe data
@@ -244,7 +244,16 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({
   // Get current recipes based on tab
   const currentRecipes = useMemo(() => {
     let recipes: Meal[] = [];
-    if (activeTab === 'generated') recipes = generatedRecipes;
+    if (activeTab === 'all') {
+      // Combine all recipes, avoiding duplicates by id
+      const seen = new Set<string>();
+      [...generatedRecipes, ...uploadedRecipes].forEach(r => {
+        if (!seen.has(r.id)) {
+          seen.add(r.id);
+          recipes.push(r);
+        }
+      });
+    } else if (activeTab === 'generated') recipes = generatedRecipes;
     else if (activeTab === 'uploaded') recipes = uploadedRecipes;
     else if (activeTab === 'public') recipes = publicRecipes;
 
@@ -268,11 +277,9 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({
 
   const handleDelete = async (id: string, name: string) => {
     await removeFavoriteMeal(name);
-    if (activeTab === 'generated') {
-      setGeneratedRecipes(prev => prev.filter(m => m.id !== id));
-    } else if (activeTab === 'uploaded') {
-      setUploadedRecipes(prev => prev.filter(m => m.id !== id));
-    }
+    // Remove from both lists (in case it appears in both or we're on 'all' tab)
+    setGeneratedRecipes(prev => prev.filter(m => m.id !== id));
+    setUploadedRecipes(prev => prev.filter(m => m.id !== id));
     setSelectedMeals(prev => prev.filter(n => n !== name));
     if (openMeal?.id === id) {
       setOpenMeal(null);
@@ -704,6 +711,12 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({
       <ResponsiveTabs
         tabs={[
           {
+            id: 'all',
+            label: 'All Recipes',
+            icon: <Heart size={16} />,
+            color: 'default'
+          },
+          {
             id: 'generated',
             label: 'AI Generated',
             icon: <Sparkles size={16} />,
@@ -725,7 +738,7 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({
         activeTab={activeTab}
         onTabChange={(tabId) => setActiveTab(tabId as CookbookTab)}
         variant="solid-pill"
-        visibleCount={3}
+        visibleCount={4}
         loadingTabId={hasActiveUploads ? 'uploaded' : undefined}
         className="mb-4"
       />
