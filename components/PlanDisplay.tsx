@@ -3,6 +3,7 @@ import { MealPlanResponse, Meal, ShoppingCategory, Ingredient } from '../types';
 import { Calendar, ShoppingCart, ChevronDown, ChevronUp, ExternalLink, Check, RefreshCw, Heart, Loader2, Clock, ChefHat, Image as ImageIcon, Share, LayoutGrid, List, Save, CheckCircle, X, GripVertical } from 'lucide-react';
 import { saveFavoriteMeal, removeFavoriteMeal, getFavoriteMeals, saveCheckedItems, loadCheckedItems, getCachedImage, cacheImage, saveMealPlan } from '../services/storageService';
 import { generateDishImage } from '../services/geminiService';
+import { addPlanToShoppingList } from '../services/shoppingListService';
 
 interface PlanDisplayProps {
   data: MealPlanResponse;
@@ -29,6 +30,7 @@ const PlanDisplay: React.FC<PlanDisplayProps> = ({ data, onReset }) => {
   const [planName, setPlanName] = useState('');
   const [isSavingPlan, setIsSavingPlan] = useState(false);
   const [planSaved, setPlanSaved] = useState(false);
+  const [addToShoppingList, setAddToShoppingList] = useState(true);
 
   // Shopping List Drag & Drop State
   const [shoppingList, setShoppingList] = useState<ShoppingCategory[]>(data.shoppingList);
@@ -290,11 +292,18 @@ const PlanDisplay: React.FC<PlanDisplayProps> = ({ data, onReset }) => {
 
     setIsSavingPlan(true);
     try {
-      await saveMealPlan(data, planName.trim());
+      const savedPlan = await saveMealPlan(data, planName.trim());
+
+      // Add to shopping list selections if checkbox is checked
+      if (addToShoppingList && savedPlan?.id) {
+        await addPlanToShoppingList(savedPlan.id);
+      }
+
       setPlanSaved(true);
       setTimeout(() => {
         setShowSaveModal(false);
         setPlanName('');
+        setAddToShoppingList(true);
         setTimeout(() => setPlanSaved(false), 300);
       }, 1500);
     } catch (error) {
@@ -883,6 +892,21 @@ const PlanDisplay: React.FC<PlanDisplayProps> = ({ data, onReset }) => {
                       </span>
                     </div>
                   </div>
+
+                  {/* Add to Shopping List Option */}
+                  <label className="flex items-center gap-3 p-3 bg-teal-50 border border-teal-200 rounded-xl cursor-pointer hover:bg-teal-100 transition-colors">
+                    <input
+                      type="checkbox"
+                      checked={addToShoppingList}
+                      onChange={(e) => setAddToShoppingList(e.target.checked)}
+                      className="w-5 h-5 rounded border-teal-300 text-teal-600 focus:ring-teal-500"
+                    />
+                    <div className="flex-1">
+                      <span className="text-sm font-medium text-teal-800">Add to Shopping List</span>
+                      <p className="text-xs text-teal-600">Include this plan's ingredients in your master shopping list</p>
+                    </div>
+                    <ShoppingCart size={18} className="text-teal-600" />
+                  </label>
                 </div>
 
                 {/* Footer */}

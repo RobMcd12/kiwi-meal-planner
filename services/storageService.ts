@@ -522,13 +522,17 @@ export const clearStaplesRestock = async (): Promise<boolean> => {
 // FAVORITES - Supabase with LocalStorage fallback
 // ============================================
 
-export const saveFavoriteMeal = async (meal: Meal, autoTag: boolean = true): Promise<boolean> => {
+export const saveFavoriteMeal = async (meal: Meal, autoTag: boolean = true): Promise<string | null> => {
   if (!isSupabaseConfigured()) {
-    return saveFavoriteMealLocal(meal);
+    const success = saveFavoriteMealLocal(meal);
+    return success ? meal.id : null;
   }
 
   const { data: { user } } = await supabase.auth.getUser();
-  if (!user) return saveFavoriteMealLocal(meal);
+  if (!user) {
+    const success = saveFavoriteMealLocal(meal);
+    return success ? meal.id : null;
+  }
 
   const { data, error } = await supabase
     .from('favorite_meals')
@@ -549,7 +553,7 @@ export const saveFavoriteMeal = async (meal: Meal, autoTag: boolean = true): Pro
 
   if (error) {
     console.error('Error saving favorite:', error);
-    return false;
+    return null;
   }
 
   // Auto-tag the recipe if requested and we have a valid ID
@@ -570,7 +574,7 @@ export const saveFavoriteMeal = async (meal: Meal, autoTag: boolean = true): Pro
     }
   }
 
-  return true;
+  return data?.id || null;
 };
 
 export const getFavoriteMeals = async (): Promise<Meal[]> => {

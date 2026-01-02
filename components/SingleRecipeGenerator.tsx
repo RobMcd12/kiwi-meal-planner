@@ -3,6 +3,7 @@ import { ArrowLeft, Sparkles, ChefHat, Loader2, Heart, Printer, Users, Check, Ap
 import type { Meal, UserPreferences, PantryItem, CountryCode } from '../types';
 import { generateSingleRecipe, generateDishImage } from '../services/geminiService';
 import { saveFavoriteMeal } from '../services/storageService';
+import { addRecipeToShoppingList } from '../services/shoppingListService';
 import RecipePrintView from './RecipePrintView';
 import NutritionInfo from './NutritionInfo';
 import RecipeAdjuster from './RecipeAdjuster';
@@ -32,6 +33,8 @@ const SingleRecipeGenerator: React.FC<SingleRecipeGeneratorProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
+  const [savedRecipeId, setSavedRecipeId] = useState<string | null>(null);
+  const [isAddedToList, setIsAddedToList] = useState(false);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
   const [showPrintView, setShowPrintView] = useState(false);
   const [showNutrition, setShowNutrition] = useState(false);
@@ -93,12 +96,26 @@ const SingleRecipeGenerator: React.FC<SingleRecipeGeneratorProps> = ({
 
     setIsSaving(true);
     try {
-      await saveFavoriteMeal(generatedRecipe);
-      setIsSaved(true);
+      const recipeId = await saveFavoriteMeal(generatedRecipe);
+      if (recipeId) {
+        setSavedRecipeId(recipeId);
+        setIsSaved(true);
+      }
     } catch (err) {
       console.error('Failed to save recipe:', err);
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleAddToShoppingList = async () => {
+    if (!savedRecipeId) return;
+
+    try {
+      await addRecipeToShoppingList(savedRecipeId);
+      setIsAddedToList(true);
+    } catch (e) {
+      console.error('Failed to add recipe to shopping list:', e);
     }
   };
 
@@ -122,6 +139,8 @@ const SingleRecipeGenerator: React.FC<SingleRecipeGeneratorProps> = ({
     setGeneratedRecipe(null);
     setDescription('');
     setIsSaved(false);
+    setSavedRecipeId(null);
+    setIsAddedToList(false);
     setError(null);
   };
 
@@ -450,6 +469,26 @@ const SingleRecipeGenerator: React.FC<SingleRecipeGeneratorProps> = ({
                 )}
                 {isSaved ? 'Saved to Cookbook' : 'Save to Cookbook'}
               </button>
+
+              {/* Add to Shopping List - Only show after saving */}
+              {isSaved && savedRecipeId && (
+                <button
+                  onClick={handleAddToShoppingList}
+                  disabled={isAddedToList}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+                    isAddedToList
+                      ? 'bg-teal-100 text-teal-700'
+                      : 'bg-teal-500 hover:bg-teal-600 text-white'
+                  }`}
+                >
+                  {isAddedToList ? (
+                    <Check size={18} />
+                  ) : (
+                    <ShoppingCart size={18} />
+                  )}
+                  {isAddedToList ? 'Added to List' : 'Add to Shopping List'}
+                </button>
+              )}
 
               <button
                 onClick={() => setShowPrintView(true)}

@@ -193,6 +193,7 @@ export enum AppStep {
   MY_FEEDBACK = 'MY_FEEDBACK',
   SAVED_PLANS = 'SAVED_PLANS',
   SINGLE_RECIPE = 'SINGLE_RECIPE',
+  SHOPPING_LIST = 'SHOPPING_LIST',
 }
 
 // ============================================

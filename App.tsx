@@ -13,6 +13,7 @@ import AdminDashboard from './components/AdminDashboard';
 import MyFeedback from './components/MyFeedback';
 import SavedPlansView from './components/SavedPlansView';
 import SingleRecipeGenerator from './components/SingleRecipeGenerator';
+import MasterShoppingList from './components/MasterShoppingList';
 import FeedbackDialog from './components/FeedbackDialog';
 import ErrorBoundary from './components/ErrorBoundary';
 import InstallPrompt from './components/InstallPrompt';
@@ -404,7 +405,9 @@ const AppContent: React.FC = () => {
               setSettingsInitialTab('pantry');
               setStep(AppStep.SETTINGS);
             }}
+            onViewShoppingList={() => setStep(AppStep.SHOPPING_LIST)}
             hasPantryItems={pantryItems.length > 0}
+            hasShoppingListItems={pantryItems.some(item => item.isStaple && item.needsRestock)}
           />
         );
 
@@ -516,6 +519,15 @@ const AppContent: React.FC = () => {
               setStep(AppStep.SETTINGS);
             }}
             userCountry={userCountry}
+          />
+        );
+
+      case AppStep.SHOPPING_LIST:
+        return (
+          <MasterShoppingList
+            onBack={() => setStep(AppStep.WELCOME)}
+            pantryItems={pantryItems}
+            onPantryUpdate={setPantryItems}
           />
         );
 

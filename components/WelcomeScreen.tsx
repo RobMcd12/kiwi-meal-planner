@@ -1,5 +1,5 @@
 import React from 'react';
-import { BookHeart, CalendarPlus, FolderHeart, ArrowRight, ChefHat, Package, Sparkles, Archive, Star } from 'lucide-react';
+import { BookHeart, CalendarPlus, FolderHeart, ArrowRight, ChefHat, Package, Sparkles, Archive, Star, ShoppingCart } from 'lucide-react';
 
 interface WelcomeScreenProps {
   onStartNew: () => void;
@@ -8,7 +8,9 @@ interface WelcomeScreenProps {
   onGenerateSingleRecipe?: () => void;
   onUseWhatIHave?: () => void;
   onManagePantry?: () => void;
+  onViewShoppingList?: () => void;
   hasPantryItems?: boolean;
+  hasShoppingListItems?: boolean;
 }
 
 const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
@@ -18,7 +20,9 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
   onGenerateSingleRecipe,
   onUseWhatIHave,
   onManagePantry,
-  hasPantryItems = false
+  onViewShoppingList,
+  hasPantryItems = false,
+  hasShoppingListItems = false
 }) => {
   const foodImages = [
     'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=300&fit=crop',
@@ -168,6 +172,46 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
           </span>
         </button>
       </div>
+
+      {/* Shopping List Card */}
+      {onViewShoppingList && (
+        <div className="mb-6">
+          <button
+            onClick={onViewShoppingList}
+            className={`w-full group p-5 rounded-2xl shadow-sm border transition-all text-left ${
+              hasShoppingListItems
+                ? 'bg-gradient-to-r from-teal-50 to-cyan-50 border-teal-200 hover:shadow-md hover:border-teal-300'
+                : 'bg-white border-slate-100 hover:shadow-md hover:border-teal-200'
+            }`}
+          >
+            <div className="flex items-start gap-4">
+              <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform ${
+                hasShoppingListItems ? 'bg-teal-100' : 'bg-slate-100'
+              }`}>
+                <ShoppingCart className={hasShoppingListItems ? 'text-teal-600' : 'text-slate-500'} size={24} />
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center gap-2 mb-1">
+                  <h3 className="text-lg font-bold text-slate-800">Shopping List</h3>
+                  {hasShoppingListItems && (
+                    <span className="inline-flex items-center gap-1 bg-teal-100 text-teal-700 px-2 py-0.5 rounded text-xs font-medium">
+                      Items to buy
+                    </span>
+                  )}
+                </div>
+                <p className="text-sm text-slate-600 mb-2">
+                  Combine ingredients from meal plans and recipes with staples that need restocking.
+                </p>
+                <span className={`inline-flex items-center gap-1 text-sm font-medium group-hover:gap-2 transition-all ${
+                  hasShoppingListItems ? 'text-teal-600' : 'text-slate-600'
+                }`}>
+                  {hasShoppingListItems ? 'View list' : 'Build your list'} <ArrowRight size={14} />
+                </span>
+              </div>
+            </div>
+          </button>
+        </div>
+      )}
 
       {/* Manage Pantry & Staples Section */}
       {onManagePantry && (

@@ -221,6 +221,40 @@ const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
       )
     },
     {
+      id: 'shopping-list',
+      title: 'Shopping List',
+      icon: <ShoppingCart size={20} />,
+      keywords: ['shopping', 'list', 'grocery', 'buy', 'restock', 'staples', 'ingredients', 'shop'],
+      content: (
+        <>
+          <p>Build a unified shopping list from multiple sources:</p>
+          <div className="space-y-3 mt-2">
+            <div className="flex items-start gap-2">
+              <Star size={16} className="text-amber-500 mt-0.5" />
+              <div>
+                <strong>Staples to Restock</strong> - In your Pantry's Staples tab, check items that need restocking. These automatically appear in your shopping list.
+              </div>
+            </div>
+            <div className="flex items-start gap-2">
+              <Calendar size={16} className="text-indigo-600 mt-0.5" />
+              <div>
+                <strong>From Saved Plans</strong> - Select any saved meal plan to add its shopping list. Items already in your pantry are excluded.
+              </div>
+            </div>
+            <div className="flex items-start gap-2">
+              <Heart size={16} className="text-rose-600 mt-0.5" />
+              <div>
+                <strong>From Cookbook</strong> - Select individual recipes from your cookbook to add their ingredients.
+              </div>
+            </div>
+          </div>
+          <p className="mt-3">
+            Access the Shopping List from the home screen. Check off items as you shop - staples are automatically marked as restocked when checked.
+          </p>
+        </>
+      )
+    },
+    {
       id: 'nutrition',
       title: 'Nutritional Information',
       icon: <Apple size={20} />,
