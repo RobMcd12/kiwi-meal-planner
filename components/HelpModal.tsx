@@ -7,6 +7,7 @@ import {
   Beef, Flame, Printer, Mic, Timer, Volume2, Play, Pause, UtensilsCrossed,
   UserCircle, ShieldAlert
 } from 'lucide-react';
+import { version } from '../package.json';
 
 interface HelpModalProps {
   isOpen: boolean;
@@ -801,7 +802,7 @@ const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
 
           {/* Version Info */}
           <div className="text-center text-xs text-slate-400 pt-4 border-t border-slate-100">
-            <p>Kiwi Meal Planner v1.0.8</p>
+            <p>Kiwi Meal Planner v{version}</p>
           </div>
         </div>
 
