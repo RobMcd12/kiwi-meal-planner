@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ChefHat, Sparkles, ShoppingCart, Heart, ArrowRight, Camera, Package, Upload, Apple, Users, SlidersHorizontal, Video, Mic, Crown, Check, Infinity, Timer, Volume2, MessageSquare, AlertTriangle } from 'lucide-react';
+import { ChefHat, Sparkles, ShoppingCart, ArrowRight, Camera, Package, Upload, Apple, Users, SlidersHorizontal, Video, Mic, Crown, Check, Infinity, Timer, Volume2, MessageSquare, AlertTriangle } from 'lucide-react';
 import LegalPages from './LegalPages';
 import { getSubscriptionConfig, formatPrice } from '../services/subscriptionService';
 import type { SubscriptionConfig } from '../types';
@@ -194,16 +194,6 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin }) => {
               <h3 className="text-lg font-bold text-slate-800 mb-2">Smart Shopping</h3>
               <p className="text-slate-600 text-sm">
                 Auto-generated lists that exclude what you already have.
-              </p>
-            </div>
-
-            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-shadow">
-              <div className="bg-rose-100 w-12 h-12 rounded-xl flex items-center justify-center mb-4">
-                <Heart className="text-rose-600" size={24} />
-              </div>
-              <h3 className="text-lg font-bold text-slate-800 mb-2">Save Favorites</h3>
-              <p className="text-slate-600 text-sm">
-                Build your personal cookbook with recipes you love.
               </p>
             </div>
 
