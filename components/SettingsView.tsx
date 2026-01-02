@@ -209,7 +209,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({
         {/* Tabs */}
         <ResponsiveTabs
           tabs={[
-            { id: 'general', label: 'Plan Config', icon: <Sliders size={18} />, color: 'indigo' },
+            { id: 'general', label: 'Plan Defaults', icon: <Sliders size={18} />, color: 'indigo' },
             { id: 'pantry', label: 'Pantry', icon: <Archive size={18} />, color: 'emerald' },
             { id: 'prefs', label: 'Preferences', icon: <Utensils size={18} />, color: 'rose' },
             { id: 'account', label: 'Account', icon: <UserCircle size={18} />, color: 'blue', hidden: isImpersonating },
