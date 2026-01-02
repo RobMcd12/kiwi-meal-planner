@@ -462,7 +462,7 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({
     <div className="max-w-5xl mx-auto animate-fadeIn">
       {/* Sticky Header */}
       <div className="sticky top-0 z-10 bg-gradient-to-br from-emerald-50 via-white to-orange-50 pb-4 -mx-4 px-4 pt-4">
-        {/* Title Row with Actions */}
+        {/* Title Row - on mobile, just title; on desktop, title + actions */}
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-4">
             <button
@@ -473,9 +473,9 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({
             </button>
             <div>
               <h2 className="text-2xl font-bold text-slate-800">My Cookbook</h2>
-              {/* Recipe limit indicator for free users */}
+              {/* Recipe limit indicator for free users - only on desktop */}
               {!hasPro && (
-                <div className="flex items-center gap-2 mt-1">
+                <div className="hidden md:flex items-center gap-2 mt-1">
                   <div className="flex items-center gap-1.5">
                     <span className="text-sm text-slate-500">
                       {recipeCount} / {recipeLimit} recipes
@@ -504,20 +504,11 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({
                   )}
                 </div>
               )}
-              {hasPro && (
-                <div className="flex items-center gap-1 mt-1">
-                  <span className="px-1.5 py-0.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[10px] font-bold rounded-full flex items-center gap-0.5">
-                    <Crown size={10} />
-                    PRO
-                  </span>
-                  <span className="text-xs text-slate-400">Unlimited recipes</span>
-                </div>
-              )}
             </div>
           </div>
 
-          {/* Action Buttons in Header */}
-          <div className="flex items-center gap-2">
+          {/* Action Buttons - hidden on mobile, shown on desktop */}
+          <div className="hidden md:flex items-center gap-2">
             {/* Generate Recipe Button */}
             {onGenerateSingleRecipe && (
               <button
@@ -603,6 +594,91 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({
                 <List size={18} />
               </button>
             </div>
+          </div>
+        </div>
+
+        {/* Mobile Action Buttons Row - shown only on mobile */}
+        <div className="flex md:hidden items-center justify-between gap-2 mb-4">
+          <div className="flex items-center gap-2">
+            {/* Generate Recipe Button */}
+            {onGenerateSingleRecipe && (
+              <button
+                onClick={() => {
+                  if (!canCreateRecipe) {
+                    onUpgradeClick?.();
+                  } else {
+                    onGenerateSingleRecipe();
+                  }
+                }}
+                className={`flex items-center gap-2 px-3 py-2 rounded-lg font-medium transition-colors ${
+                  canCreateRecipe
+                    ? 'bg-amber-500 hover:bg-amber-600 text-white'
+                    : 'bg-slate-200 text-slate-500 cursor-pointer'
+                }`}
+                title={canCreateRecipe ? 'Generate a Recipe' : 'Recipe limit reached - Upgrade to Pro'}
+              >
+                {canCreateRecipe ? <Sparkles size={18} /> : <Lock size={18} />}
+              </button>
+            )}
+
+            {/* Upload Button */}
+            <button
+              onClick={() => {
+                if (!canCreateRecipe) {
+                  onUpgradeClick?.();
+                } else {
+                  setShowUploadModal(true);
+                }
+              }}
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg font-medium transition-colors ${
+                canCreateRecipe
+                  ? 'bg-purple-600 hover:bg-purple-700 text-white'
+                  : 'bg-slate-200 text-slate-500 cursor-pointer'
+              }`}
+              title={canCreateRecipe ? 'Upload Recipe' : 'Recipe limit reached - Upgrade to Pro'}
+            >
+              {canCreateRecipe ? <Plus size={18} /> : <Lock size={18} />}
+            </button>
+
+            {/* Generate Shopping List Button */}
+            {selectedMeals.length > 0 && (
+              <button
+                onClick={handleGenerate}
+                disabled={isLoading}
+                className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white px-3 py-2 rounded-lg font-medium transition-colors"
+              >
+                {isLoading ? (
+                  <Loader2 size={18} className="animate-spin" />
+                ) : (
+                  <>
+                    <ShoppingCart size={18} />
+                    <span className="bg-white/20 px-1.5 py-0.5 rounded text-sm">{selectedMeals.length}</span>
+                  </>
+                )}
+              </button>
+            )}
+          </div>
+
+          {/* View Toggle */}
+          <div className="flex items-center bg-slate-100 rounded-lg p-1">
+            <button
+              onClick={() => setViewMode('cards')}
+              className={`p-2 rounded-md transition-colors ${
+                viewMode === 'cards' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500 hover:text-slate-700'
+              }`}
+              title="Card view"
+            >
+              <Grid size={18} />
+            </button>
+            <button
+              onClick={() => setViewMode('list')}
+              className={`p-2 rounded-md transition-colors ${
+                viewMode === 'list' ? 'bg-white shadow-sm text-slate-800' : 'text-slate-500 hover:text-slate-700'
+              }`}
+              title="List view"
+            >
+              <List size={18} />
+            </button>
           </div>
         </div>
 

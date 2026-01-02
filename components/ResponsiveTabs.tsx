@@ -198,9 +198,12 @@ const ResponsiveTabs: React.FC<ResponsiveTabsProps> = ({
   // Dropdown item styles for mobile and "More" menu
   const getDropdownItemStyles = (tab: Tab, isActive: boolean) => {
     const colors = getColorClasses(tab.color);
+    // For active: use light background (bg-{color}-50) with dark text (text-{color}-600)
+    const bgClass = colors.bg || 'bg-slate-50';
+    const textClass = colors.active.split(' ')[0]; // Gets 'text-{color}-600'
     return `w-full flex items-center gap-3 px-4 py-3 text-left transition-colors ${
       isActive
-        ? `${colors.active.replace('border-', 'bg-').replace('-600', '-50')} ${colors.active.split(' ')[0]}`
+        ? `${bgClass} ${textClass}`
         : 'text-slate-600 hover:bg-slate-50'
     }`;
   };
