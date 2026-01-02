@@ -727,7 +727,7 @@ const RecipeChatModal: React.FC<RecipeChatModalProps> = ({ recipe, isOpen, onClo
             {/* Voice Button */}
             <button
               onClick={toggleListening}
-              disabled={isProcessing}
+              disabled={isProcessing && !isListening}
               className={`relative flex-shrink-0 w-14 h-14 rounded-full flex items-center justify-center transition-all ${
                 isListening
                   ? 'bg-red-500 hover:bg-red-600 text-white shadow-lg shadow-red-200'
