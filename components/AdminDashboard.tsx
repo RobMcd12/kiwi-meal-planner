@@ -66,6 +66,7 @@ import { getAllUsersWithDetails } from '../services/loginHistoryService';
 import { grantProAccess, revokeProAccess } from '../services/subscriptionService';
 import { getVideoCount } from '../services/recipeVideoService';
 import { Crown, BookOpen, HardDrive, Calendar, ArrowUpDown, ChevronDown } from 'lucide-react';
+import ResponsiveTabs from './ResponsiveTabs';
 
 interface AdminDashboardProps {
   onBack: () => void;
@@ -889,35 +890,22 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
       )}
 
       {/* Tabs */}
-      <div className="flex gap-2 mb-6 border-b border-slate-200 overflow-x-auto">
-        {[
-          { id: 'overview', label: 'Overview', icon: Activity },
-          { id: 'feedback', label: 'Feedback', icon: MessageSquare, badge: newFeedbackCount },
-          { id: 'instructions', label: 'Instructions', icon: Settings },
-          // { id: 'videos', label: 'Videos', icon: Video }, // Hidden until video API is configured
-          { id: 'subscriptions', label: 'Subscriptions', icon: Crown },
-          { id: 'data', label: 'Data Management', icon: Database },
-          { id: 'users', label: 'Users', icon: Users },
-        ].map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id as any)}
-            className={`flex items-center gap-2 px-4 py-3 font-medium transition-colors border-b-2 -mb-[2px] whitespace-nowrap ${
-              activeTab === tab.id
-                ? 'text-emerald-600 border-emerald-600'
-                : 'text-slate-500 border-transparent hover:text-slate-700'
-            }`}
-          >
-            <tab.icon size={18} />
-            {tab.label}
-            {tab.badge !== undefined && tab.badge > 0 && (
-              <span className="px-1.5 py-0.5 bg-red-500 text-white text-xs font-medium rounded-full min-w-[20px] text-center">
-                {tab.badge}
-              </span>
-            )}
-          </button>
-        ))}
-      </div>
+      <ResponsiveTabs
+        tabs={[
+          { id: 'overview', label: 'Overview', icon: <Activity size={18} /> },
+          { id: 'feedback', label: 'Feedback', icon: <MessageSquare size={18} />, badge: newFeedbackCount > 0 ? newFeedbackCount : undefined },
+          { id: 'instructions', label: 'Instructions', icon: <Settings size={18} /> },
+          // { id: 'videos', label: 'Videos', icon: <Video size={18} /> }, // Hidden until video API is configured
+          { id: 'subscriptions', label: 'Subscriptions', icon: <Crown size={18} /> },
+          { id: 'data', label: 'Data Management', icon: <Database size={18} /> },
+          { id: 'users', label: 'Users', icon: <Users size={18} /> },
+        ]}
+        activeTab={activeTab}
+        onTabChange={(tabId) => setActiveTab(tabId as any)}
+        variant="pill"
+        visibleCount={4}
+        className="mb-6"
+      />
 
       {/* Overview Tab */}
       {activeTab === 'overview' && (

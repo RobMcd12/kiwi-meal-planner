@@ -10,6 +10,7 @@ import { supabase } from '../services/authService';
 import { getSubscriptionState } from '../services/subscriptionService';
 import { getUserProfile, updateUserProfile, COUNTRY_OPTIONS } from '../services/profileService';
 import { ArrowLeft, Check, Sliders, Archive, Utensils, UserCircle, Loader2, FileVideo, Crown, Pencil, Globe, Save } from 'lucide-react';
+import ResponsiveTabs, { Tab } from './ResponsiveTabs';
 
 interface SettingsViewProps {
   config: MealConfig;
@@ -206,68 +207,19 @@ const SettingsView: React.FC<SettingsViewProps> = ({
 
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
         {/* Tabs */}
-        <div className="flex border-b border-slate-200 overflow-x-auto">
-            <button
-                onClick={() => setActiveTab('general')}
-                className={`flex-1 min-w-[120px] py-4 text-center font-medium text-sm flex items-center justify-center gap-2 transition-colors border-b-2 ${
-                    activeTab === 'general' 
-                    ? 'border-indigo-600 text-indigo-600 bg-indigo-50/50' 
-                    : 'border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-50'
-                }`}
-            >
-                <Sliders size={18} />
-                Plan Config
-            </button>
-            <button
-                onClick={() => setActiveTab('pantry')}
-                className={`flex-1 min-w-[120px] py-4 text-center font-medium text-sm flex items-center justify-center gap-2 transition-colors border-b-2 ${
-                    activeTab === 'pantry' 
-                    ? 'border-emerald-600 text-emerald-600 bg-emerald-50/50' 
-                    : 'border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-50'
-                }`}
-            >
-                <Archive size={18} />
-                Pantry
-            </button>
-             <button
-                onClick={() => setActiveTab('prefs')}
-                className={`flex-1 min-w-[120px] py-4 text-center font-medium text-sm flex items-center justify-center gap-2 transition-colors border-b-2 ${
-                    activeTab === 'prefs'
-                    ? 'border-rose-600 text-rose-600 bg-rose-50/50'
-                    : 'border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-50'
-                }`}
-            >
-                <Utensils size={18} />
-                Preferences
-            </button>
-            {/* Hide Account and Subscription tabs when impersonating */}
-            {!isImpersonating && (
-              <>
-                <button
-                    onClick={() => setActiveTab('account')}
-                    className={`flex-1 min-w-[120px] py-4 text-center font-medium text-sm flex items-center justify-center gap-2 transition-colors border-b-2 ${
-                        activeTab === 'account'
-                        ? 'border-blue-600 text-blue-600 bg-blue-50/50'
-                        : 'border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-50'
-                    }`}
-                >
-                    <UserCircle size={18} />
-                    Account
-                </button>
-                <button
-                    onClick={() => setActiveTab('subscription')}
-                    className={`flex-1 min-w-[120px] py-4 text-center font-medium text-sm flex items-center justify-center gap-2 transition-colors border-b-2 ${
-                        activeTab === 'subscription'
-                        ? 'border-amber-600 text-amber-600 bg-amber-50/50'
-                        : 'border-transparent text-slate-500 hover:text-slate-800 hover:bg-slate-50'
-                    }`}
-                >
-                    <Crown size={18} />
-                    Subscription
-                </button>
-              </>
-            )}
-        </div>
+        <ResponsiveTabs
+          tabs={[
+            { id: 'general', label: 'Plan Config', icon: <Sliders size={18} />, color: 'indigo' },
+            { id: 'pantry', label: 'Pantry', icon: <Archive size={18} />, color: 'emerald' },
+            { id: 'prefs', label: 'Preferences', icon: <Utensils size={18} />, color: 'rose' },
+            { id: 'account', label: 'Account', icon: <UserCircle size={18} />, color: 'blue', hidden: isImpersonating },
+            { id: 'subscription', label: 'Subscription', icon: <Crown size={18} />, color: 'amber', hidden: isImpersonating },
+          ]}
+          activeTab={activeTab}
+          onTabChange={(tabId) => setActiveTab(tabId as any)}
+          variant="underline"
+          visibleCount={5}
+        />
 
         {/* Content */}
         <div className="p-4 md:p-8 min-h-[500px]">

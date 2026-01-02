@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import RecipeVideoPlayer from './RecipeVideoPlayer';
 import RecipeChatModal from './RecipeChatModal';
+import ResponsiveTabs from './ResponsiveTabs';
 import { getRecipeVideo, initiateVideoGeneration } from '../services/recipeVideoService';
 import type { RecipeVideo } from '../types';
 import { getSidesForRecipe } from '../services/suggestSidesService';
@@ -624,65 +625,37 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-2 mb-4 overflow-x-auto pb-2">
-        <button
-          onClick={() => setActiveTab('generated')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium text-sm whitespace-nowrap transition-colors ${
-            activeTab === 'generated'
-              ? 'bg-emerald-600 text-white'
-              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-          }`}
-        >
-          <Sparkles size={16} />
-          AI Generated
-          {generatedRecipes.length > 0 && (
-            <span className={`px-1.5 py-0.5 text-xs rounded-full ${
-              activeTab === 'generated' ? 'bg-white/20' : 'bg-slate-200'
-            }`}>
-              {generatedRecipes.length}
-            </span>
-          )}
-        </button>
-        <button
-          onClick={() => setActiveTab('uploaded')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium text-sm whitespace-nowrap transition-colors ${
-            activeTab === 'uploaded'
-              ? 'bg-purple-600 text-white'
-              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-          }`}
-        >
-          <Upload size={16} />
-          My Uploads
-          {uploadedRecipes.length > 0 && (
-            <span className={`px-1.5 py-0.5 text-xs rounded-full ${
-              activeTab === 'uploaded' ? 'bg-white/20' : 'bg-slate-200'
-            }`}>
-              {uploadedRecipes.length}
-            </span>
-          )}
-          {hasActiveUploads && (
-            <Loader2 size={14} className="animate-spin" />
-          )}
-        </button>
-        <button
-          onClick={() => setActiveTab('public')}
-          className={`flex items-center gap-2 px-4 py-2 rounded-xl font-medium text-sm whitespace-nowrap transition-colors ${
-            activeTab === 'public'
-              ? 'bg-blue-600 text-white'
-              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-          }`}
-        >
-          <Globe size={16} />
-          Public Recipes
-          {publicRecipes.length > 0 && (
-            <span className={`px-1.5 py-0.5 text-xs rounded-full ${
-              activeTab === 'public' ? 'bg-white/20' : 'bg-slate-200'
-            }`}>
-              {publicRecipes.length}
-            </span>
-          )}
-        </button>
-      </div>
+      <ResponsiveTabs
+        tabs={[
+          {
+            id: 'generated',
+            label: 'AI Generated',
+            icon: <Sparkles size={16} />,
+            color: 'emerald',
+            badge: generatedRecipes.length > 0 ? generatedRecipes.length : undefined
+          },
+          {
+            id: 'uploaded',
+            label: 'My Uploads',
+            icon: <Upload size={16} />,
+            color: 'purple',
+            badge: uploadedRecipes.length > 0 ? uploadedRecipes.length : undefined
+          },
+          {
+            id: 'public',
+            label: 'Public Recipes',
+            icon: <Globe size={16} />,
+            color: 'blue',
+            badge: publicRecipes.length > 0 ? publicRecipes.length : undefined
+          },
+        ]}
+        activeTab={activeTab}
+        onTabChange={(tabId) => setActiveTab(tabId as CookbookTab)}
+        variant="solid-pill"
+        visibleCount={3}
+        loadingTabId={hasActiveUploads ? 'uploaded' : undefined}
+        className="mb-4"
+      />
 
       {/* Filters Row */}
       <div className="flex flex-wrap items-center gap-4 mb-6">

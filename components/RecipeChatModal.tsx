@@ -21,10 +21,8 @@ import {
 import { Meal } from '../types';
 import {
   ChatMessage,
-  CookingTimer,
   RecipeSpeaker,
   RecipeListener,
-  TimerManager,
   generateChatResponse,
   parseInstructionSteps,
   formatTimerDisplay,
@@ -34,6 +32,16 @@ import {
   findItemCookingTime,
   MAX_TIMERS,
 } from '../services/recipeChatService';
+import { useTimer } from '../contexts/TimerContext';
+
+// Local timer interface for display in the modal
+interface LocalCookingTimer {
+  id: string;
+  name: string;
+  seconds: number;
+  isRunning: boolean;
+  isExpired: boolean;
+}
 
 interface RecipeChatModalProps {
   recipe: Meal;
@@ -42,9 +50,18 @@ interface RecipeChatModalProps {
 }
 
 const RecipeChatModal: React.FC<RecipeChatModalProps> = ({ recipe, isOpen, onClose }) => {
+  // Global timer context
+  const {
+    activeTimers: globalTimers,
+    addTimer: addGlobalTimer,
+    removeTimer: removeGlobalTimer,
+    pauseTimer: pauseGlobalTimer,
+    resumeTimer: resumeGlobalTimer,
+    dismissExpiredTimer: dismissGlobalExpiredTimer
+  } = useTimer();
+
   // State
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [timers, setTimers] = useState<CookingTimer[]>([]);
   const [currentStep, setCurrentStep] = useState(0);
   const [isListening, setIsListening] = useState(false);
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -57,10 +74,21 @@ const RecipeChatModal: React.FC<RecipeChatModalProps> = ({ recipe, isOpen, onClo
   // Refs
   const speakerRef = useRef<RecipeSpeaker | null>(null);
   const listenerRef = useRef<RecipeListener | null>(null);
-  const timerManagerRef = useRef<TimerManager | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const expiredAnnouncementRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
+  const announcedExpiredRef = useRef<Set<string>>(new Set());
+
+  // Filter timers for this recipe
+  const timers: LocalCookingTimer[] = globalTimers
+    .filter(t => t.recipeId === recipe.id)
+    .map(t => ({
+      id: t.id,
+      name: t.name,
+      seconds: t.remainingSeconds,
+      isRunning: t.isRunning,
+      isExpired: t.isExpired
+    }));
 
   // Parse recipe steps
   const steps = parseInstructionSteps(recipe.instructions);
@@ -73,11 +101,13 @@ const RecipeChatModal: React.FC<RecipeChatModalProps> = ({ recipe, isOpen, onClo
       clearInterval(interval);
       expiredAnnouncementRef.current.delete(timerId);
     }
-    // Remove the timer
-    timerManagerRef.current?.dismissTimer(timerId);
+    // Remove from announced set
+    announcedExpiredRef.current.delete(timerId);
+    // Remove the timer from global context
+    dismissGlobalExpiredTimer(timerId);
     // Stop speaking if currently announcing
     speakerRef.current?.stop();
-  }, []);
+  }, [dismissGlobalExpiredTimer]);
 
   // Initialize audio for timer alerts
   useEffect(() => {
@@ -90,37 +120,6 @@ const RecipeChatModal: React.FC<RecipeChatModalProps> = ({ recipe, isOpen, onClo
 
     // Initialize speaker
     speakerRef.current = new RecipeSpeaker(setIsSpeaking);
-
-    // Initialize timer manager
-    timerManagerRef.current = new TimerManager(
-      setTimers,
-      (completedTimer) => {
-        // Timer completed - play sound and announce
-        if (audioRef.current) {
-          audioRef.current.play().catch(() => {});
-        }
-        const announcement = `${completedTimer.name} timer is done!`;
-        addMessage('assistant', `Timer complete! ${completedTimer.name} is done.`);
-
-        // Start repeating announcement every 8 seconds until dismissed
-        const announceAndPlay = () => {
-          if (audioRef.current) {
-            audioRef.current.currentTime = 0;
-            audioRef.current.play().catch(() => {});
-          }
-          if (speakerRef.current) {
-            speakerRef.current.speak(announcement);
-          }
-        };
-
-        // Initial announcement
-        announceAndPlay();
-
-        // Repeat announcement every 8 seconds
-        const interval = setInterval(announceAndPlay, 8000);
-        expiredAnnouncementRef.current.set(completedTimer.id, interval);
-      }
-    );
 
     // Initialize listener
     listenerRef.current = new RecipeListener(
@@ -143,12 +142,48 @@ const RecipeChatModal: React.FC<RecipeChatModalProps> = ({ recipe, isOpen, onClo
     return () => {
       speakerRef.current?.stop();
       listenerRef.current?.stop();
-      timerManagerRef.current?.destroy();
-      // Clear all expired timer announcement intervals
+      // Clear all expired timer announcement intervals (but don't remove timers - they persist globally)
       expiredAnnouncementRef.current.forEach(interval => clearInterval(interval));
       expiredAnnouncementRef.current.clear();
     };
   }, [isOpen, recipe.name]);
+
+  // Handle expired timer announcements when modal is open
+  useEffect(() => {
+    if (!isOpen) return;
+
+    timers.forEach(timer => {
+      if (timer.isExpired && !announcedExpiredRef.current.has(timer.id)) {
+        // New expired timer - announce it
+        announcedExpiredRef.current.add(timer.id);
+
+        // Play sound and announce
+        if (audioRef.current) {
+          audioRef.current.play().catch(() => {});
+        }
+        const announcement = `${timer.name} timer is done!`;
+        addMessage('assistant', `Timer complete! ${timer.name} is done.`);
+
+        // Start repeating announcement every 8 seconds until dismissed
+        const announceAndPlay = () => {
+          if (audioRef.current) {
+            audioRef.current.currentTime = 0;
+            audioRef.current.play().catch(() => {});
+          }
+          if (speakerRef.current) {
+            speakerRef.current.speak(announcement);
+          }
+        };
+
+        // Initial announcement
+        announceAndPlay();
+
+        // Repeat announcement every 8 seconds
+        const interval = setInterval(announceAndPlay, 8000);
+        expiredAnnouncementRef.current.set(timer.id, interval);
+      }
+    });
+  }, [isOpen, timers]);
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -165,6 +200,34 @@ const RecipeChatModal: React.FC<RecipeChatModalProps> = ({ recipe, isOpen, onClo
     };
     setMessages(prev => [...prev, newMessage]);
   }, []);
+
+  // Create a timer using global context
+  const createTimer = useCallback((name: string, minutes: number): boolean => {
+    if (timers.length >= MAX_TIMERS) {
+      return false;
+    }
+    addGlobalTimer(name, minutes * 60, recipe.id, recipe.name);
+    return true;
+  }, [addGlobalTimer, recipe.id, recipe.name, timers.length]);
+
+  // Find a timer by name
+  const findTimerByName = useCallback((name: string): LocalCookingTimer | undefined => {
+    const normalizedName = name.toLowerCase();
+    return timers.find(t =>
+      t.name.toLowerCase().includes(normalizedName) ||
+      normalizedName.includes(t.name.toLowerCase())
+    );
+  }, [timers]);
+
+  // Get the first active (running) timer
+  const getActiveTimer = useCallback((): LocalCookingTimer | undefined => {
+    return timers.find(t => t.isRunning && !t.isExpired);
+  }, [timers]);
+
+  // Get expired timers
+  const getExpiredTimers = useCallback((): LocalCookingTimer[] => {
+    return timers.filter(t => t.isExpired);
+  }, [timers]);
 
   // Handle user input (from voice or text)
   const handleUserInput = async (input: string) => {
@@ -191,13 +254,22 @@ const RecipeChatModal: React.FC<RecipeChatModalProps> = ({ recipe, isOpen, onClo
         return;
       }
 
-      // Generate AI response
+      // Generate AI response - convert local timers to service format
+      const serviceTimers = timers.map(t => ({
+        id: t.id,
+        name: t.name,
+        durationSeconds: t.seconds,
+        remainingSeconds: t.seconds,
+        isRunning: t.isRunning,
+        isExpired: t.isExpired,
+        createdAt: new Date()
+      }));
       const { response, suggestedTimer } = await generateChatResponse(
         recipe,
         messages,
         input,
         currentStep,
-        timers
+        serviceTimers
       );
 
       addMessage('assistant', response);
@@ -207,9 +279,9 @@ const RecipeChatModal: React.FC<RecipeChatModalProps> = ({ recipe, isOpen, onClo
       }
 
       // Handle suggested timer
-      if (suggestedTimer && timerManagerRef.current) {
-        const timer = timerManagerRef.current.createTimer(suggestedTimer.name, suggestedTimer.minutes);
-        if (timer) {
+      if (suggestedTimer) {
+        const success = createTimer(suggestedTimer.name, suggestedTimer.minutes);
+        if (success) {
           addMessage('system', `Timer set: ${suggestedTimer.name} for ${suggestedTimer.minutes} minutes`);
         }
       }
@@ -223,8 +295,6 @@ const RecipeChatModal: React.FC<RecipeChatModalProps> = ({ recipe, isOpen, onClo
 
   // Handle timer commands
   const handleTimerCommand = (cmd: { action: 'start' | 'stop' | 'check' | null; name?: string; minutes?: number; stepNumber?: number; itemName?: string }) => {
-    if (!timerManagerRef.current) return;
-
     switch (cmd.action) {
       case 'start':
         // Handle step-based timer request
@@ -235,8 +305,8 @@ const RecipeChatModal: React.FC<RecipeChatModalProps> = ({ recipe, isOpen, onClo
             const timeInfo = extractCookingTime(stepText);
             if (timeInfo) {
               const timerName = `Step ${cmd.stepNumber}`;
-              const timer = timerManagerRef.current.createTimer(timerName, timeInfo.minutes);
-              if (timer) {
+              const success = createTimer(timerName, timeInfo.minutes);
+              if (success) {
                 const response = `${timerName} timer set for ${timeInfo.minutes} minute${timeInfo.minutes > 1 ? 's' : ''}.`;
                 addMessage('assistant', response);
                 if (autoSpeak && speakerRef.current) {
@@ -271,8 +341,8 @@ const RecipeChatModal: React.FC<RecipeChatModalProps> = ({ recipe, isOpen, onClo
           const itemTime = findItemCookingTime(recipe, cmd.itemName);
           if (itemTime) {
             const timerName = cmd.itemName.charAt(0).toUpperCase() + cmd.itemName.slice(1);
-            const timer = timerManagerRef.current.createTimer(timerName, itemTime.minutes);
-            if (timer) {
+            const success = createTimer(timerName, itemTime.minutes);
+            if (success) {
               const response = `${timerName} timer set for ${itemTime.minutes} minute${itemTime.minutes > 1 ? 's' : ''}, based on the recipe.`;
               addMessage('assistant', response);
               if (autoSpeak && speakerRef.current) {
@@ -301,8 +371,8 @@ const RecipeChatModal: React.FC<RecipeChatModalProps> = ({ recipe, isOpen, onClo
           const timerName = cmd.name
             ? cmd.name.charAt(0).toUpperCase() + cmd.name.slice(1)
             : 'Cooking timer';
-          const timer = timerManagerRef.current.createTimer(timerName, cmd.minutes);
-          if (timer) {
+          const success = createTimer(timerName, cmd.minutes);
+          if (success) {
             const response = `${timerName} timer set for ${cmd.minutes} minute${cmd.minutes > 1 ? 's' : ''}.`;
             addMessage('assistant', response);
             if (autoSpeak && speakerRef.current) {
@@ -321,22 +391,23 @@ const RecipeChatModal: React.FC<RecipeChatModalProps> = ({ recipe, isOpen, onClo
 
       case 'stop':
         // First check for expired timers - dismiss those first
-        const expiredTimers = timerManagerRef.current.getExpiredTimers();
-        if (expiredTimers.length > 0) {
+        const expiredTimersList = getExpiredTimers();
+        if (expiredTimersList.length > 0) {
           // Dismiss all expired timers
-          expiredTimers.forEach(t => dismissExpiredTimer(t.id));
-          const names = expiredTimers.map(t => t.name).join(', ');
-          const response = expiredTimers.length === 1
+          expiredTimersList.forEach(t => dismissExpiredTimer(t.id));
+          const names = expiredTimersList.map(t => t.name).join(', ');
+          const response = expiredTimersList.length === 1
             ? `Dismissed the ${names} timer.`
-            : `Dismissed ${expiredTimers.length} expired timers.`;
+            : `Dismissed ${expiredTimersList.length} expired timers.`;
           addMessage('assistant', response);
           if (autoSpeak && speakerRef.current) {
             speakerRef.current.speak(response);
           }
         } else if (cmd.name) {
           // If a name was specified, try to find that timer
-          const namedTimer = timerManagerRef.current.stopTimerByName(cmd.name);
+          const namedTimer = findTimerByName(cmd.name);
           if (namedTimer) {
+            removeGlobalTimer(namedTimer.id);
             const response = `Stopped the ${namedTimer.name} timer.`;
             addMessage('assistant', response);
             if (autoSpeak && speakerRef.current) {
@@ -351,9 +422,9 @@ const RecipeChatModal: React.FC<RecipeChatModalProps> = ({ recipe, isOpen, onClo
           }
         } else {
           // Stop the first active timer
-          const activeTimer = timerManagerRef.current.getActiveTimer();
+          const activeTimer = getActiveTimer();
           if (activeTimer) {
-            timerManagerRef.current.stopTimer(activeTimer.id);
+            removeGlobalTimer(activeTimer.id);
             const response = `Stopped the ${activeTimer.name} timer.`;
             addMessage('assistant', response);
             if (autoSpeak && speakerRef.current) {
@@ -370,8 +441,7 @@ const RecipeChatModal: React.FC<RecipeChatModalProps> = ({ recipe, isOpen, onClo
         break;
 
       case 'check':
-        const currentTimers = timerManagerRef.current.getTimers();
-        if (currentTimers.length === 0) {
+        if (timers.length === 0) {
           const response = "You don't have any timers running.";
           addMessage('assistant', response);
           if (autoSpeak && speakerRef.current) {
@@ -379,17 +449,17 @@ const RecipeChatModal: React.FC<RecipeChatModalProps> = ({ recipe, isOpen, onClo
           }
         } else if (cmd.name) {
           // Check specific timer by name
-          const namedTimer = timerManagerRef.current.findTimerByName(cmd.name);
+          const namedTimer = findTimerByName(cmd.name);
           if (namedTimer) {
-            const mins = Math.floor(namedTimer.remainingSeconds / 60);
-            const secs = namedTimer.remainingSeconds % 60;
+            const mins = Math.floor(namedTimer.seconds / 60);
+            const secs = namedTimer.seconds % 60;
             const response = `The ${namedTimer.name} timer has ${mins} minute${mins !== 1 ? 's' : ''} and ${secs} second${secs !== 1 ? 's' : ''} remaining.`;
             addMessage('assistant', response);
             if (autoSpeak && speakerRef.current) {
               speakerRef.current.speak(response);
             }
           } else {
-            const response = `I couldn't find a timer called "${cmd.name}". You have ${currentTimers.length} timer${currentTimers.length > 1 ? 's' : ''} running: ${currentTimers.map(t => t.name).join(', ')}.`;
+            const response = `I couldn't find a timer called "${cmd.name}". You have ${timers.length} timer${timers.length > 1 ? 's' : ''} running: ${timers.map(t => t.name).join(', ')}.`;
             addMessage('assistant', response);
             if (autoSpeak && speakerRef.current) {
               speakerRef.current.speak(response);
@@ -397,9 +467,9 @@ const RecipeChatModal: React.FC<RecipeChatModalProps> = ({ recipe, isOpen, onClo
           }
         } else {
           // List all timers
-          const timerStatus = currentTimers.map(t => {
-            const mins = Math.floor(t.remainingSeconds / 60);
-            const secs = t.remainingSeconds % 60;
+          const timerStatus = timers.map(t => {
+            const mins = Math.floor(t.seconds / 60);
+            const secs = t.seconds % 60;
             return `${t.name}: ${mins} minute${mins !== 1 ? 's' : ''} and ${secs} second${secs !== 1 ? 's' : ''} remaining`;
           }).join('. ');
           addMessage('assistant', timerStatus);
@@ -560,19 +630,19 @@ const RecipeChatModal: React.FC<RecipeChatModalProps> = ({ recipe, isOpen, onClo
                   <div
                     key={timer.id}
                     className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-sm font-medium ${
-                      timer.remainingSeconds <= 30
+                      timer.seconds <= 30
                         ? 'bg-red-100 text-red-700 animate-pulse'
                         : 'bg-amber-100 text-amber-700'
                     }`}
                   >
                     <span>{timer.name}</span>
-                    <span className="font-mono">{formatTimerDisplay(timer.remainingSeconds)}</span>
+                    <span className="font-mono">{formatTimerDisplay(timer.seconds)}</span>
                     <button
                       onClick={() => {
                         if (timer.isRunning) {
-                          timerManagerRef.current?.pauseTimer(timer.id);
+                          pauseGlobalTimer(timer.id);
                         } else {
-                          timerManagerRef.current?.resumeTimer(timer.id);
+                          resumeGlobalTimer(timer.id);
                         }
                       }}
                       className="p-0.5 hover:bg-amber-200 rounded"
@@ -580,7 +650,7 @@ const RecipeChatModal: React.FC<RecipeChatModalProps> = ({ recipe, isOpen, onClo
                       {timer.isRunning ? <Pause size={14} /> : <Play size={14} />}
                     </button>
                     <button
-                      onClick={() => timerManagerRef.current?.stopTimer(timer.id)}
+                      onClick={() => removeGlobalTimer(timer.id)}
                       className="p-0.5 hover:bg-amber-200 rounded"
                     >
                       <Trash2 size={14} />
@@ -709,10 +779,8 @@ const RecipeChatModal: React.FC<RecipeChatModalProps> = ({ recipe, isOpen, onClo
           </button>
           <button
             onClick={() => {
-              if (timerManagerRef.current) {
-                timerManagerRef.current.createTimer('Quick timer', 5);
-                addMessage('system', 'Timer set: Quick timer for 5 minutes');
-              }
+              createTimer('Quick timer', 5);
+              addMessage('system', 'Timer set: Quick timer for 5 minutes');
             }}
             className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-100 hover:bg-amber-200 rounded-full text-sm text-amber-700 whitespace-nowrap"
           >

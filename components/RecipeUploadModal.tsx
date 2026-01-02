@@ -2,6 +2,7 @@ import React, { useState, useRef, useCallback } from 'react';
 import { X, Upload, FileText, Image as ImageIcon, FileType, Loader2, CheckCircle, AlertCircle, Link, Camera, Plus, Trash2 } from 'lucide-react';
 import { useUpload } from '../contexts/UploadContext';
 import TagEditor from './TagEditor';
+import ResponsiveTabs from './ResponsiveTabs';
 
 interface RecipeUploadModalProps {
   isOpen: boolean;
@@ -212,44 +213,22 @@ const RecipeUploadModal: React.FC<RecipeUploadModalProps> = ({
 
         {/* Mode Selector */}
         <div className="px-6 pt-4">
-          <div className="flex gap-1 p-1 bg-slate-100 rounded-xl">
-            <button
-              onClick={() => { setMode('url'); setSelectedFile(null); setUrlError(''); }}
-              className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg font-medium text-sm transition-colors ${
-                mode === 'url' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              <Link size={16} />
-              URL
-            </button>
-            <button
-              onClick={() => { setMode('image'); setSelectedFile(null); setUrlError(''); }}
-              className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg font-medium text-sm transition-colors ${
-                mode === 'image' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              <ImageIcon size={16} />
-              Image
-            </button>
-            <button
-              onClick={() => { setMode('pdf'); setSelectedFile(null); setUrlError(''); }}
-              className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg font-medium text-sm transition-colors ${
-                mode === 'pdf' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              <FileType size={16} />
-              PDF
-            </button>
-            <button
-              onClick={() => { setMode('text'); setSelectedFile(null); setUrlError(''); }}
-              className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg font-medium text-sm transition-colors ${
-                mode === 'text' ? 'bg-white text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700'
-              }`}
-            >
-              <FileText size={16} />
-              Text
-            </button>
-          </div>
+          <ResponsiveTabs
+            tabs={[
+              { id: 'url', label: 'URL', icon: <Link size={16} /> },
+              { id: 'image', label: 'Image', icon: <ImageIcon size={16} /> },
+              { id: 'pdf', label: 'PDF', icon: <FileType size={16} /> },
+              { id: 'text', label: 'Text', icon: <FileText size={16} /> },
+            ]}
+            activeTab={mode}
+            onTabChange={(tabId) => {
+              setMode(tabId as UploadMode);
+              setSelectedFile(null);
+              setUrlError('');
+            }}
+            variant="button-group"
+            visibleCount={4}
+          />
         </div>
 
         {/* Content */}

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { PantryItem, PantryUploadMode } from '../types';
 import { Plus, Trash2, Archive, Camera, Sparkles, Star, ShoppingCart, Check, Video, Mic, Upload, Lock, Crown } from 'lucide-react';
 import PantryScanner from './PantryScanner';
+import ResponsiveTabs from './ResponsiveTabs';
 import VideoRecorder from './VideoRecorder';
 import LiveDictation from './LiveDictation';
 import AudioRecorder from './AudioRecorder';
@@ -180,35 +181,17 @@ const PantryManager: React.FC<PantryManagerProps> = ({ items, setItems, onNext, 
       )}
 
       {/* Tabs */}
-      <div className="flex border-b border-slate-200 mb-6">
-        <button
-          onClick={() => setActiveTab('pantry')}
-          className={`flex-1 py-3 px-4 text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
-            activeTab === 'pantry'
-              ? 'text-emerald-600 border-b-2 border-emerald-600'
-              : 'text-slate-500 hover:text-slate-700'
-          }`}
-        >
-          <Archive size={18} />
-          Pantry Items
-        </button>
-        <button
-          onClick={() => setActiveTab('staples')}
-          className={`flex-1 py-3 px-4 text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
-            activeTab === 'staples'
-              ? 'text-amber-600 border-b-2 border-amber-600'
-              : 'text-slate-500 hover:text-slate-700'
-          }`}
-        >
-          <Star size={18} />
-          Staples
-          {staplesNeedingRestock.length > 0 && (
-            <span className="bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">
-              {staplesNeedingRestock.length}
-            </span>
-          )}
-        </button>
-      </div>
+      <ResponsiveTabs
+        tabs={[
+          { id: 'pantry', label: 'Pantry Items', icon: <Archive size={18} />, color: 'emerald' },
+          { id: 'staples', label: 'Staples', icon: <Star size={18} />, color: 'amber', badge: staplesNeedingRestock.length > 0 ? staplesNeedingRestock.length : undefined },
+        ]}
+        activeTab={activeTab}
+        onTabChange={(tabId) => setActiveTab(tabId as 'pantry' | 'staples')}
+        variant="underline"
+        visibleCount={2}
+        className="mb-6"
+      />
 
       {activeTab === 'pantry' && (
         <>

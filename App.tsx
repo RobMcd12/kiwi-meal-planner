@@ -19,6 +19,9 @@ import InstallPrompt from './components/InstallPrompt';
 import ImpersonationBanner from './components/ImpersonationBanner';
 import { AuthProvider, useAuth } from './components/AuthProvider';
 import { UploadProvider } from './contexts/UploadContext';
+import { TimerProvider } from './contexts/TimerContext';
+import GlobalTimerIndicator from './components/GlobalTimerIndicator';
+import NotificationPermissionPrompt from './components/NotificationPermissionPrompt';
 import { ToastContainer } from './components/Toast';
 import { useToast } from './hooks/useToast';
 import { useNavigationHistory, pathToStep, isOAuthCallback } from './hooks/useNavigationHistory';
@@ -613,6 +616,9 @@ const AppContent: React.FC = () => {
               <HelpCircle size={20} />
             </button>
 
+            {/* Global Timer Indicator */}
+            <GlobalTimerIndicator />
+
             {/* Feedback button - shown for all authenticated users */}
             {isAuthenticated && (
               <button
@@ -676,14 +682,17 @@ const AppContent: React.FC = () => {
             )}
           </div>
 
-          {/* Mobile Menu Button */}
-          <button
-            onClick={() => setShowMobileMenu(!showMobileMenu)}
-            className="md:hidden text-slate-600 hover:text-slate-800 p-2"
-            title="Menu"
-          >
-            {showMobileMenu ? <X size={24} /> : <Menu size={24} />}
-          </button>
+          {/* Mobile Timer Indicator & Menu Button */}
+          <div className="md:hidden flex items-center gap-2">
+            <GlobalTimerIndicator />
+            <button
+              onClick={() => setShowMobileMenu(!showMobileMenu)}
+              className="text-slate-600 hover:text-slate-800 p-2"
+              title="Menu"
+            >
+              {showMobileMenu ? <X size={24} /> : <Menu size={24} />}
+            </button>
+          </div>
         </div>
 
         {/* Mobile Menu Dropdown */}
@@ -909,6 +918,9 @@ const AppContent: React.FC = () => {
         isOpen={showHelpModal}
         onClose={() => setShowHelpModal(false)}
       />
+
+      {/* Notification Permission Prompt for Timers */}
+      <NotificationPermissionPrompt />
     </div>
   );
 };
@@ -918,7 +930,9 @@ const App: React.FC = () => {
     <ErrorBoundary>
       <AuthProvider>
         <UploadProvider>
-          <AppContent />
+          <TimerProvider>
+            <AppContent />
+          </TimerProvider>
         </UploadProvider>
       </AuthProvider>
     </ErrorBoundary>

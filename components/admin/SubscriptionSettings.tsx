@@ -18,6 +18,7 @@ import {
   Shield,
   Sliders
 } from 'lucide-react';
+import ResponsiveTabs from '../ResponsiveTabs';
 import {
   getSubscriptionConfig,
   updateSubscriptionConfig,
@@ -887,25 +888,18 @@ const SubscriptionSettings: React.FC<SubscriptionSettingsProps> = ({ onMessage }
   return (
     <div className="space-y-6">
       {/* Tab Navigation */}
-      <div className="bg-white rounded-xl border border-slate-200 p-1.5 flex gap-1">
-        {tabs.map((tab) => {
-          const Icon = tab.icon;
-          const isActive = activeTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`flex-1 flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg font-medium text-sm transition-all ${
-                isActive
-                  ? 'bg-emerald-600 text-white shadow-sm'
-                  : 'text-slate-600 hover:bg-slate-100'
-              }`}
-            >
-              <Icon size={18} />
-              {tab.label}
-            </button>
-          );
-        })}
+      <div className="bg-white rounded-xl border border-slate-200 p-1.5">
+        <ResponsiveTabs
+          tabs={[
+            { id: 'pricing', label: 'Pricing', icon: <DollarSign size={18} />, color: 'emerald' },
+            { id: 'access', label: 'Access', icon: <Shield size={18} />, color: 'emerald' },
+            { id: 'tiers', label: 'Tier Management', icon: <Sliders size={18} />, color: 'emerald' },
+          ]}
+          activeTab={activeTab}
+          onTabChange={(tabId) => setActiveTab(tabId as TabId)}
+          variant="solid-pill"
+          visibleCount={3}
+        />
       </div>
 
       {/* Tab Content */}
