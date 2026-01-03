@@ -710,24 +710,30 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({
               </button>
             )}
 
-            {/* Upload Button */}
+            {/* Upload Button - Pro only */}
             <button
               onClick={() => {
-                if (!canCreateRecipe) {
+                if (!hasPro) {
                   onUpgradeClick?.();
                 } else {
                   setShowUploadModal(true);
                 }
               }}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
-                canCreateRecipe
+                hasPro
                   ? 'bg-purple-600 hover:bg-purple-700 text-white'
                   : 'bg-slate-200 text-slate-500 cursor-pointer'
               }`}
-              title={canCreateRecipe ? 'Upload Recipe' : 'Recipe limit reached - Upgrade to Pro'}
+              title={hasPro ? 'Upload Recipe (Image, PDF, URL)' : 'Upgrade to Pro to upload recipes'}
             >
-              {canCreateRecipe ? <Plus size={18} /> : <Lock size={18} />}
+              {hasPro ? <Plus size={18} /> : <Lock size={18} />}
               <span className="hidden sm:inline">Upload</span>
+              {!hasPro && (
+                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[10px] font-bold rounded-full">
+                  <Crown size={10} />
+                  PRO
+                </span>
+              )}
             </button>
 
             {/* Generate Shopping List Button */}
@@ -800,23 +806,23 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({
               </button>
             )}
 
-            {/* Upload Button */}
+            {/* Upload Button - Pro only */}
             <button
               onClick={() => {
-                if (!canCreateRecipe) {
+                if (!hasPro) {
                   onUpgradeClick?.();
                 } else {
                   setShowUploadModal(true);
                 }
               }}
               className={`flex items-center gap-2 px-3 py-2 rounded-lg font-medium transition-colors ${
-                canCreateRecipe
+                hasPro
                   ? 'bg-purple-600 hover:bg-purple-700 text-white'
                   : 'bg-slate-200 text-slate-500 cursor-pointer'
               }`}
-              title={canCreateRecipe ? 'Upload Recipe' : 'Recipe limit reached - Upgrade to Pro'}
+              title={hasPro ? 'Upload Recipe (Image, PDF, URL)' : 'Upgrade to Pro to upload recipes'}
             >
-              {canCreateRecipe ? <Plus size={18} /> : <Lock size={18} />}
+              {hasPro ? <Plus size={18} /> : <Lock size={18} />}
             </button>
 
             {/* Generate Shopping List Button */}
@@ -1010,13 +1016,23 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({
               <Upload size={48} className="mx-auto text-slate-200 mb-4" />
               <h3 className="text-lg font-medium text-slate-600">No uploaded recipes yet</h3>
               <p className="text-slate-400 mb-4">Upload your own recipes from images, PDFs, or text.</p>
-              <button
-                onClick={() => setShowUploadModal(true)}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-              >
-                <Plus size={18} />
-                Upload Recipe
-              </button>
+              {hasPro ? (
+                <button
+                  onClick={() => setShowUploadModal(true)}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
+                >
+                  <Plus size={18} />
+                  Upload Recipe
+                </button>
+              ) : (
+                <button
+                  onClick={() => onUpgradeClick?.()}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-lg hover:from-amber-600 hover:to-orange-600 transition-colors"
+                >
+                  <Crown size={18} />
+                  Upgrade to Pro to Upload
+                </button>
+              )}
             </>
           ) : activeTab === 'public' ? (
             <>
@@ -1416,11 +1432,27 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({
                           Nutrition Info
                         </button>
                         <button
-                          onClick={() => { setShowAdjuster(true); setShowMobileMenu(false); }}
-                          className="w-full flex items-center gap-3 px-4 py-2.5 text-left text-purple-700 hover:bg-purple-50"
+                          onClick={() => {
+                            if (hasPro) {
+                              setShowAdjuster(true);
+                              setShowMobileMenu(false);
+                            } else {
+                              setShowMobileMenu(false);
+                              onUpgradeClick?.();
+                            }
+                          }}
+                          className={`w-full flex items-center gap-3 px-4 py-2.5 text-left ${
+                            hasPro ? 'text-purple-700 hover:bg-purple-50' : 'text-slate-400'
+                          }`}
                         >
                           <SlidersHorizontal size={18} />
                           Adjust Recipe
+                          {!hasPro && (
+                            <span className="ml-auto inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[10px] font-bold rounded-full">
+                              <Crown size={10} />
+                              PRO
+                            </span>
+                          )}
                         </button>
                         <button
                           onClick={() => {
@@ -1523,14 +1555,30 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({
                     Nutrition
                   </button>
 
-                  {/* Adjust recipe button */}
+                  {/* Adjust recipe button - Pro only */}
                   <button
-                    onClick={() => setShowAdjuster(true)}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors bg-purple-100 text-purple-700 hover:bg-purple-200"
-                    title="Adjust servings, protein, or macros"
+                    onClick={() => {
+                      if (hasPro) {
+                        setShowAdjuster(true);
+                      } else {
+                        onUpgradeClick?.();
+                      }
+                    }}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                      hasPro
+                        ? 'bg-purple-100 text-purple-700 hover:bg-purple-200'
+                        : 'bg-slate-100 text-slate-400 hover:bg-slate-200'
+                    }`}
+                    title={hasPro ? "Adjust servings, protein, or macros" : "Upgrade to Pro for AI Recipe Adjustments"}
                   >
                     <SlidersHorizontal size={14} />
                     Adjust
+                    {!hasPro && (
+                      <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[10px] font-bold rounded-full">
+                        <Crown size={10} />
+                        PRO
+                      </span>
+                    )}
                   </button>
 
                   {/* Fit My Macros button - Pro only */}
@@ -2020,19 +2068,11 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({
                 {/* Instructions Preview */}
                 <div>
                   <h4 className="text-sm font-medium text-slate-700 mb-2">Instructions:</h4>
-                  <ol className="bg-slate-50 rounded-lg p-3 space-y-2 max-h-40 overflow-y-auto">
-                    {fittedRecipePreview.instructions.slice(0, 4).map((step, idx) => (
-                      <li key={idx} className="text-sm text-slate-600 flex items-start gap-2">
-                        <span className="font-medium text-teal-600 flex-shrink-0">{idx + 1}.</span>
-                        <span>{step}</span>
-                      </li>
-                    ))}
-                    {fittedRecipePreview.instructions.length > 4 && (
-                      <li className="text-sm text-slate-400 italic">
-                        ...and {fittedRecipePreview.instructions.length - 4} more steps
-                      </li>
-                    )}
-                  </ol>
+                  <div className="bg-slate-50 rounded-lg p-3 max-h-40 overflow-y-auto">
+                    <p className="text-sm text-slate-600 whitespace-pre-wrap line-clamp-6">
+                      {fittedRecipePreview.instructions}
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>

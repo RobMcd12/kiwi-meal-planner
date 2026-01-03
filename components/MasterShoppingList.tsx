@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { ArrowLeft, ShoppingCart, Check, Package, Star, RefreshCw, Trash2, Plus, ChevronDown, ChevronUp, FolderHeart, BookHeart, Share, Download, Printer, X, Settings, GripVertical, Store, LayoutList, Edit2, Save as SaveIcon } from 'lucide-react';
+import { ArrowLeft, ShoppingCart, Check, Package, Star, RefreshCw, Trash2, Plus, ChevronDown, ChevronUp, FolderHeart, BookHeart, Share, Download, Printer, X, Settings, GripVertical, Store, LayoutList, Edit2, Save as SaveIcon, Crown, Lock } from 'lucide-react';
 import type { PantryItem, SavedMealPlan, ShoppingCategory, Ingredient, Meal } from '../types';
 import { loadPantry, getSavedMealPlans, togglePantryItemRestock, getFavoriteMeals } from '../services/storageService';
 import {
@@ -25,6 +25,8 @@ interface MasterShoppingListProps {
   onBack: () => void;
   pantryItems?: PantryItem[];
   onPantryUpdate?: (items: PantryItem[]) => void;
+  hasPro?: boolean;
+  onUpgradeClick?: () => void;
 }
 
 interface ShoppingItem {
@@ -44,7 +46,9 @@ type SortMode = 'list' | 'category' | 'supermarket';
 const MasterShoppingList: React.FC<MasterShoppingListProps> = ({
   onBack,
   pantryItems: externalPantryItems,
-  onPantryUpdate
+  onPantryUpdate,
+  hasPro = false,
+  onUpgradeClick
 }) => {
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState<ShoppingItem[]>([]);
@@ -1119,17 +1123,33 @@ const MasterShoppingList: React.FC<MasterShoppingListProps> = ({
               Category
             </button>
             <button
-              onClick={() => setSortMode('supermarket')}
+              onClick={() => {
+                if (hasPro) {
+                  setSortMode('supermarket');
+                } else {
+                  onUpgradeClick?.();
+                }
+              }}
               className={`px-3 py-1.5 text-sm rounded-md transition-colors flex items-center gap-1 ${
-                sortMode === 'supermarket' ? 'bg-white shadow text-slate-800' : 'text-slate-500 hover:text-slate-700'
+                sortMode === 'supermarket'
+                  ? 'bg-white shadow text-slate-800'
+                  : hasPro
+                    ? 'text-slate-500 hover:text-slate-700'
+                    : 'text-slate-400'
               }`}
             >
               <Store size={14} />
               Supermarket
+              {!hasPro && (
+                <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[10px] font-bold rounded-full">
+                  <Crown size={10} />
+                  PRO
+                </span>
+              )}
             </button>
           </div>
 
-          {sortMode === 'supermarket' && (
+          {sortMode === 'supermarket' && hasPro && (
             <>
               {layouts.length > 0 ? (
                 <select
@@ -1156,13 +1176,15 @@ const MasterShoppingList: React.FC<MasterShoppingListProps> = ({
             </span>
           )}
 
-          <button
-            onClick={() => setShowLayoutModal(true)}
-            className="ml-auto px-3 py-1.5 text-sm text-slate-600 hover:text-slate-800 flex items-center gap-1"
-          >
-            <Settings size={14} />
-            Manage Layouts
-          </button>
+          {hasPro && (
+            <button
+              onClick={() => setShowLayoutModal(true)}
+              className="ml-auto px-3 py-1.5 text-sm text-slate-600 hover:text-slate-800 flex items-center gap-1"
+            >
+              <Settings size={14} />
+              Manage Layouts
+            </button>
+          )}
         </div>
       )}
 

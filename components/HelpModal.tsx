@@ -133,11 +133,12 @@ const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
     },
     {
       id: 'adjust-recipe',
-      title: 'Adjusting Recipes',
+      title: 'Adjusting Recipes (Pro)',
       icon: <SlidersHorizontal size={20} />,
-      keywords: ['adjust', 'modify', 'change', 'servings', 'protein', 'macros', 'calories', 'scale', 'customize', 'nutrition'],
+      keywords: ['adjust', 'modify', 'change', 'servings', 'protein', 'macros', 'calories', 'scale', 'customize', 'nutrition', 'pro'],
       content: (
         <>
+          <p className="text-amber-600 text-sm font-medium mb-2">⭐ Pro Feature</p>
           <p>Modify any recipe to fit your needs with the <strong>Adjust</strong> button:</p>
           <div className="space-y-3 mt-2">
             <div className="flex items-start gap-2">
@@ -256,6 +257,9 @@ const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
           </div>
           <p className="mt-3">
             Access the Shopping List from the home screen. Check off items as you shop - staples are automatically marked as restocked when checked.
+          </p>
+          <p className="mt-2 text-amber-600 text-sm">
+            ⭐ <strong>Pro Feature:</strong> Custom supermarket layouts let you organize items by your store's aisle order.
           </p>
         </>
       )
@@ -438,11 +442,12 @@ const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
     },
     {
       id: 'upload',
-      title: 'Uploading Recipes',
+      title: 'Uploading Recipes (Pro)',
       icon: <Upload size={20} />,
-      keywords: ['upload', 'import', 'add', 'url', 'website', 'image', 'pdf', 'text', 'paste'],
+      keywords: ['upload', 'import', 'add', 'url', 'website', 'image', 'pdf', 'text', 'paste', 'pro'],
       content: (
         <>
+          <p className="text-amber-600 text-sm font-medium mb-2">⭐ Pro Feature</p>
           <p>Add your own recipes to the cookbook using four methods:</p>
           <div className="space-y-3 mt-2">
             <div className="flex items-start gap-2">

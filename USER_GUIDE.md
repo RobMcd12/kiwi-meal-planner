@@ -13,20 +13,21 @@
 5. [AI Pantry Scanner](#ai-pantry-scanner)
 6. [Pantry Staples](#pantry-staples)
 7. [Nutritional Information](#nutritional-information)
-8. [My Cookbook](#my-cookbook)
-9. [Uploading Recipes](#uploading-recipes)
-10. [Recipe Images](#recipe-images)
-11. [Tags & Search](#tags--search)
-12. [Sharing Recipes](#sharing-recipes)
-13. [Notes & Comments](#notes--comments)
-14. [Shopping Lists](#shopping-lists)
+8. [AI Recipe Adjustments](#ai-recipe-adjustments) *(Pro)*
+9. [My Cookbook](#my-cookbook)
+10. [Uploading Recipes](#uploading-recipes) *(Pro)*
+11. [Recipe Images](#recipe-images)
+12. [Tags & Search](#tags--search)
+13. [Sharing Recipes](#sharing-recipes)
+14. [Notes & Comments](#notes--comments)
+15. [Shopping Lists](#shopping-lists)
     - [Master Shopping List](#master-shopping-list)
-    - [Supermarket Layouts](#supermarket-layouts)
+    - [Supermarket Layouts](#supermarket-layouts) *(Pro)*
     - [Exporting Shopping Lists](#exporting-shopping-lists)
-15. [Portions & Macro Targets](#portions--macro-targets)
-16. [Settings & Preferences](#settings--preferences)
-17. [Feedback & Support](#feedback--support)
-18. [Installing as an App](#installing-as-an-app)
+16. [Portions & Macro Targets](#portions--macro-targets)
+17. [Settings & Preferences](#settings--preferences)
+18. [Feedback & Support](#feedback--support)
+19. [Installing as an App](#installing-as-an-app)
 
 ---
 
@@ -388,6 +389,46 @@ View detailed nutritional information for any recipe with AI-calculated macros.
 
 ---
 
+## AI Recipe Adjustments
+
+> **Pro Feature**: AI Recipe Adjustments are available with a Pro subscription.
+
+Let AI modify any recipe to fit your dietary goals and preferences.
+
+### Accessing Recipe Adjustments
+
+1. Open any recipe in your cookbook
+2. Click the **"Adjust"** button (purple icon)
+3. The AI Adjustment panel opens
+
+### What You Can Adjust
+
+| Adjustment Type | Description |
+|----------------|-------------|
+| **Increase Protein** | Add more protein-rich ingredients |
+| **Reduce Carbs** | Lower carbohydrate content |
+| **Make Vegetarian** | Substitute meat with plant-based alternatives |
+| **Lower Calories** | Reduce overall calorie count |
+| **Add Fiber** | Increase fiber content |
+| **Reduce Sodium** | Lower salt and sodium levels |
+| **Custom Adjustments** | Describe any changes you'd like |
+
+### How It Works
+
+1. **Select an adjustment type** or describe your custom changes
+2. **Click "Adjust"** to let AI reformulate the recipe
+3. **Preview the changes** including new ingredients and instructions
+4. **Save the adjusted recipe** as a new entry in your cookbook
+
+### Tips for Best Results
+
+- Be specific about your dietary goals
+- You can combine multiple adjustments
+- The original recipe is preserved—adjustments create a new version
+- Check nutrition info after adjusting to verify changes
+
+---
+
 ## My Cookbook
 
 Your cookbook stores all your favorite and uploaded recipes across three tabs:
@@ -410,6 +451,8 @@ Recipes shared by other users in the community. You can:
 ---
 
 ## Uploading Recipes
+
+> **Pro Feature**: Recipe uploads (URL, Image, PDF, Text) are available with a Pro subscription.
 
 Add your own recipes using four convenient methods:
 
@@ -591,6 +634,8 @@ Choose how to organize your shopping list:
 | **Store Layout** | Group by your custom supermarket aisle order |
 
 ### Supermarket Layouts
+
+> **Pro Feature**: Custom supermarket layouts are available with a Pro subscription.
 
 Create custom layouts that match how your local store is organized:
 

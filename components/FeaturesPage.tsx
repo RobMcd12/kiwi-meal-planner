@@ -371,6 +371,7 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({
               iconBg="bg-blue-100"
               title="From URL"
               description="Paste any recipe website link. AI extracts the full recipe automatically."
+              isPro
             />
 
             <FeatureCard
@@ -378,6 +379,7 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({
               iconBg="bg-purple-100"
               title="From Image"
               description="Photograph a recipe card, cookbook page, or handwritten notes."
+              isPro
             />
 
             <FeatureCard
@@ -385,6 +387,7 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({
               iconBg="bg-amber-100"
               title="From PDF"
               description="Upload PDF cookbooks or recipe collections. Batch import supported."
+              isPro
             />
 
             <FeatureCard
@@ -392,6 +395,7 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({
               iconBg="bg-slate-100"
               title="From Text"
               description="Copy and paste recipe text from anywhere - emails, documents, messages."
+              isPro
             />
           </div>
         </div>
@@ -466,6 +470,7 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({
                 'Reduce carbs',
                 'Make it vegetarian',
               ]}
+              isPro
             />
 
             <FeatureCard
@@ -541,7 +546,7 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({
                 'Multiple store layouts',
                 'Set a default layout',
               ]}
-              badge="New"
+              isPro
             />
 
             <FeatureCard
@@ -790,6 +795,18 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({
                 <li className="flex items-start gap-3">
                   <Target size={20} className="text-emerald-600 flex-shrink-0 mt-0.5" />
                   <span className="text-slate-700">Custom macro targets & Fit My Macros</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <SlidersHorizontal size={20} className="text-emerald-600 flex-shrink-0 mt-0.5" />
+                  <span className="text-slate-700">AI Recipe Adjustments</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <Camera size={20} className="text-emerald-600 flex-shrink-0 mt-0.5" />
+                  <span className="text-slate-700">Recipe uploads (Image, PDF, URL, Text)</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <Store size={20} className="text-emerald-600 flex-shrink-0 mt-0.5" />
+                  <span className="text-slate-700">Custom supermarket layouts</span>
                 </li>
               </ul>
 

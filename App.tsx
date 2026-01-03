@@ -554,6 +554,8 @@ const AppContent: React.FC = () => {
             onBack={() => setStep(AppStep.WELCOME)}
             pantryItems={pantryItems}
             onPantryUpdate={setPantryItems}
+            hasPro={subscriptionState?.hasPro ?? false}
+            onUpgradeClick={() => setStep(AppStep.FEATURES)}
           />
         );
 
