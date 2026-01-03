@@ -5,7 +5,7 @@ import {
   Sparkles, Bell, MessageSquare, User, ChevronRight, ChevronDown,
   Star, ImagePlus, Edit2, Camera, Apple, Utensils, SlidersHorizontal,
   Beef, Flame, Printer, Mic, Timer, Volume2, Play, Pause, UtensilsCrossed,
-  UserCircle, ShieldAlert
+  UserCircle, ShieldAlert, Target
 } from 'lucide-react';
 import { version } from '../package.json';
 
@@ -173,12 +173,12 @@ const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
     },
     {
       id: 'portion-settings',
-      title: 'Portion & Nutrition Settings',
+      title: 'Portion & Macro Targets',
       icon: <Beef size={20} />,
-      keywords: ['portion', 'serving', 'meat', 'protein', 'calorie', 'target', 'settings', 'preferences', 'grams'],
+      keywords: ['portion', 'serving', 'meat', 'protein', 'calorie', 'target', 'settings', 'preferences', 'grams', 'macros', 'carbs', 'fat', 'fiber', 'nutrition'],
       content: (
         <>
-          <p>Customize portion sizes and nutrition targets in your preferences:</p>
+          <p>Customize portion sizes and daily macro targets in your preferences:</p>
           <div className="space-y-3 mt-2">
             <div className="flex items-start gap-2">
               <Beef size={16} className="text-red-500 mt-0.5" />
@@ -189,12 +189,18 @@ const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
             <div className="flex items-start gap-2">
               <Flame size={16} className="text-orange-500 mt-0.5" />
               <div>
-                <strong>Calorie Target</strong> - Set your daily calorie goal (e.g., 2000 kcal). The AI distributes this across your meals.
+                <strong>Daily Macro Targets</strong> - Pro users can set custom daily targets for calories, protein, carbs, fat, fiber, sugar, and sodium.
+              </div>
+            </div>
+            <div className="flex items-start gap-2">
+              <Target size={16} className="text-indigo-500 mt-0.5" />
+              <div>
+                <strong>Fit My Macros</strong> - Pro feature to automatically adjust any recipe to match your saved macro targets.
               </div>
             </div>
           </div>
           <p className="mt-3">
-            Find these settings in <strong>Preferences</strong> under "Portion & Nutrition".
+            Find these settings in <strong>Preferences</strong> → <strong>Macros</strong> tab. Your targets are used when viewing nutrition info and generating meal plans.
           </p>
         </>
       )

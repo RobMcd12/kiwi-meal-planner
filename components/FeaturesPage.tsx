@@ -36,6 +36,7 @@ import {
   Check,
   Infinity,
   ArrowRight,
+  Target,
 } from 'lucide-react';
 import LegalPages from './LegalPages';
 import { getSubscriptionConfig, formatPrice } from '../services/subscriptionService';
@@ -468,6 +469,19 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({
             />
 
             <FeatureCard
+              icon={<Target className="text-teal-600" size={24} />}
+              iconBg="bg-teal-100"
+              title="Fit My Macros"
+              description="Automatically adjust any recipe to match your personal daily macro targets."
+              details={[
+                'Set custom calorie, protein, carb, fat targets',
+                'One-click recipe adjustment',
+                'Works with any recipe',
+              ]}
+              isPro
+            />
+
+            <FeatureCard
               icon={<FolderHeart className="text-cyan-600" size={24} />}
               iconBg="bg-cyan-100"
               title="Saved Meal Plans"
@@ -605,14 +619,14 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({
             />
 
             <FeatureCard
-              icon={<Users className="text-purple-600" size={24} />}
+              icon={<Target className="text-purple-600" size={24} />}
               iconBg="bg-purple-100"
-              title="Default Portions"
-              description="Set default serving sizes and portion preferences."
+              title="Portion & Macro Targets"
+              description="Set default serving sizes and daily macro nutrient goals."
               details={[
-                'Meat serving size',
-                'Default people count',
-                'Calorie targets',
+                'Daily calorie and macro targets',
+                'Protein, carbs, fat goals',
+                'Nutrition tracking in recipes',
               ]}
             />
 
@@ -772,6 +786,10 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({
                 <li className="flex items-start gap-3">
                   <Volume2 size={20} className="text-emerald-600 flex-shrink-0 mt-0.5" />
                   <span className="text-slate-700">Voice Cook Mode with AI assistant</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <Target size={20} className="text-emerald-600 flex-shrink-0 mt-0.5" />
+                  <span className="text-slate-700">Custom macro targets & Fit My Macros</span>
                 </li>
               </ul>
 

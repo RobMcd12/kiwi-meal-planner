@@ -23,9 +23,10 @@
     - [Master Shopping List](#master-shopping-list)
     - [Supermarket Layouts](#supermarket-layouts)
     - [Exporting Shopping Lists](#exporting-shopping-lists)
-15. [Settings & Preferences](#settings--preferences)
-16. [Feedback & Support](#feedback--support)
-17. [Installing as an App](#installing-as-an-app)
+15. [Portions & Macro Targets](#portions--macro-targets)
+16. [Settings & Preferences](#settings--preferences)
+17. [Feedback & Support](#feedback--support)
+18. [Installing as an App](#installing-as-an-app)
 
 ---
 
@@ -655,6 +656,88 @@ Export your shopping list to take with you:
 
 ---
 
+## Portions & Macro Targets
+
+Customize your nutrition goals to get personalized meal plans and recipe adjustments.
+
+### Accessing Portion & Macro Settings
+
+1. Go to **Settings** → **Preferences**
+2. Click the **Macros** tab
+3. Configure your daily targets
+
+### Portion Settings
+
+| Setting | Description |
+|---------|-------------|
+| **Meat per Person** | Target protein serving size in grams (e.g., 150-200g) |
+| **Daily Calories** | Your target daily calorie intake |
+
+These settings guide the AI when generating meal plans, ensuring recipes match your portion preferences.
+
+### Macro Targets (Pro Feature)
+
+Pro users can set custom daily macro nutrient targets:
+
+| Macro | Default | Description |
+|-------|---------|-------------|
+| **Calories** | 2000 kcal | Daily energy target |
+| **Protein** | 50g | Muscle building and repair |
+| **Carbohydrates** | 250g | Energy source |
+| **Fat** | 65g | Essential nutrients |
+| **Fiber** | 25g | Digestive health (minimum) |
+| **Sugar** | 50g | Daily limit (maximum) |
+| **Sodium** | 2300mg | Daily limit (maximum) |
+| **Saturated Fat** | 20g | Daily limit (maximum) |
+
+#### Setting Custom Targets
+
+1. Navigate to **Preferences** → **Macros** tab
+2. Adjust each value using the input fields
+3. Click **Save Targets** to save your changes
+4. Click **Reset to defaults** to restore recommended values
+
+### How Macros Are Used
+
+#### In Meal Plan Generation
+When generating meal plans, the AI considers your macro targets to:
+- Balance daily nutrition across all meals
+- Suggest recipes that fit your calorie goals
+- Prioritize protein-rich options if you have higher protein targets
+
+#### In Recipe Nutrition Info
+When viewing nutrition information for any recipe:
+- Your daily targets are shown alongside actual values
+- Percentage of daily target is calculated for each macro
+- Color-coded indicators show how the recipe fits your goals:
+  - **Green**: Within optimal range
+  - **Amber**: Moderate deviation
+  - **Red**: Significant deviation (for limits like sugar/sodium)
+
+#### Adjust Recipe to My Macros (Pro Feature)
+
+For any recipe in your cookbook, you can automatically adjust it to fit your nutrition targets:
+
+1. Open any recipe from your cookbook
+2. Click the **"Fit My Macros"** button (Pro feature)
+3. The AI reformulates the recipe to match your saved macro targets:
+   - Adjusts portion sizes
+   - Suggests ingredient substitutions
+   - Modifies cooking methods if needed
+4. Preview the changes before saving
+5. Save as a new recipe to your cookbook
+
+This feature works with both AI-generated recipes and your uploaded recipes, making it easy to personalize any dish.
+
+### Best Practices
+
+1. **Start with defaults** - The recommended values are based on general nutrition guidelines
+2. **Consult a professional** - For specific dietary needs, consult a nutritionist
+3. **Be realistic** - Set achievable targets you can maintain
+4. **Review regularly** - Update targets as your goals change
+
+---
+
 ## Settings & Preferences
 
 Access settings from the ⚙️ gear icon or welcome screen:
@@ -771,7 +854,13 @@ Note: Generating new meal plans requires an internet connection.
 
 ## Version History
 
-### v2.2.0 (Current)
+### v2.3.0 (Current)
+- **Custom Macro Targets** - Pro users can set personalized daily nutrition targets
+- **Fit My Macros** - Pro feature to automatically adjust any recipe to match your macro goals
+- **Nutrition Comparison** - See how recipes compare to your daily targets
+- **Preference Sub-tabs** - Reorganized preferences into Meal Prefs, Allergies, and Macros tabs
+
+### v2.2.0
 - **Master Shopping List** - Consolidated shopping list from meal plans, recipes, staples, and pantry
 - **Supermarket Layouts** - Save custom store layouts with drag-and-drop category ordering
 - **Multiple Sort Modes** - Sort by source, category, or store layout

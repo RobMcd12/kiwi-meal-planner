@@ -3,7 +3,7 @@ import { Meal, CookbookTab, SideDish, UserProfile } from '../types';
 import { getFavoriteMeals, removeFavoriteMeal, getCachedImage, cacheImage, updateFavoriteMealImage, saveFavoriteMeal } from '../services/storageService';
 import { useAuth } from './AuthProvider';
 import { getUserProfile } from '../services/profileService';
-import { generateDishImage, editDishImage, TAG_CATEGORIES } from '../services/geminiService';
+import { generateDishImage, editDishImage, TAG_CATEGORIES, adjustRecipe, AdjustedRecipe } from '../services/geminiService';
 import {
   getUserUploadedRecipes,
   getUserGeneratedRecipes,
@@ -24,7 +24,7 @@ import SuggestSidesModal from './SuggestSidesModal';
 import {
   Trash2, Heart, ShoppingCart, ArrowLeft, X, ChefHat, Clock,
   Image as ImageIcon, Loader2, Search, Grid, List, Plus, Upload,
-  Globe, Lock, Tag, User, Sparkles, FileText, Pencil, RefreshCw, Star, Printer, Apple, SlidersHorizontal, Crown, AlertCircle, Video, Play, MoreVertical, Mic, MessageCircle, UtensilsCrossed
+  Globe, Lock, Tag, User, Sparkles, FileText, Pencil, RefreshCw, Star, Printer, Apple, SlidersHorizontal, Crown, AlertCircle, Video, Play, MoreVertical, Mic, MessageCircle, UtensilsCrossed, Target
 } from 'lucide-react';
 import RecipeVideoPlayer from './RecipeVideoPlayer';
 import RecipeChatModal from './RecipeChatModal';
@@ -32,6 +32,8 @@ import ResponsiveTabs from './ResponsiveTabs';
 import { getRecipeVideo, initiateVideoGeneration } from '../services/recipeVideoService';
 import type { RecipeVideo } from '../types';
 import { getSidesForRecipe } from '../services/suggestSidesService';
+import { getUserMacroTargets } from '../services/macroTargetService';
+import type { MacroTargets } from '../types';
 
 interface FavoritesViewProps {
   onBack: () => void;
@@ -115,6 +117,11 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({
   const [showSidesModal, setShowSidesModal] = useState(false);
   const [recipeSides, setRecipeSides] = useState<SideDish[]>([]);
 
+  // Fit My Macros state
+  const [userMacroTargets, setUserMacroTargets] = useState<MacroTargets | null>(null);
+  const [isCustomMacros, setIsCustomMacros] = useState(false);
+  const [isFittingMacros, setIsFittingMacros] = useState(false);
+
   // Loading state
   const [isLoadingRecipes, setIsLoadingRecipes] = useState(true);
 
@@ -174,6 +181,23 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({
       loadRecipes();
     }
   }, [activeTab]);
+
+  // Load user's macro targets for Fit My Macros feature
+  useEffect(() => {
+    const loadMacroTargets = async () => {
+      if (!user) return;
+      try {
+        const data = await getUserMacroTargets(user.id);
+        if (data) {
+          setUserMacroTargets(data.targets);
+          setIsCustomMacros(data.isCustom);
+        }
+      } catch (err) {
+        console.error('Error loading macro targets:', err);
+      }
+    };
+    loadMacroTargets();
+  }, [user]);
 
   // Reload uploaded recipes when uploads complete
   useEffect(() => {
@@ -516,6 +540,59 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({
 
       // Update the open meal with the adjustments
       setOpenMeal(adjustedMeal);
+    }
+  };
+
+  // Handle "Fit My Macros" - automatically adjust recipe to user's macro targets
+  const handleFitMyMacros = async () => {
+    if (!openMeal || !hasPro) return;
+
+    // Use user's custom targets or fall back to defaults
+    const targets = userMacroTargets || {
+      calories: 2000,
+      protein: 50,
+      carbohydrates: 250,
+      fat: 65,
+    };
+
+    setIsFittingMacros(true);
+
+    try {
+      // Calculate per-serving targets (assuming 3 main meals per day)
+      const servingsPerDay = 3;
+      const perServingTargets = {
+        targetCalories: Math.round(targets.calories / servingsPerDay),
+        targetProtein: Math.round(targets.protein / servingsPerDay),
+        targetCarbs: Math.round(targets.carbohydrates / servingsPerDay),
+        targetFat: Math.round(targets.fat / servingsPerDay),
+      };
+
+      const adjusted = await adjustRecipe(openMeal, {
+        type: 'macros',
+        ...perServingTargets,
+      });
+
+      // Create adjusted meal
+      const adjustedMeal: Meal = {
+        id: '',
+        name: `${userName}'s ${adjusted.name || openMeal.name}`,
+        description: adjusted.description,
+        ingredients: adjusted.ingredients,
+        instructions: adjusted.instructions,
+        servings: adjusted.servings,
+        source: 'generated',
+      };
+
+      // Save as new recipe
+      const saved = await saveFavoriteMeal(adjustedMeal);
+      if (saved) {
+        await loadRecipes();
+        setOpenMeal(null);
+      }
+    } catch (error) {
+      console.error('Failed to fit recipe to macros:', error);
+    } finally {
+      setIsFittingMacros(false);
     }
   };
 
@@ -1316,6 +1393,36 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({
                           Adjust Recipe
                         </button>
                         <button
+                          onClick={() => {
+                            if (hasPro) {
+                              handleFitMyMacros();
+                              setShowMobileMenu(false);
+                            } else {
+                              setShowMobileMenu(false);
+                              onUpgradeClick?.();
+                            }
+                          }}
+                          disabled={isFittingMacros}
+                          className={`w-full flex items-center gap-3 px-4 py-2.5 text-left ${
+                            hasPro
+                              ? 'text-teal-700 hover:bg-teal-50'
+                              : 'text-slate-400'
+                          } disabled:opacity-50`}
+                        >
+                          {isFittingMacros ? (
+                            <Loader2 size={18} className="animate-spin" />
+                          ) : (
+                            <Target size={18} />
+                          )}
+                          {isFittingMacros ? 'Fitting...' : 'Fit My Macros'}
+                          {!hasPro && (
+                            <span className="ml-auto inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[10px] font-bold rounded-full">
+                              <Crown size={10} />
+                              PRO
+                            </span>
+                          )}
+                        </button>
+                        <button
                           onClick={() => { setShowSidesModal(true); setShowMobileMenu(false); }}
                           className="w-full flex items-center gap-3 px-4 py-2.5 text-left text-amber-700 hover:bg-amber-50"
                         >
@@ -1394,6 +1501,43 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({
                   >
                     <SlidersHorizontal size={14} />
                     Adjust
+                  </button>
+
+                  {/* Fit My Macros button - Pro only */}
+                  <button
+                    onClick={() => {
+                      if (hasPro) {
+                        handleFitMyMacros();
+                      } else {
+                        onUpgradeClick?.();
+                      }
+                    }}
+                    disabled={isFittingMacros}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                      hasPro
+                        ? 'bg-teal-100 text-teal-700 hover:bg-teal-200'
+                        : 'bg-slate-100 text-slate-400 hover:bg-slate-200'
+                    } disabled:opacity-50 disabled:cursor-not-allowed`}
+                    title={
+                      !hasPro
+                        ? "Upgrade to Pro for Fit My Macros"
+                        : isCustomMacros
+                        ? "Adjust recipe to match your custom macro targets"
+                        : "Adjust recipe to match recommended daily macros"
+                    }
+                  >
+                    {isFittingMacros ? (
+                      <Loader2 size={14} className="animate-spin" />
+                    ) : (
+                      <Target size={14} />
+                    )}
+                    {isFittingMacros ? 'Fitting...' : 'Fit My Macros'}
+                    {!hasPro && (
+                      <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[10px] font-bold rounded-full">
+                        <Crown size={10} />
+                        PRO
+                      </span>
+                    )}
                   </button>
 
                   {/* Suggest Sides button */}
