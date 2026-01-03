@@ -1,7 +1,8 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { Meal, CookbookTab, SideDish } from '../types';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
+import { Meal, CookbookTab, SideDish, UserProfile } from '../types';
 import { getFavoriteMeals, removeFavoriteMeal, getCachedImage, cacheImage, updateFavoriteMealImage, saveFavoriteMeal } from '../services/storageService';
 import { useAuth } from './AuthProvider';
+import { getUserProfile } from '../services/profileService';
 import { generateDishImage, editDishImage, TAG_CATEGORIES } from '../services/geminiService';
 import {
   getUserUploadedRecipes,
@@ -66,14 +67,19 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({
   // Get user's display name for recipe naming
   const userName = user?.user_metadata?.full_name || user?.email?.split('@')[0] || 'User';
 
-  // Tab and view state
-  const [activeTab, setActiveTab] = useState<CookbookTab>('all');
+  // Track whether we've initialized the default tab
+  const defaultTabInitialized = useRef(false);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+
+  // Tab and view state - start with null until we determine the correct default
+  const [activeTab, setActiveTab] = useState<CookbookTab | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('cards');
 
   // Recipe data
   const [generatedRecipes, setGeneratedRecipes] = useState<Meal[]>([]);
   const [uploadedRecipes, setUploadedRecipes] = useState<Meal[]>([]);
   const [publicRecipes, setPublicRecipes] = useState<Meal[]>([]);
+  const [favouriteRecipes, setFavouriteRecipes] = useState<Meal[]>([]);
 
   // Search and filter
   const [searchQuery, setSearchQuery] = useState('');
@@ -123,9 +129,50 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({
     ...TAG_CATEGORIES.other
   ], []);
 
+  // Initialize default tab based on user preference
+  useEffect(() => {
+    const initializeDefaultTab = async () => {
+      if (defaultTabInitialized.current || !user) return;
+      defaultTabInitialized.current = true;
+
+      // Load user profile to get preference
+      const profile = await getUserProfile(user.id);
+      setUserProfile(profile);
+
+      // Load all recipes first to determine if favourites exist
+      const [generated, uploaded] = await Promise.all([
+        getUserGeneratedRecipes(),
+        getUserUploadedRecipes()
+      ]);
+
+      // Find recipes marked as favourite
+      const allRecipes = [...generated, ...uploaded];
+      const favourites = allRecipes.filter(r => r.isFavorite === true);
+      setFavouriteRecipes(favourites);
+      setGeneratedRecipes(generated);
+      setUploadedRecipes(uploaded);
+
+      // Determine default tab
+      if (profile?.defaultCookbookTab) {
+        // User has a preference set
+        setActiveTab(profile.defaultCookbookTab);
+      } else if (favourites.length > 0) {
+        // No preference but has favourites
+        setActiveTab('favourites');
+      } else {
+        // No preference and no favourites - default to all
+        setActiveTab('all');
+      }
+    };
+
+    initializeDefaultTab();
+  }, [user]);
+
   // Load recipes based on active tab
   useEffect(() => {
-    loadRecipes();
+    if (activeTab) {
+      loadRecipes();
+    }
   }, [activeTab]);
 
   // Reload uploaded recipes when uploads complete
@@ -141,7 +188,22 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({
     try {
       let loadedRecipes: Meal[] = [];
 
-      if (activeTab === 'generated') {
+      if (activeTab === 'favourites' || activeTab === 'all') {
+        // For favourites and all tabs, load both generated and uploaded
+        const [generated, uploaded] = await Promise.all([
+          getUserGeneratedRecipes(),
+          getUserUploadedRecipes()
+        ]);
+        setGeneratedRecipes(generated);
+        setUploadedRecipes(uploaded);
+
+        // Filter for favourites
+        const allRecipes = [...generated, ...uploaded];
+        const favourites = allRecipes.filter(r => r.isFavorite === true);
+        setFavouriteRecipes(favourites);
+
+        loadedRecipes = activeTab === 'favourites' ? favourites : allRecipes;
+      } else if (activeTab === 'generated') {
         const recipes = await getUserGeneratedRecipes();
         // Fallback to local storage if no Supabase data
         if (recipes.length === 0) {
@@ -172,7 +234,9 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({
         }));
 
         // Update the correct state based on tab
-        if (activeTab === 'generated') {
+        if (activeTab === 'favourites') {
+          setFavouriteRecipes(loadedRecipes);
+        } else if (activeTab === 'generated') {
           setGeneratedRecipes(loadedRecipes);
         } else if (activeTab === 'uploaded') {
           setUploadedRecipes(loadedRecipes);
@@ -253,7 +317,8 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({
           recipes.push(r);
         }
       });
-    } else if (activeTab === 'generated') recipes = generatedRecipes;
+    } else if (activeTab === 'favourites') recipes = favouriteRecipes;
+    else if (activeTab === 'generated') recipes = generatedRecipes;
     else if (activeTab === 'uploaded') recipes = uploadedRecipes;
     else if (activeTab === 'public') recipes = publicRecipes;
 
@@ -266,7 +331,7 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({
     }
 
     return filtered;
-  }, [activeTab, generatedRecipes, uploadedRecipes, publicRecipes, searchQuery, selectedTags, minRating, hasVideoFilter]);
+  }, [activeTab, generatedRecipes, uploadedRecipes, publicRecipes, favouriteRecipes, searchQuery, selectedTags, minRating, hasVideoFilter]);
 
   // Get unique tags from current recipes for filter pills
   const availableTags = useMemo(() => {
@@ -708,40 +773,48 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({
       </div>
 
       {/* Tabs */}
-      <ResponsiveTabs
-        tabs={[
-          {
-            id: 'all',
-            label: 'All Recipes',
-            icon: <Heart size={16} />,
-            color: 'default'
-          },
-          {
-            id: 'generated',
-            label: 'AI Generated',
-            icon: <Sparkles size={16} />,
-            color: 'emerald'
-          },
-          {
-            id: 'uploaded',
-            label: 'My Uploads',
-            icon: <Upload size={16} />,
-            color: 'purple'
-          },
-          {
-            id: 'public',
-            label: 'Public Recipes',
-            icon: <Globe size={16} />,
-            color: 'blue'
-          },
-        ]}
-        activeTab={activeTab}
-        onTabChange={(tabId) => setActiveTab(tabId as CookbookTab)}
-        variant="solid-pill"
-        visibleCount={4}
-        loadingTabId={hasActiveUploads ? 'uploaded' : undefined}
-        className="mb-4"
-      />
+      {activeTab && (
+        <ResponsiveTabs
+          tabs={[
+            {
+              id: 'all',
+              label: 'All Recipes',
+              icon: <ChefHat size={16} />,
+              color: 'default'
+            },
+            {
+              id: 'favourites',
+              label: 'Favourites',
+              icon: <Heart size={16} />,
+              color: 'rose'
+            },
+            {
+              id: 'generated',
+              label: 'AI Generated',
+              icon: <Sparkles size={16} />,
+              color: 'emerald'
+            },
+            {
+              id: 'uploaded',
+              label: 'My Uploads',
+              icon: <Upload size={16} />,
+              color: 'purple'
+            },
+            {
+              id: 'public',
+              label: 'Public Recipes',
+              icon: <Globe size={16} />,
+              color: 'blue'
+            },
+          ]}
+          activeTab={activeTab}
+          onTabChange={(tabId) => setActiveTab(tabId as CookbookTab)}
+          variant="solid-pill"
+          visibleCount={5}
+          loadingTabId={hasActiveUploads ? 'uploaded' : undefined}
+          className="mb-4"
+        />
+      )}
 
       {/* Filters Row */}
       <div className="flex flex-wrap items-center gap-4 mb-6">
@@ -818,7 +891,7 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({
       </div>
 
       {/* Loading State */}
-      {isLoadingRecipes ? (
+      {!activeTab || isLoadingRecipes ? (
         <div className="text-center py-20">
           <Loader2 size={32} className="animate-spin text-slate-400 mx-auto mb-4" />
           <p className="text-slate-500">Loading recipes...</p>
@@ -844,11 +917,17 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({
               <h3 className="text-lg font-medium text-slate-600">No public recipes yet</h3>
               <p className="text-slate-400">Recipes shared by other users will appear here.</p>
             </>
-          ) : (
+          ) : activeTab === 'favourites' ? (
             <>
               <Heart size={48} className="mx-auto text-slate-200 mb-4" />
-              <h3 className="text-lg font-medium text-slate-600">No favorites yet</h3>
-              <p className="text-slate-400">Rate meals in your weekly plan to save them here.</p>
+              <h3 className="text-lg font-medium text-slate-600">No favourites yet</h3>
+              <p className="text-slate-400">Mark recipes as favourites to see them here.</p>
+            </>
+          ) : (
+            <>
+              <ChefHat size={48} className="mx-auto text-slate-200 mb-4" />
+              <h3 className="text-lg font-medium text-slate-600">No recipes yet</h3>
+              <p className="text-slate-400">Generate or upload recipes to get started.</p>
             </>
           )}
         </div>

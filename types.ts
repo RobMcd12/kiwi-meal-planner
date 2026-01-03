@@ -105,6 +105,7 @@ export interface UserProfile {
   displayName: string | null;
   avatarUrl: string | null;
   country: CountryCode | null;
+  defaultCookbookTab: CookbookTab | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -290,7 +291,7 @@ export interface UploadTask {
 }
 
 export type RecipeSource = 'generated' | 'uploaded';
-export type CookbookTab = 'all' | 'generated' | 'uploaded' | 'public';
+export type CookbookTab = 'all' | 'favourites' | 'generated' | 'uploaded' | 'public';
 
 // ============================================
 // SAVED MEAL PLANS

@@ -1,5 +1,5 @@
 import { supabase } from './authService';
-import { UserProfile, CountryCode } from '../types';
+import { UserProfile, CountryCode, CookbookTab } from '../types';
 
 /**
  * Get user profile from database
@@ -21,6 +21,7 @@ export const getUserProfile = async (userId: string): Promise<UserProfile | null
       displayName: data.display_name,
       avatarUrl: data.avatar_url,
       country: data.country as CountryCode | null,
+      defaultCookbookTab: data.default_cookbook_tab as CookbookTab | null,
       createdAt: data.created_at,
       updatedAt: data.updated_at,
     };
@@ -35,7 +36,7 @@ export const getUserProfile = async (userId: string): Promise<UserProfile | null
  */
 export const updateUserProfile = async (
   userId: string,
-  updates: { displayName?: string; country?: CountryCode | null }
+  updates: { displayName?: string; country?: CountryCode | null; defaultCookbookTab?: CookbookTab | null }
 ): Promise<boolean> => {
   try {
     const updateData: Record<string, unknown> = {};
@@ -45,6 +46,9 @@ export const updateUserProfile = async (
     }
     if (updates.country !== undefined) {
       updateData.country = updates.country;
+    }
+    if (updates.defaultCookbookTab !== undefined) {
+      updateData.default_cookbook_tab = updates.defaultCookbookTab;
     }
 
     const { error } = await supabase

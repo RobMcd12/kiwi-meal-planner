@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { MealConfig, UserPreferences, PantryItem, SubscriptionState, CountryCode } from '../types';
+import { MealConfig, UserPreferences, PantryItem, SubscriptionState, CountryCode, CookbookTab } from '../types';
 import ConfigForm from './ConfigForm';
 import PreferenceForm from './PreferenceForm';
 import PantryManager from './PantryManager';
@@ -9,7 +9,7 @@ import { useAuth } from './AuthProvider';
 import { supabase } from '../services/authService';
 import { getSubscriptionState } from '../services/subscriptionService';
 import { getUserProfile, updateUserProfile, COUNTRY_OPTIONS } from '../services/profileService';
-import { ArrowLeft, Check, Sliders, Archive, Utensils, UserCircle, Loader2, FileVideo, Crown, Pencil, Globe, Save } from 'lucide-react';
+import { ArrowLeft, Check, Sliders, Archive, Utensils, UserCircle, Loader2, FileVideo, Crown, Pencil, Globe, Save, Book } from 'lucide-react';
 import ResponsiveTabs, { Tab } from './ResponsiveTabs';
 
 interface SettingsViewProps {
@@ -46,6 +46,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [editDisplayName, setEditDisplayName] = useState('');
   const [editCountry, setEditCountry] = useState<CountryCode | null>(null);
+  const [editDefaultCookbookTab, setEditDefaultCookbookTab] = useState<CookbookTab | null>(null);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [profileSaveSuccess, setProfileSaveSuccess] = useState(false);
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
@@ -60,6 +61,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({
         if (profile) {
           setEditDisplayName(profile.displayName || user.user_metadata?.full_name || '');
           setEditCountry(profile.country);
+          setEditDefaultCookbookTab(profile.defaultCookbookTab);
         } else {
           setEditDisplayName(user.user_metadata?.full_name || '');
         }
@@ -81,6 +83,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({
       const success = await updateUserProfile(user.id, {
         displayName: editDisplayName.trim() || null,
         country: editCountry,
+        defaultCookbookTab: editDefaultCookbookTab,
       });
       if (success) {
         setProfileSaveSuccess(true);
@@ -102,9 +105,11 @@ const SettingsView: React.FC<SettingsViewProps> = ({
     if (profile) {
       setEditDisplayName(profile.displayName || user.user_metadata?.full_name || '');
       setEditCountry(profile.country);
+      setEditDefaultCookbookTab(profile.defaultCookbookTab);
     } else {
       setEditDisplayName(user.user_metadata?.full_name || '');
       setEditCountry(null);
+      setEditDefaultCookbookTab(null);
     }
     setIsEditingProfile(false);
   };
@@ -337,6 +342,31 @@ const SettingsView: React.FC<SettingsViewProps> = ({
                                         </select>
                                     </div>
 
+                                    {/* Default Cookbook Tab */}
+                                    <div>
+                                        <label className="block text-sm font-medium text-slate-700 mb-1">
+                                            <div className="flex items-center gap-2">
+                                                <Book size={16} />
+                                                Default Cookbook Tab
+                                            </div>
+                                        </label>
+                                        <p className="text-xs text-slate-500 mb-2">
+                                            Choose which tab opens first when you visit your cookbook
+                                        </p>
+                                        <select
+                                            value={editDefaultCookbookTab || ''}
+                                            onChange={(e) => setEditDefaultCookbookTab(e.target.value as CookbookTab || null)}
+                                            className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none bg-white"
+                                        >
+                                            <option value="">Smart default (Favourites if any, else All)</option>
+                                            <option value="all">All Recipes</option>
+                                            <option value="favourites">Favourites</option>
+                                            <option value="generated">AI Generated</option>
+                                            <option value="uploaded">My Uploads</option>
+                                            <option value="public">Public Recipes</option>
+                                        </select>
+                                    </div>
+
                                     {/* Action Buttons */}
                                     <div className="flex items-center gap-3 pt-2">
                                         <button
@@ -393,6 +423,16 @@ const SettingsView: React.FC<SettingsViewProps> = ({
                                                         {COUNTRY_OPTIONS.find(c => c.code === editCountry)?.name}
                                                     </p>
                                                 )}
+                                                <p className="text-sm text-slate-500 flex items-center gap-1 mt-1">
+                                                    <Book size={14} />
+                                                    Cookbook: {editDefaultCookbookTab ? {
+                                                        all: 'All Recipes',
+                                                        favourites: 'Favourites',
+                                                        generated: 'AI Generated',
+                                                        uploaded: 'My Uploads',
+                                                        public: 'Public Recipes'
+                                                    }[editDefaultCookbookTab] : 'Smart default'}
+                                                </p>
                                             </div>
                                         </div>
                                         <button
