@@ -121,6 +121,10 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({
   const [userMacroTargets, setUserMacroTargets] = useState<MacroTargets | null>(null);
   const [isCustomMacros, setIsCustomMacros] = useState(false);
   const [isFittingMacros, setIsFittingMacros] = useState(false);
+  const [fittedRecipePreview, setFittedRecipePreview] = useState<AdjustedRecipe | null>(null);
+  const [fittedRecipeName, setFittedRecipeName] = useState('');
+  const [showFitPreview, setShowFitPreview] = useState(false);
+  const [isSavingFitted, setIsSavingFitted] = useState(false);
 
   // Loading state
   const [isLoadingRecipes, setIsLoadingRecipes] = useState(true);
@@ -572,28 +576,54 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({
         ...perServingTargets,
       });
 
-      // Create adjusted meal
-      const adjustedMeal: Meal = {
-        id: '',
-        name: `${userName}'s ${adjusted.name || openMeal.name}`,
-        description: adjusted.description,
-        ingredients: adjusted.ingredients,
-        instructions: adjusted.instructions,
-        servings: adjusted.servings,
-        source: 'generated',
-      };
-
-      // Save as new recipe
-      const saved = await saveFavoriteMeal(adjustedMeal);
-      if (saved) {
-        await loadRecipes();
-        setOpenMeal(null);
-      }
+      // Show preview modal with suggested name
+      setFittedRecipePreview(adjusted);
+      setFittedRecipeName(`${userName}'s ${adjusted.name || openMeal.name}`);
+      setShowFitPreview(true);
     } catch (error) {
       console.error('Failed to fit recipe to macros:', error);
     } finally {
       setIsFittingMacros(false);
     }
+  };
+
+  // Save the fitted recipe as a new recipe
+  const handleSaveFittedRecipe = async () => {
+    if (!fittedRecipePreview || !fittedRecipeName.trim()) return;
+
+    setIsSavingFitted(true);
+
+    try {
+      const newMeal: Meal = {
+        id: '',
+        name: fittedRecipeName.trim(),
+        description: fittedRecipePreview.description,
+        ingredients: fittedRecipePreview.ingredients,
+        instructions: fittedRecipePreview.instructions,
+        servings: fittedRecipePreview.servings,
+        source: 'generated',
+      };
+
+      const saved = await saveFavoriteMeal(newMeal);
+      if (saved) {
+        await loadRecipes();
+        // Close both modals
+        setShowFitPreview(false);
+        setFittedRecipePreview(null);
+        setOpenMeal(null);
+      }
+    } catch (error) {
+      console.error('Failed to save fitted recipe:', error);
+    } finally {
+      setIsSavingFitted(false);
+    }
+  };
+
+  // Cancel the fitted recipe preview
+  const handleCancelFitPreview = () => {
+    setShowFitPreview(false);
+    setFittedRecipePreview(null);
+    setFittedRecipeName('');
   };
 
   // Get source badge color and icon
@@ -1914,6 +1944,127 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({
           meal={openMeal}
           onSidesUpdated={(sides) => setRecipeSides(sides)}
         />
+      )}
+
+      {/* Fit My Macros Preview Modal */}
+      {showFitPreview && fittedRecipePreview && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4 animate-fadeIn">
+          <div className="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-hidden flex flex-col shadow-xl">
+            {/* Header */}
+            <div className="flex items-center justify-between p-4 border-b border-slate-200 bg-gradient-to-r from-teal-50 to-emerald-50">
+              <div className="flex items-center gap-2">
+                <Target size={20} className="text-teal-600" />
+                <h2 className="text-lg font-bold text-slate-800">Recipe Adjusted to Your Macros</h2>
+              </div>
+              <button
+                onClick={handleCancelFitPreview}
+                className="p-2 hover:bg-slate-100 rounded-full transition-colors"
+              >
+                <X size={20} className="text-slate-400" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              {/* Adjustment Notes */}
+              {fittedRecipePreview.adjustmentNotes && (
+                <div className="bg-teal-50 border border-teal-200 rounded-xl p-3">
+                  <p className="text-sm text-teal-700">
+                    <strong>Changes made:</strong> {fittedRecipePreview.adjustmentNotes}
+                  </p>
+                </div>
+              )}
+
+              {/* Recipe Name Input */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">
+                  Save as new recipe named:
+                </label>
+                <input
+                  type="text"
+                  value={fittedRecipeName}
+                  onChange={(e) => setFittedRecipeName(e.target.value)}
+                  className="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-teal-500 focus:border-teal-500 outline-none"
+                  placeholder="Enter recipe name..."
+                />
+                <p className="text-xs text-slate-500 mt-1">
+                  The original recipe will not be modified.
+                </p>
+              </div>
+
+              {/* Preview Details */}
+              <div className="space-y-3">
+                <div className="flex items-center gap-2 text-sm text-slate-600">
+                  <ChefHat size={16} className="text-slate-400" />
+                  <span>Servings: <strong>{fittedRecipePreview.servings}</strong></span>
+                </div>
+
+                {/* Ingredients Preview */}
+                <div>
+                  <h4 className="text-sm font-medium text-slate-700 mb-2">Ingredients:</h4>
+                  <ul className="bg-slate-50 rounded-lg p-3 space-y-1 max-h-40 overflow-y-auto">
+                    {fittedRecipePreview.ingredients.slice(0, 8).map((ing, idx) => (
+                      <li key={idx} className="text-sm text-slate-600 flex items-start gap-2">
+                        <span className="text-teal-500 mt-1">•</span>
+                        <span>{ing}</span>
+                      </li>
+                    ))}
+                    {fittedRecipePreview.ingredients.length > 8 && (
+                      <li className="text-sm text-slate-400 italic">
+                        ...and {fittedRecipePreview.ingredients.length - 8} more ingredients
+                      </li>
+                    )}
+                  </ul>
+                </div>
+
+                {/* Instructions Preview */}
+                <div>
+                  <h4 className="text-sm font-medium text-slate-700 mb-2">Instructions:</h4>
+                  <ol className="bg-slate-50 rounded-lg p-3 space-y-2 max-h-40 overflow-y-auto">
+                    {fittedRecipePreview.instructions.slice(0, 4).map((step, idx) => (
+                      <li key={idx} className="text-sm text-slate-600 flex items-start gap-2">
+                        <span className="font-medium text-teal-600 flex-shrink-0">{idx + 1}.</span>
+                        <span>{step}</span>
+                      </li>
+                    ))}
+                    {fittedRecipePreview.instructions.length > 4 && (
+                      <li className="text-sm text-slate-400 italic">
+                        ...and {fittedRecipePreview.instructions.length - 4} more steps
+                      </li>
+                    )}
+                  </ol>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="border-t border-slate-100 p-4 bg-slate-50 flex gap-3">
+              <button
+                onClick={handleCancelFitPreview}
+                className="flex-1 py-3 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl font-semibold transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveFittedRecipe}
+                disabled={isSavingFitted || !fittedRecipeName.trim()}
+                className="flex-1 py-3 bg-teal-500 hover:bg-teal-600 text-white rounded-xl font-semibold transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSavingFitted ? (
+                  <>
+                    <Loader2 size={18} className="animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Heart size={18} />
+                    Save to Cookbook
+                  </>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
