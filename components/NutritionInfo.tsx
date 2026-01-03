@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { X, Loader2, Flame, Beef, Wheat, Droplets, AlertCircle, Heart } from 'lucide-react';
 import { calculateNutrition, NutritionInfo as NutritionData } from '../services/geminiService';
-import type { Meal } from '../types';
+import { getUserMacroTargets } from '../services/macroTargetService';
+import { useAuth } from './AuthProvider';
+import type { Meal, MacroTargets } from '../types';
 
 interface NutritionInfoProps {
   meal: Meal;
@@ -10,13 +12,30 @@ interface NutritionInfoProps {
 }
 
 const NutritionInfo: React.FC<NutritionInfoProps> = ({ meal, servings = 1, onClose }) => {
+  const { user } = useAuth();
   const [nutrition, setNutrition] = useState<NutritionData | null>(null);
+  const [targets, setTargets] = useState<MacroTargets | null>(null);
+  const [isCustomTargets, setIsCustomTargets] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     loadNutrition();
-  }, [meal.id]);
+    loadTargets();
+  }, [meal.id, user]);
+
+  const loadTargets = async () => {
+    if (!user) return;
+    try {
+      const data = await getUserMacroTargets(user.id);
+      if (data) {
+        setTargets(data.targets);
+        setIsCustomTargets(data.isCustom);
+      }
+    } catch (err) {
+      console.error('Failed to load targets:', err);
+    }
+  };
 
   const loadNutrition = async () => {
     setIsLoading(true);
@@ -33,9 +52,24 @@ const NutritionInfo: React.FC<NutritionInfoProps> = ({ meal, servings = 1, onClo
     }
   };
 
-  // Calculate percentage of daily value (based on 2000 calorie diet)
-  const getDailyValuePercent = (value: number, dailyValue: number) => {
-    return Math.round((value / dailyValue) * 100);
+  // Calculate percentage of daily value based on user targets
+  const getDailyValuePercent = (value: number, targetValue: number) => {
+    return Math.round((value / targetValue) * 100);
+  };
+
+  // Get color based on percentage (for goals, meeting is good; for limits, under is good)
+  const getPercentColor = (percent: number, isMaxLimit: boolean = false): string => {
+    if (isMaxLimit) {
+      // For sugar, sodium, saturated fat - lower is better
+      if (percent <= 30) return 'text-emerald-600';
+      if (percent <= 60) return 'text-amber-600';
+      return 'text-red-600';
+    } else {
+      // For protein, fiber, etc - hitting target is good
+      if (percent >= 20 && percent <= 40) return 'text-emerald-600'; // Good per-serving range
+      if (percent >= 10) return 'text-amber-600';
+      return 'text-slate-500';
+    }
   };
 
   // Macro bar component
@@ -97,20 +131,32 @@ const NutritionInfo: React.FC<NutritionInfoProps> = ({ meal, servings = 1, onClo
                 </p>
               </div>
 
-              {/* Calories */}
+              {/* Calories with target comparison */}
               <div className="text-center">
                 <div className="inline-flex items-center gap-2 bg-orange-100 px-4 py-2 rounded-full">
                   <Flame className="text-orange-500" size={20} />
                   <span className="text-2xl font-bold text-orange-600">{nutrition.calories}</span>
                   <span className="text-orange-600 font-medium">calories</span>
                 </div>
+                {targets && (
+                  <p className={`text-sm mt-2 ${getPercentColor(getDailyValuePercent(nutrition.calories, targets.calories))}`}>
+                    {getDailyValuePercent(nutrition.calories, targets.calories)}% of your daily target ({targets.calories} kcal)
+                  </p>
+                )}
               </div>
 
               {/* Macros */}
               <div className="space-y-4">
-                <h3 className="font-semibold text-slate-700 flex items-center gap-2">
-                  Macronutrients
-                </h3>
+                <div className="flex items-center justify-between">
+                  <h3 className="font-semibold text-slate-700 flex items-center gap-2">
+                    Macronutrients
+                  </h3>
+                  {targets && (
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${isCustomTargets ? 'bg-indigo-100 text-indigo-600' : 'bg-slate-100 text-slate-500'}`}>
+                      {isCustomTargets ? 'Your targets' : 'Recommended'}
+                    </span>
+                  )}
+                </div>
 
                 {/* Protein */}
                 <div>
@@ -121,9 +167,9 @@ const NutritionInfo: React.FC<NutritionInfoProps> = ({ meal, servings = 1, onClo
                     </div>
                     <span className="font-semibold text-slate-800">{nutrition.macros.protein}g</span>
                   </div>
-                  <MacroBar value={nutrition.macros.protein} max={50} color="bg-red-500" />
-                  <p className="text-xs text-slate-400 mt-1">
-                    {getDailyValuePercent(nutrition.macros.protein, 50)}% Daily Value
+                  <MacroBar value={nutrition.macros.protein} max={targets?.protein ?? 50} color="bg-red-500" />
+                  <p className={`text-xs mt-1 ${targets ? getPercentColor(getDailyValuePercent(nutrition.macros.protein, targets.protein)) : 'text-slate-400'}`}>
+                    {getDailyValuePercent(nutrition.macros.protein, targets?.protein ?? 50)}% of daily target ({targets?.protein ?? 50}g)
                   </p>
                 </div>
 
@@ -136,9 +182,9 @@ const NutritionInfo: React.FC<NutritionInfoProps> = ({ meal, servings = 1, onClo
                     </div>
                     <span className="font-semibold text-slate-800">{nutrition.macros.carbohydrates}g</span>
                   </div>
-                  <MacroBar value={nutrition.macros.carbohydrates} max={300} color="bg-amber-500" />
-                  <p className="text-xs text-slate-400 mt-1">
-                    {getDailyValuePercent(nutrition.macros.carbohydrates, 300)}% Daily Value
+                  <MacroBar value={nutrition.macros.carbohydrates} max={targets?.carbohydrates ?? 250} color="bg-amber-500" />
+                  <p className={`text-xs mt-1 ${targets ? getPercentColor(getDailyValuePercent(nutrition.macros.carbohydrates, targets.carbohydrates)) : 'text-slate-400'}`}>
+                    {getDailyValuePercent(nutrition.macros.carbohydrates, targets?.carbohydrates ?? 250)}% of daily target ({targets?.carbohydrates ?? 250}g)
                   </p>
                 </div>
 
@@ -151,30 +197,45 @@ const NutritionInfo: React.FC<NutritionInfoProps> = ({ meal, servings = 1, onClo
                     </div>
                     <span className="font-semibold text-slate-800">{nutrition.macros.fat}g</span>
                   </div>
-                  <MacroBar value={nutrition.macros.fat} max={65} color="bg-yellow-500" />
-                  <p className="text-xs text-slate-400 mt-1">
-                    {getDailyValuePercent(nutrition.macros.fat, 65)}% Daily Value
+                  <MacroBar value={nutrition.macros.fat} max={targets?.fat ?? 65} color="bg-yellow-500" />
+                  <p className={`text-xs mt-1 ${targets ? getPercentColor(getDailyValuePercent(nutrition.macros.fat, targets.fat)) : 'text-slate-400'}`}>
+                    {getDailyValuePercent(nutrition.macros.fat, targets?.fat ?? 65)}% of daily target ({targets?.fat ?? 65}g)
                   </p>
                 </div>
 
-                {/* Additional macros */}
+                {/* Additional macros with target comparison */}
                 <div className="grid grid-cols-3 gap-3 pt-2">
                   {nutrition.macros.fiber !== undefined && (
                     <div className="bg-green-50 rounded-lg p-2 text-center">
                       <p className="text-lg font-bold text-green-600">{nutrition.macros.fiber}g</p>
                       <p className="text-xs text-green-700">Fiber</p>
+                      {targets?.fiber && (
+                        <p className="text-xs text-green-600 mt-1">
+                          {getDailyValuePercent(nutrition.macros.fiber, targets.fiber)}%
+                        </p>
+                      )}
                     </div>
                   )}
                   {nutrition.macros.sugar !== undefined && (
                     <div className="bg-pink-50 rounded-lg p-2 text-center">
                       <p className="text-lg font-bold text-pink-600">{nutrition.macros.sugar}g</p>
                       <p className="text-xs text-pink-700">Sugar</p>
+                      {targets?.sugar && (
+                        <p className={`text-xs mt-1 ${getPercentColor(getDailyValuePercent(nutrition.macros.sugar, targets.sugar), true)}`}>
+                          {getDailyValuePercent(nutrition.macros.sugar, targets.sugar)}% max
+                        </p>
+                      )}
                     </div>
                   )}
                   {nutrition.macros.saturatedFat !== undefined && (
                     <div className="bg-orange-50 rounded-lg p-2 text-center">
                       <p className="text-lg font-bold text-orange-600">{nutrition.macros.saturatedFat}g</p>
                       <p className="text-xs text-orange-700">Sat. Fat</p>
+                      {targets?.saturatedFat && (
+                        <p className={`text-xs mt-1 ${getPercentColor(getDailyValuePercent(nutrition.macros.saturatedFat, targets.saturatedFat), true)}`}>
+                          {getDailyValuePercent(nutrition.macros.saturatedFat, targets.saturatedFat)}% max
+                        </p>
+                      )}
                     </div>
                   )}
                 </div>

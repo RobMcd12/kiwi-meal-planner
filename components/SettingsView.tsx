@@ -247,7 +247,13 @@ const SettingsView: React.FC<SettingsViewProps> = ({
             )}
             {activeTab === 'prefs' && (
                  <div className="animate-fadeIn">
-                    <PreferenceForm preferences={preferences} setPreferences={setPreferences} isSettingsMode={true} />
+                    <PreferenceForm
+                      preferences={preferences}
+                      setPreferences={setPreferences}
+                      isSettingsMode={true}
+                      hasPro={subscriptionState?.hasPro ?? false}
+                      onUpgradeClick={() => setActiveTab('subscription')}
+                    />
                  </div>
             )}
             {activeTab === 'account' && (

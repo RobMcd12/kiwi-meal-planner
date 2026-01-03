@@ -97,6 +97,41 @@ export interface UserPreferences {
   excludedIngredients?: ExcludedIngredient[];
 }
 
+// ============================================
+// MACRO TARGETS (Pro Feature)
+// ============================================
+
+// Default recommended daily values (per person)
+export const DEFAULT_MACRO_TARGETS: MacroTargets = {
+  calories: 2000,
+  protein: 50, // grams
+  carbohydrates: 250, // grams
+  fat: 65, // grams
+  fiber: 25, // grams
+  sugar: 50, // grams (max recommended)
+  sodium: 2300, // mg (max recommended)
+  saturatedFat: 20, // grams (max recommended)
+};
+
+export interface MacroTargets {
+  calories: number;
+  protein: number; // grams
+  carbohydrates: number; // grams
+  fat: number; // grams
+  fiber?: number; // grams
+  sugar?: number; // grams
+  sodium?: number; // mg
+  saturatedFat?: number; // grams
+}
+
+export interface UserMacroTargets {
+  userId: string;
+  targets: MacroTargets;
+  isCustom: boolean; // true if user has set custom values (Pro feature)
+  createdAt: string;
+  updatedAt: string;
+}
+
 // Country codes for ingredient localization
 export type CountryCode = 'US' | 'UK' | 'AU' | 'NZ' | 'CA' | 'IE' | 'ZA' | 'IN' | 'OTHER';
 

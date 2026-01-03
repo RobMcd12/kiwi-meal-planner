@@ -1,8 +1,9 @@
 import { GoogleGenAI, Type, Schema } from "@google/genai";
-import { UserPreferences, PantryItem, MealPlanResponse, MealConfig, Meal, ExtractedRecipe, ScannedPantryResult, SideDish, CountryCode } from "../types";
+import { UserPreferences, PantryItem, MealPlanResponse, MealConfig, Meal, ExtractedRecipe, ScannedPantryResult, SideDish, CountryCode, MacroTargets, DEFAULT_MACRO_TARGETS } from "../types";
 import { supabase, isSupabaseConfigured } from "./authService";
 import { getInstructionsByTag, buildPromptWithInstructions } from "./adminInstructionsService";
 import { getLocalizationInstruction } from "./profileService";
+import { formatMacroTargetsForPrompt } from "./macroTargetService";
 
 // Predefined tag categories for AI to choose from
 export const TAG_CATEGORIES = {
@@ -124,7 +125,8 @@ export const generateMealPlan = async (
   config: MealConfig,
   preferences: UserPreferences,
   pantryItems: PantryItem[],
-  userCountry?: CountryCode | null
+  userCountry?: CountryCode | null,
+  macroTargets?: MacroTargets | null
 ): Promise<MealPlanResponse> => {
   // Use Edge Functions in production when configured
   if (USE_EDGE_FUNCTIONS && isSupabaseConfigured()) {
@@ -146,7 +148,8 @@ export const generateMealPlan = async (
 
   // Build portion/nutrition guidance
   const meatServing = preferences.meatServingGrams || 175;
-  const calorieTarget = preferences.calorieTarget || 2000;
+  const effectiveTargets = macroTargets || DEFAULT_MACRO_TARGETS;
+  const macroTargetsText = formatMacroTargetsForPrompt(effectiveTargets);
 
   // Build mode-specific instructions
   const useWhatIHaveMode = config.useWhatIHave && pantryItems.length > 0;
@@ -176,7 +179,9 @@ Only add items to shopping list if absolutely necessary to complete recipes. Goa
   const prompt = `${config.days}-day meal plan, ${config.peopleCount} people. Meals: ${requestedMeals.join(", ")} only.
 Diet: ${preferences.dietaryRestrictions || "None"}. Likes: ${preferences.likes || "Any"}. Dislikes: ${preferences.dislikes || "None"}.${exclusionsInstruction}
 Units: ${preferences.unitSystem}. Temps: ${preferences.temperatureScale}.${localizationInstruction}
-Portions: Meat/protein ${meatServing}g per person. Target ~${calorieTarget} kcal/day per person.
+Portions: Meat/protein ${meatServing}g per person.
+DAILY NUTRITION TARGETS (per person): ${macroTargetsText}
+Design meals to help achieve these daily targets when all meals are combined.
 ${modeInstructions}
 Each meal = complete dish with sides (e.g. "Grilled Salmon with Rice and Vegetables"). Include all ingredients/instructions for full meal.
 IMPORTANT: Shopping list MUST include ingredients from ALL ${config.days * requestedMeals.length} meals. Combine quantities, organize by aisle, scale for ${config.peopleCount} people.${adminInstructionsText}`;

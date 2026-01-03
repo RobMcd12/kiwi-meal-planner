@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { UserPreferences, ExcludedIngredient } from '../types';
 import { Utensils, Heart, ThumbsDown, Scale, Thermometer, Beef, Flame, AlertTriangle, Plus, X, ShieldAlert } from 'lucide-react';
+import MacroTargetsEditor from './MacroTargetsEditor';
 
 interface PreferenceFormProps {
   preferences: UserPreferences;
@@ -8,6 +9,8 @@ interface PreferenceFormProps {
   onSubmit?: () => void;
   isLoading?: boolean;
   isSettingsMode?: boolean;
+  hasPro?: boolean;
+  onUpgradeClick?: () => void;
 }
 
 const EXCLUSION_REASONS = [
@@ -16,7 +19,15 @@ const EXCLUSION_REASONS = [
   { value: 'preference', label: 'Preference', color: 'slate' },
 ];
 
-const PreferenceForm: React.FC<PreferenceFormProps> = ({ preferences, setPreferences, onSubmit, isLoading = false, isSettingsMode = false }) => {
+const PreferenceForm: React.FC<PreferenceFormProps> = ({
+  preferences,
+  setPreferences,
+  onSubmit,
+  isLoading = false,
+  isSettingsMode = false,
+  hasPro = false,
+  onUpgradeClick
+}) => {
   const [newIngredient, setNewIngredient] = useState('');
   const [newReason, setNewReason] = useState<string>('allergy');
 
@@ -303,6 +314,11 @@ const PreferenceForm: React.FC<PreferenceFormProps> = ({ preferences, setPrefere
               <p className="text-xs text-slate-400 mt-1">Daily kcal goal</p>
             </div>
           </div>
+        </div>
+
+        {/* Macro Targets (Pro Feature) */}
+        <div className="pt-4 border-t border-slate-100">
+          <MacroTargetsEditor hasPro={hasPro} onUpgradeClick={onUpgradeClick} />
         </div>
 
       </div>

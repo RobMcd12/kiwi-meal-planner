@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { AppStep, PantryItem, UserPreferences, MealPlanResponse, MealConfig, Meal, SideDish, CountryCode } from './types';
+import { AppStep, PantryItem, UserPreferences, MealPlanResponse, MealConfig, Meal, SideDish, CountryCode, MacroTargets } from './types';
 import PantryManager from './components/PantryManager';
 import PreferenceForm from './components/PreferenceForm';
 import PlanDisplay from './components/PlanDisplay';
@@ -43,6 +43,7 @@ import { signOut } from './services/authService';
 import { getNewResponseCount } from './services/feedbackService';
 import { getSubscriptionState } from './services/subscriptionService';
 import { getUserProfile } from './services/profileService';
+import { getUserMacroTargets } from './services/macroTargetService';
 import type { SubscriptionState } from './types';
 import { ChefHat, Settings, LogOut, User, Shield, MessageSquare, Bell, HelpCircle, Menu, X, CalendarPlus, BookHeart, FolderHeart, Sparkles, UserCircle, RefreshCw, List } from 'lucide-react';
 import HelpModal from './components/HelpModal';
@@ -160,6 +161,9 @@ const AppContent: React.FC = () => {
   // User profile state (for localization)
   const [userCountry, setUserCountry] = useState<CountryCode | null>(null);
 
+  // Macro targets for nutrition-aware meal planning
+  const [macroTargets, setMacroTargets] = useState<MacroTargets | null>(null);
+
   // Load data from storage on mount and when auth/impersonation changes
   useEffect(() => {
     const loadData = async () => {
@@ -186,6 +190,16 @@ const AppContent: React.FC = () => {
             }
           } catch (profileErr) {
             console.error('Error loading user profile:', profileErr);
+          }
+
+          // Load macro targets for nutrition-aware meal planning
+          try {
+            const targets = await getUserMacroTargets();
+            if (targets) {
+              setMacroTargets(targets.targets);
+            }
+          } catch (macroErr) {
+            console.error('Error loading macro targets:', macroErr);
           }
         }
       } catch (err) {
@@ -296,7 +310,7 @@ const AppContent: React.FC = () => {
   const handleGenerate = async () => {
     setLoading(true);
     try {
-      const data = await generateMealPlan(config, preferences, pantryItems, userCountry);
+      const data = await generateMealPlan(config, preferences, pantryItems, userCountry, macroTargets);
 
       // Generate images for all meals before showing results
       await generateAllMealImages(data);
