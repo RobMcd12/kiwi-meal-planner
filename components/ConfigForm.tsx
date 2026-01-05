@@ -1,6 +1,6 @@
 import React from 'react';
 import { MealConfig } from '../types';
-import { Users, Calendar, Coffee, Sun, Moon, Package, ShoppingCart, Sparkles } from 'lucide-react';
+import { Users, Calendar, Coffee, Sun, Moon, Package, ShoppingCart, Sparkles, Crown, Lock } from 'lucide-react';
 
 interface ConfigFormProps {
   config: MealConfig;
@@ -10,9 +10,11 @@ interface ConfigFormProps {
   hasPantryItems?: boolean;
   pantryItemCount?: number;
   onManagePantry?: () => void;
+  hasPro?: boolean;
+  onUpgradeClick?: () => void;
 }
 
-const ConfigForm: React.FC<ConfigFormProps> = ({ config, setConfig, onNext, isSettingsMode = false, hasPantryItems = false, pantryItemCount = 0, onManagePantry }) => {
+const ConfigForm: React.FC<ConfigFormProps> = ({ config, setConfig, onNext, isSettingsMode = false, hasPantryItems = false, pantryItemCount = 0, onManagePantry, hasPro = false, onUpgradeClick }) => {
   const updateConfig = (key: keyof MealConfig, value: any) => {
     setConfig(prev => ({ ...prev, [key]: value }));
   };
@@ -152,27 +154,39 @@ const ConfigForm: React.FC<ConfigFormProps> = ({ config, setConfig, onNext, isSe
             </button>
 
             <button
-              onClick={() => updateConfig('useWhatIHave', true)}
-              disabled={!hasPantryItems}
-              className={`p-4 rounded-xl border-2 flex flex-col items-center gap-2 transition-all ${
-                config.useWhatIHave
+              onClick={() => {
+                if (!hasPro) {
+                  onUpgradeClick?.();
+                } else if (hasPantryItems) {
+                  updateConfig('useWhatIHave', true);
+                }
+              }}
+              disabled={!hasPro ? false : !hasPantryItems}
+              className={`p-4 rounded-xl border-2 flex flex-col items-center gap-2 transition-all relative ${
+                config.useWhatIHave && hasPro
                   ? 'border-blue-500 bg-blue-50 text-blue-700'
-                  : hasPantryItems
+                  : hasPro && hasPantryItems
                     ? 'border-slate-200 hover:border-slate-300 text-slate-500'
-                    : 'border-slate-100 bg-slate-50 text-slate-400 cursor-not-allowed'
+                    : 'border-slate-100 bg-slate-50 text-slate-400 cursor-pointer'
               }`}
             >
+              {!hasPro && (
+                <span className="absolute top-2 right-2 inline-flex items-center gap-0.5 px-1.5 py-0.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[10px] font-bold rounded-full">
+                  <Crown size={10} />
+                  PRO
+                </span>
+              )}
               <div className="relative">
-                <Package size={24} />
-                <Sparkles size={12} className="absolute -top-1 -right-1 text-blue-500" />
+                {hasPro ? <Package size={24} /> : <Lock size={24} />}
+                {hasPro && <Sparkles size={12} className="absolute -top-1 -right-1 text-blue-500" />}
               </div>
               <span className="font-medium text-sm">Use What I Have</span>
               <span className="text-xs text-center opacity-75">
-                {hasPantryItems ? 'Prioritize pantry items' : 'Add pantry items first'}
+                {!hasPro ? 'Pro feature' : hasPantryItems ? 'Prioritize pantry items' : 'Add pantry items first'}
               </span>
             </button>
           </div>
-          {!hasPantryItems && (
+          {hasPro && !hasPantryItems && (
             <p className="text-xs text-slate-400 mt-2 text-center">
               Scan or add pantry items to enable smart mode
             </p>

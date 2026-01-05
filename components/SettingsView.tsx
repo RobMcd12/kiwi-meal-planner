@@ -230,7 +230,13 @@ const SettingsView: React.FC<SettingsViewProps> = ({
         <div className="p-4 md:p-8 min-h-[500px]">
             {activeTab === 'general' && (
                 <div className="animate-fadeIn">
-                    <ConfigForm config={config} setConfig={setConfig} isSettingsMode={true} />
+                    <ConfigForm
+                      config={config}
+                      setConfig={setConfig}
+                      isSettingsMode={true}
+                      hasPro={subscriptionState?.hasPro ?? false}
+                      onUpgradeClick={() => setActiveTab('subscription')}
+                    />
                 </div>
             )}
             {activeTab === 'pantry' && (

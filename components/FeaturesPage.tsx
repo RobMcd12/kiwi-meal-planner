@@ -202,6 +202,7 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({
                 'AI finds creative combinations',
                 'Shorter shopping lists',
               ]}
+              isPro
             />
 
             <FeatureCard
@@ -807,6 +808,10 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({
                 <li className="flex items-start gap-3">
                   <Store size={20} className="text-emerald-600 flex-shrink-0 mt-0.5" />
                   <span className="text-slate-700">Custom supermarket layouts</span>
+                </li>
+                <li className="flex items-start gap-3">
+                  <Package size={20} className="text-emerald-600 flex-shrink-0 mt-0.5" />
+                  <span className="text-slate-700">Use What I Have mode</span>
                 </li>
               </ul>
 

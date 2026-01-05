@@ -463,6 +463,8 @@ const AppContent: React.FC = () => {
             hasPantryItems={pantryItems.length > 0}
             pantryItemCount={pantryItems.length}
             onManagePantry={() => setStep(AppStep.PANTRY)}
+            hasPro={subscriptionState?.hasPro ?? false}
+            onUpgradeClick={() => setStep(AppStep.FEATURES)}
           />
         );
 

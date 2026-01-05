@@ -5,7 +5,7 @@ import {
   Sparkles, Bell, MessageSquare, User, ChevronRight, ChevronDown,
   Star, ImagePlus, Edit2, Camera, Apple, Utensils, SlidersHorizontal,
   Beef, Flame, Printer, Mic, Timer, Volume2, Play, Pause, UtensilsCrossed,
-  UserCircle, ShieldAlert, Target
+  UserCircle, ShieldAlert, Target, Package
 } from 'lucide-react';
 import { version } from '../package.json';
 
@@ -127,6 +127,35 @@ const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
           </ol>
           <p className="mt-3">
             The AI uses your saved preferences and pantry items automatically. You can save the result to your cookbook, generate an image, view nutrition info, or adjust the recipe.
+          </p>
+        </>
+      )
+    },
+    {
+      id: 'use-what-i-have',
+      title: 'Use What I Have (Pro)',
+      icon: <Package size={20} />,
+      keywords: ['use', 'what', 'have', 'pantry', 'ingredients', 'minimize', 'waste', 'smart', 'mode', 'pro'],
+      content: (
+        <>
+          <p className="text-amber-600 text-sm font-medium mb-2">⭐ Pro Feature</p>
+          <p>Maximize your pantry ingredients and minimize shopping with smart "Use What I Have" mode:</p>
+          <div className="space-y-3 mt-2">
+            <div className="flex items-start gap-2">
+              <Package size={16} className="text-blue-600 mt-0.5" />
+              <div>
+                <strong>How it works</strong> - Instead of creating ideal recipes then shopping, AI builds recipes around what's in your kitchen first.
+              </div>
+            </div>
+            <div className="flex items-start gap-2">
+              <Sparkles size={16} className="text-purple-600 mt-0.5" />
+              <div>
+                <strong>Benefits</strong> - Reduces food waste, saves money, shorter shopping lists, and smarter meal planning.
+              </div>
+            </div>
+          </div>
+          <p className="mt-3">
+            Enable it in <strong>Plan Configuration</strong> under "Recipe Mode". Requires pantry items to be saved first.
           </p>
         </>
       )

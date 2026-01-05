@@ -8,7 +8,7 @@
 
 1. [Getting Started](#getting-started)
 2. [Creating a Meal Plan](#creating-a-meal-plan)
-3. [Use What I Have Mode](#use-what-i-have-mode)
+3. [Use What I Have Mode](#use-what-i-have-mode) *(Pro)*
 4. [Single Recipe Generator](#single-recipe-generator)
 5. [AI Pantry Scanner](#ai-pantry-scanner)
 6. [Pantry Staples](#pantry-staples)
@@ -94,6 +94,8 @@ After viewing a meal plan, rate each meal:
 ---
 
 ## Use What I Have Mode
+
+> **Pro Feature**: Use What I Have mode is available with a Pro subscription.
 
 Maximize your pantry ingredients and minimize shopping with the smart "Use What I Have" mode.
 
