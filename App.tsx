@@ -946,18 +946,6 @@ const AppContent: React.FC = () => {
           </div>
         )}
 
-        {/* Progress Indicator (Only for creation flow) */}
-        {(step === AppStep.CONFIG || step === AppStep.PANTRY || step === AppStep.PREFERENCES) && (
-          <div className="max-w-5xl mx-auto mt-4">
-            <div className="hidden sm:flex items-center gap-2 text-xs font-medium text-slate-400 uppercase tracking-widest">
-              <span className={step === AppStep.CONFIG ? "text-emerald-600 font-bold" : ""}>Settings</span>
-              <span>/</span>
-              <span className={step === AppStep.PANTRY ? "text-emerald-600 font-bold" : ""}>Pantry</span>
-              <span>/</span>
-              <span className={step === AppStep.PREFERENCES ? "text-emerald-600 font-bold" : ""}>Prefs</span>
-            </div>
-          </div>
-        )}
       </header>
 
       {/* Navigation Bar - shown on all pages except Welcome */}
@@ -972,6 +960,57 @@ const AppContent: React.FC = () => {
             setStep(targetStep);
           }}
         />
+      )}
+
+      {/* Meal Plan Creation Flow Steps - shown below navbar during creation */}
+      {(step === AppStep.CONFIG || step === AppStep.PANTRY || step === AppStep.PREFERENCES) && (
+        <div className="bg-white/90 backdrop-blur-sm border-b border-slate-200">
+          <div className="max-w-5xl mx-auto px-4 py-3">
+            <div className="flex items-center justify-center gap-4">
+              <button
+                onClick={() => setStep(AppStep.CONFIG)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                  step === AppStep.CONFIG
+                    ? 'bg-emerald-100 text-emerald-700 border border-emerald-300'
+                    : 'text-slate-600 hover:bg-slate-100'
+                }`}
+              >
+                <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                  step === AppStep.CONFIG ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-600'
+                }`}>1</span>
+                Settings
+              </button>
+              <div className="w-8 h-0.5 bg-slate-200" />
+              <button
+                onClick={() => setStep(AppStep.PANTRY)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                  step === AppStep.PANTRY
+                    ? 'bg-emerald-100 text-emerald-700 border border-emerald-300'
+                    : 'text-slate-600 hover:bg-slate-100'
+                }`}
+              >
+                <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                  step === AppStep.PANTRY ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-600'
+                }`}>2</span>
+                Pantry
+              </button>
+              <div className="w-8 h-0.5 bg-slate-200" />
+              <button
+                onClick={() => setStep(AppStep.PREFERENCES)}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                  step === AppStep.PREFERENCES
+                    ? 'bg-emerald-100 text-emerald-700 border border-emerald-300'
+                    : 'text-slate-600 hover:bg-slate-100'
+                }`}
+              >
+                <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                  step === AppStep.PREFERENCES ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-600'
+                }`}>3</span>
+                Preferences
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Main Content */}

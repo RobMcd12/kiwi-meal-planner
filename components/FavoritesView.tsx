@@ -24,7 +24,7 @@ import SuggestSidesModal from './SuggestSidesModal';
 import {
   Trash2, Heart, ShoppingCart, ArrowLeft, X, ChefHat, Clock,
   Image as ImageIcon, Loader2, Search, Grid, List, Plus, Upload,
-  Globe, Lock, Tag, User, Sparkles, FileText, Pencil, RefreshCw, Star, Printer, Apple, SlidersHorizontal, Crown, AlertCircle, Video, Play, MoreVertical, Mic, MessageCircle, UtensilsCrossed, Target
+  Globe, Lock, Tag, User, Sparkles, FileText, Pencil, RefreshCw, Star, Printer, Apple, SlidersHorizontal, Crown, AlertCircle, Video, Play, MoreVertical, Mic, MessageCircle, UtensilsCrossed, Target, FolderPlus
 } from 'lucide-react';
 import RecipeVideoPlayer from './RecipeVideoPlayer';
 import RecipeChatModal from './RecipeChatModal';
@@ -34,6 +34,16 @@ import type { RecipeVideo } from '../types';
 import { getSidesForRecipe } from '../services/suggestSidesService';
 import { getUserMacroTargets } from '../services/macroTargetService';
 import type { MacroTargets } from '../types';
+import {
+  getUserCategories,
+  createCategory,
+  getBatchRecipeCategories,
+  getRecipeCategories,
+  assignCategoriesToRecipe,
+  type RecipeCategory,
+  type RecipeCategoryAssignment
+} from '../services/recipeCategoryService';
+import CategorySelector, { getCategoryColorClasses } from './CategorySelector';
 
 interface FavoritesViewProps {
   onBack: () => void;
@@ -132,6 +142,12 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({
   // Upload context
   const { uploads, hasActiveUploads } = useUpload();
 
+  // User categories state
+  const [userCategories, setUserCategories] = useState<RecipeCategory[]>([]);
+  const [recipeCategoryMap, setRecipeCategoryMap] = useState<Record<string, RecipeCategoryAssignment[]>>({});
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string | null>(null);
+  const [openMealCategories, setOpenMealCategories] = useState<string[]>([]);
+
   // All available tags for filtering
   const allTags = useMemo(() => [
     ...TAG_CATEGORIES.cuisine,
@@ -185,6 +201,20 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({
       loadRecipes();
     }
   }, [activeTab]);
+
+  // Load user's categories
+  useEffect(() => {
+    const loadCategories = async () => {
+      if (!user) return;
+      try {
+        const categories = await getUserCategories(user.id);
+        setUserCategories(categories);
+      } catch (err) {
+        console.error('Error loading user categories:', err);
+      }
+    };
+    loadCategories();
+  }, [user]);
 
   // Load user's macro targets for Fit My Macros feature
   useEffect(() => {
@@ -270,6 +300,12 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({
           setUploadedRecipes(loadedRecipes);
         } else if (activeTab === 'public') {
           setPublicRecipes(loadedRecipes);
+        }
+
+        // Load category assignments for recipes (not for public tab)
+        if (activeTab !== 'public') {
+          const categoryAssignments = await getBatchRecipeCategories(mealIds);
+          setRecipeCategoryMap(categoryAssignments);
         }
       }
 
@@ -358,8 +394,16 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({
       filtered = filtered.filter(r => r.hasVideo);
     }
 
+    // Apply category filter
+    if (selectedCategoryFilter) {
+      filtered = filtered.filter(r => {
+        const categories = recipeCategoryMap[r.id] || [];
+        return categories.some(c => c.categoryId === selectedCategoryFilter);
+      });
+    }
+
     return filtered;
-  }, [activeTab, generatedRecipes, uploadedRecipes, publicRecipes, favouriteRecipes, searchQuery, selectedTags, minRating, hasVideoFilter]);
+  }, [activeTab, generatedRecipes, uploadedRecipes, publicRecipes, favouriteRecipes, searchQuery, selectedTags, minRating, hasVideoFilter, selectedCategoryFilter, recipeCategoryMap]);
 
   // Get unique tags from current recipes for filter pills
   const availableTags = useMemo(() => {
@@ -396,6 +440,10 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({
     setCurrentVideo(null);
     setGeneratingVideo(false);
     setRecipeSides([]);
+
+    // Load categories for this meal
+    const mealCategories = recipeCategoryMap[meal.id] || [];
+    setOpenMealCategories(mealCategories.map(c => c.categoryId));
 
     // Load video if recipe has one
     if (meal.hasVideo && meal.id) {
@@ -499,6 +547,36 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({
         setOpenMeal(prev => prev ? { ...prev, tags: newTags } : null);
       }
     }
+  };
+
+  const handleCategoriesChange = async (mealId: string, categoryIds: string[]) => {
+    const success = await assignCategoriesToRecipe(mealId, categoryIds);
+    if (success) {
+      // Update local category map
+      const newAssignments = categoryIds.map(categoryId => {
+        const category = userCategories.find(c => c.id === categoryId);
+        return {
+          mealId,
+          categoryId,
+          categoryName: category?.name || '',
+          categoryColor: category?.color || 'slate'
+        };
+      });
+      setRecipeCategoryMap(prev => ({
+        ...prev,
+        [mealId]: newAssignments
+      }));
+      setOpenMealCategories(categoryIds);
+    }
+  };
+
+  const handleCreateCategory = async (name: string): Promise<RecipeCategory | null> => {
+    if (!user) return null;
+    const newCategory = await createCategory(user.id, name);
+    if (newCategory) {
+      setUserCategories(prev => [...prev, newCategory]);
+    }
+    return newCategory;
   };
 
   const handleGenerate = () => {
@@ -969,6 +1047,33 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({
           </button>
         )}
 
+        {/* Category Filter Pills */}
+        {userCategories.length > 0 && activeTab !== 'public' && (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="flex items-center gap-1 text-sm text-slate-500">
+              <FolderPlus size={14} />
+              Categories:
+            </span>
+            {userCategories.map(cat => {
+              const colors = getCategoryColorClasses(cat.color);
+              const isSelected = selectedCategoryFilter === cat.id;
+              return (
+                <button
+                  key={cat.id}
+                  onClick={() => setSelectedCategoryFilter(isSelected ? null : cat.id)}
+                  className={`px-2.5 py-1 text-sm rounded-full border transition-colors ${
+                    isSelected
+                      ? `${colors.bg} ${colors.text} ${colors.border}`
+                      : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300'
+                  }`}
+                >
+                  {cat.name}
+                </button>
+              );
+            })}
+          </div>
+        )}
+
         {/* Tag Filter Pills */}
         {availableTags.length > 0 && (
           <div className="flex flex-wrap items-center gap-2">
@@ -993,9 +1098,9 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({
         )}
 
         {/* Clear filters */}
-        {(selectedTags.length > 0 || minRating || hasVideoFilter) && (
+        {(selectedTags.length > 0 || minRating || hasVideoFilter || selectedCategoryFilter) && (
           <button
-            onClick={() => { setSelectedTags([]); setMinRating(undefined); setHasVideoFilter(false); }}
+            onClick={() => { setSelectedTags([]); setMinRating(undefined); setHasVideoFilter(false); setSelectedCategoryFilter(null); }}
             className="px-3 py-1 text-sm text-red-600 hover:bg-red-50 rounded-full"
           >
             Clear All
@@ -1138,24 +1243,44 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({
                   </div>
                   <p className="text-sm text-slate-600 line-clamp-2 pl-7 mb-2">{meal.description}</p>
 
-                  {/* Tags */}
-                  {meal.tags && meal.tags.length > 0 && (
-                    <div className="flex flex-wrap gap-1 pl-7">
-                      {meal.tags.slice(0, 3).map(tag => (
+                  {/* Tags and Categories */}
+                  <div className="flex flex-wrap gap-1 pl-7">
+                    {/* User Categories */}
+                    {recipeCategoryMap[meal.id]?.slice(0, 2).map(cat => {
+                      const colors = getCategoryColorClasses(cat.categoryColor);
+                      return (
                         <span
-                          key={tag}
-                          className="px-2 py-0.5 text-xs bg-slate-100 text-slate-600 rounded-full"
+                          key={cat.categoryId}
+                          className={`px-2 py-0.5 text-xs font-medium rounded-full border ${colors.bg} ${colors.text} ${colors.border}`}
                         >
-                          {tag}
+                          {cat.categoryName}
                         </span>
-                      ))}
-                      {meal.tags.length > 3 && (
-                        <span className="px-2 py-0.5 text-xs text-slate-400">
-                          +{meal.tags.length - 3}
-                        </span>
-                      )}
-                    </div>
-                  )}
+                      );
+                    })}
+                    {(recipeCategoryMap[meal.id]?.length || 0) > 2 && (
+                      <span className="px-2 py-0.5 text-xs text-slate-400">
+                        +{recipeCategoryMap[meal.id].length - 2}
+                      </span>
+                    )}
+                    {/* Tags */}
+                    {meal.tags && meal.tags.length > 0 && (
+                      <>
+                        {meal.tags.slice(0, 3 - (recipeCategoryMap[meal.id]?.length || 0)).map(tag => (
+                          <span
+                            key={tag}
+                            className="px-2 py-0.5 text-xs bg-slate-100 text-slate-600 rounded-full"
+                          >
+                            {tag}
+                          </span>
+                        ))}
+                        {meal.tags.length > (3 - (recipeCategoryMap[meal.id]?.length || 0)) && (
+                          <span className="px-2 py-0.5 text-xs text-slate-400">
+                            +{meal.tags.length - (3 - (recipeCategoryMap[meal.id]?.length || 0))}
+                          </span>
+                        )}
+                      </>
+                    )}
+                  </div>
                 </div>
               </div>
             );
@@ -1229,18 +1354,30 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({
                   </div>
                   <h3 className="font-bold text-slate-800 truncate">{meal.name}</h3>
                   <p className="text-sm text-slate-600 line-clamp-1">{meal.description}</p>
-                  {meal.tags && meal.tags.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mt-1">
-                      {meal.tags.slice(0, 4).map(tag => (
+                  {/* Categories and Tags */}
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {/* User Categories first */}
+                    {recipeCategoryMap[meal.id]?.slice(0, 2).map(cat => {
+                      const colors = getCategoryColorClasses(cat.categoryColor);
+                      return (
                         <span
-                          key={tag}
-                          className="px-2 py-0.5 text-xs bg-slate-100 text-slate-600 rounded-full"
+                          key={cat.categoryId}
+                          className={`px-2 py-0.5 text-xs font-medium rounded-full border ${colors.bg} ${colors.text} ${colors.border}`}
                         >
-                          {tag}
+                          {cat.categoryName}
                         </span>
-                      ))}
-                    </div>
-                  )}
+                      );
+                    })}
+                    {/* Then Tags */}
+                    {meal.tags?.slice(0, 4 - (recipeCategoryMap[meal.id]?.length || 0)).map(tag => (
+                      <span
+                        key={tag}
+                        className="px-2 py-0.5 text-xs bg-slate-100 text-slate-600 rounded-full"
+                      >
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
                 </div>
 
                 {/* Actions */}
@@ -1800,6 +1937,51 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({
                   </div>
                 )}
               </div>
+
+              {/* User Categories - only show for non-public recipes */}
+              {activeTab !== 'public' && (
+                <div className="mb-6">
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="text-sm font-medium text-slate-700 flex items-center gap-1">
+                      <FolderPlus size={14} />
+                      My Categories
+                    </h4>
+                  </div>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {/* Display selected categories */}
+                    {openMealCategories.length > 0 && (
+                      <>
+                        {openMealCategories.map(catId => {
+                          const category = userCategories.find(c => c.id === catId);
+                          if (!category) return null;
+                          const colors = getCategoryColorClasses(category.color);
+                          return (
+                            <span
+                              key={catId}
+                              className={`inline-flex items-center gap-1 px-2 py-1 text-sm font-medium rounded-full border ${colors.bg} ${colors.text} ${colors.border}`}
+                            >
+                              {category.name}
+                            </span>
+                          );
+                        })}
+                      </>
+                    )}
+                    {/* Category selector */}
+                    <CategorySelector
+                      categories={userCategories}
+                      selectedCategoryIds={openMealCategories}
+                      onChange={(ids) => handleCategoriesChange(openMeal.id, ids)}
+                      onCreateCategory={handleCreateCategory}
+                      compact={true}
+                    />
+                  </div>
+                  {openMealCategories.length === 0 && userCategories.length === 0 && (
+                    <p className="text-xs text-slate-400 mt-1">
+                      Create categories to organize your recipes
+                    </p>
+                  )}
+                </div>
+              )}
 
               <div className="grid md:grid-cols-2 gap-4 md:gap-6">
                 {/* Ingredients */}
