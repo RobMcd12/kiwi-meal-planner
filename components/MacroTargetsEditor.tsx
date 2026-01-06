@@ -20,7 +20,10 @@ const MacroTargetsEditor: React.FC<MacroTargetsEditorProps> = ({ hasPro, onUpgra
 
   useEffect(() => {
     const loadTargets = async () => {
-      if (!user) return;
+      if (!user) {
+        setIsLoading(false);
+        return;
+      }
       setIsLoading(true);
       try {
         const data = await getUserMacroTargets(user.id);

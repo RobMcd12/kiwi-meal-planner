@@ -61,9 +61,9 @@ const DashboardCounterModal: React.FC<DashboardCounterModalProps> = ({
           setItems(users.map((u: any) => ({
             id: u.id,
             email: u.email,
-            fullName: u.fullName,
-            isAdmin: u.isAdmin,
-            createdAt: u.createdAt,
+            fullName: u.full_name,
+            isAdmin: u.is_admin,
+            createdAt: u.created_at,
             tier: u.tier,
           })));
           break;
