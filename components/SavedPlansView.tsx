@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { ArrowLeft, FolderHeart, Trash2, Calendar, ShoppingCart, ChefHat, Clock, AlertCircle } from 'lucide-react';
+import { ArrowLeft, FolderHeart, Trash2, Calendar, ShoppingCart, ChefHat, Clock, AlertCircle, RefreshCw, ChevronDown, ChevronUp } from 'lucide-react';
 import type { SavedMealPlan, DayPlan, ShoppingCategory, Meal } from '../types';
 import { getSavedMealPlans, deleteSavedMealPlan } from '../services/storageService';
 import RecipePrintView from './RecipePrintView';
@@ -12,12 +12,17 @@ interface SavedPlansViewProps {
 const SavedPlansView: React.FC<SavedPlansViewProps> = ({ onBack, onLoadPlan }) => {
   const [plans, setPlans] = useState<SavedMealPlan[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<SavedMealPlan | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [printMeal, setPrintMeal] = useState<Meal | null>(null);
 
-  const loadPlans = useCallback(async () => {
-    setLoading(true);
+  const loadPlans = useCallback(async (isRefresh = false) => {
+    if (isRefresh) {
+      setRefreshing(true);
+    } else {
+      setLoading(true);
+    }
     try {
       const savedPlans = await getSavedMealPlans();
       // Sort by created date, newest first
@@ -27,8 +32,13 @@ const SavedPlansView: React.FC<SavedPlansViewProps> = ({ onBack, onLoadPlan }) =
       console.error('Failed to load saved plans:', error);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
   }, []);
+
+  const handleRefresh = () => {
+    loadPlans(true);
+  };
 
   useEffect(() => {
     loadPlans();
@@ -98,16 +108,27 @@ const SavedPlansView: React.FC<SavedPlansViewProps> = ({ onBack, onLoadPlan }) =
         </button>
       </div>
 
-      <div className="flex items-center gap-3 mb-6">
-        <div className="bg-indigo-100 p-3 rounded-xl">
-          <FolderHeart className="text-indigo-600" size={28} />
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <div className="bg-indigo-100 p-3 rounded-xl">
+            <FolderHeart className="text-indigo-600" size={28} />
+          </div>
+          <div>
+            <h2 className="text-2xl font-bold text-slate-800">Saved Meal Plans</h2>
+            <p className="text-slate-500 text-sm">
+              {plans.length} {plans.length === 1 ? 'plan' : 'plans'} saved
+            </p>
+          </div>
         </div>
-        <div>
-          <h2 className="text-2xl font-bold text-slate-800">Saved Meal Plans</h2>
-          <p className="text-slate-500 text-sm">
-            {plans.length} {plans.length === 1 ? 'plan' : 'plans'} saved
-          </p>
-        </div>
+        <button
+          onClick={handleRefresh}
+          disabled={refreshing}
+          className="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-medium transition-colors disabled:opacity-50"
+          title="Refresh plans"
+        >
+          <RefreshCw size={18} className={refreshing ? 'animate-spin' : ''} />
+          <span className="hidden sm:inline">Refresh</span>
+        </button>
       </div>
 
       {plans.length === 0 ? (
@@ -134,9 +155,9 @@ const SavedPlansView: React.FC<SavedPlansViewProps> = ({ onBack, onLoadPlan }) =
             >
               {/* Plan Header */}
               <div className="p-4 flex items-center justify-between">
-                <div className="flex-1">
-                  <h3 className="font-semibold text-slate-800">{plan.name}</h3>
-                  <div className="flex items-center gap-4 mt-1 text-sm text-slate-500">
+                <div className="flex-1 min-w-0">
+                  <h3 className="font-semibold text-slate-800 truncate">{plan.name}</h3>
+                  <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-1 text-sm text-slate-500">
                     <span className="flex items-center gap-1">
                       <Clock size={14} />
                       {formatDate(plan.createdAt)}
@@ -156,7 +177,7 @@ const SavedPlansView: React.FC<SavedPlansViewProps> = ({ onBack, onLoadPlan }) =
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 flex-shrink-0">
                   {deleteConfirm === plan.id ? (
                     <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
                       <span className="text-sm text-slate-500">Delete?</span>
@@ -174,16 +195,23 @@ const SavedPlansView: React.FC<SavedPlansViewProps> = ({ onBack, onLoadPlan }) =
                       </button>
                     </div>
                   ) : (
-                    <button
-                      onClick={e => {
-                        e.stopPropagation();
-                        setDeleteConfirm(plan.id);
-                      }}
-                      className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                      title="Delete plan"
-                    >
-                      <Trash2 size={18} />
-                    </button>
+                    <>
+                      <button
+                        onClick={e => {
+                          e.stopPropagation();
+                          setDeleteConfirm(plan.id);
+                        }}
+                        className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                        title="Delete plan"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                      {selectedPlan?.id === plan.id ? (
+                        <ChevronUp size={20} className="text-slate-400" />
+                      ) : (
+                        <ChevronDown size={20} className="text-slate-400" />
+                      )}
+                    </>
                   )}
                 </div>
               </div>
