@@ -1,9 +1,12 @@
-import React, { useState } from 'react';
-import { ArrowLeft, Sparkles, ChefHat, Loader2, Heart, Printer, Users, Check, Apple, SlidersHorizontal, AlertCircle, Package, ShoppingCart } from 'lucide-react';
-import type { Meal, UserPreferences, PantryItem, CountryCode } from '../types';
+import React, { useState, useEffect } from 'react';
+import { ArrowLeft, Sparkles, ChefHat, Loader2, Heart, Printer, Users, Check, Apple, SlidersHorizontal, AlertCircle, Package, ShoppingCart, Beef, Target, ChevronDown, ChevronUp, Settings, Flame, Wheat, Droplets, Info } from 'lucide-react';
+import type { Meal, UserPreferences, PantryItem, CountryCode, MacroTargets } from '../types';
+import { DEFAULT_MACRO_TARGETS } from '../types';
 import { generateSingleRecipe, generateDishImage } from '../services/geminiService';
 import { saveFavoriteMeal } from '../services/storageService';
 import { addRecipeToShoppingList } from '../services/shoppingListService';
+import { getUserMacroTargets } from '../services/macroTargetService';
+import { useAuth } from './AuthProvider';
 import RecipePrintView from './RecipePrintView';
 import NutritionInfo from './NutritionInfo';
 import RecipeAdjuster from './RecipeAdjuster';
@@ -11,20 +14,25 @@ import RecipeAdjuster from './RecipeAdjuster';
 interface SingleRecipeGeneratorProps {
   onBack: () => void;
   preferences: UserPreferences;
+  setPreferences?: React.Dispatch<React.SetStateAction<UserPreferences>>;
   pantryItems: PantryItem[];
   peopleCount: number;
   onManagePantry?: () => void;
   userCountry?: CountryCode | null;
+  hasPro?: boolean;
 }
 
 const SingleRecipeGenerator: React.FC<SingleRecipeGeneratorProps> = ({
   onBack,
   preferences,
+  setPreferences,
   pantryItems,
   peopleCount,
   onManagePantry,
   userCountry,
+  hasPro = false,
 }) => {
+  const { user } = useAuth();
   const [description, setDescription] = useState('');
   const [servings, setServings] = useState(peopleCount);
   const [useWhatIHave, setUseWhatIHave] = useState(false);
@@ -40,7 +48,43 @@ const SingleRecipeGenerator: React.FC<SingleRecipeGeneratorProps> = ({
   const [showNutrition, setShowNutrition] = useState(false);
   const [showAdjuster, setShowAdjuster] = useState(false);
 
+  // Advanced options state
+  const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
+  const [meatServingGrams, setMeatServingGrams] = useState(preferences.meatServingGrams ?? 175);
+  const [dailyMacroTargets, setDailyMacroTargets] = useState<MacroTargets>(DEFAULT_MACRO_TARGETS);
+  const [useMacroTargets, setUseMacroTargets] = useState(false);
+
+  // Local preferences state for editing
+  const [localDiet, setLocalDiet] = useState(preferences.dietaryRestrictions || '');
+  const [localLikes, setLocalLikes] = useState(preferences.likes || '');
+  const [localDislikes, setLocalDislikes] = useState(preferences.dislikes || '');
+
   const hasPantryItems = pantryItems.length > 0;
+
+  // Load user's macro targets
+  useEffect(() => {
+    const loadMacros = async () => {
+      if (user) {
+        try {
+          const data = await getUserMacroTargets(user.id);
+          if (data) {
+            setDailyMacroTargets(data.targets);
+          }
+        } catch (err) {
+          console.error('Error loading macro targets:', err);
+        }
+      }
+    };
+    loadMacros();
+  }, [user]);
+
+  // Calculate per-meal macros (approximately 1/3 of daily for main meals)
+  const mealMacros = {
+    calories: Math.round(dailyMacroTargets.calories / 3),
+    protein: Math.round(dailyMacroTargets.protein / 3),
+    carbohydrates: Math.round(dailyMacroTargets.carbohydrates / 3),
+    fat: Math.round(dailyMacroTargets.fat / 3),
+  };
 
   const examplePrompts = [
     "A quick weeknight pasta dish",
@@ -59,14 +103,30 @@ const SingleRecipeGenerator: React.FC<SingleRecipeGeneratorProps> = ({
     setGeneratedRecipe(null);
     setIsSaved(false);
 
+    // Build effective preferences with local overrides
+    const effectivePreferences: UserPreferences = {
+      ...preferences,
+      dietaryRestrictions: localDiet,
+      likes: localLikes,
+      dislikes: localDislikes,
+      meatServingGrams,
+    };
+
+    // Update global preferences if setter is provided
+    if (setPreferences) {
+      setPreferences(effectivePreferences);
+    }
+
     try {
       const recipe = await generateSingleRecipe(
         description,
-        preferences,
+        effectivePreferences,
         pantryItems,
         servings,
         useWhatIHave,
-        userCountry
+        userCountry,
+        useMacroTargets ? mealMacros : undefined,
+        meatServingGrams
       );
       setGeneratedRecipe(recipe);
 
@@ -315,22 +375,180 @@ const SingleRecipeGenerator: React.FC<SingleRecipeGeneratorProps> = ({
             )}
           </div>
 
-          {/* Info about preferences */}
-          <div className="bg-slate-50 rounded-xl p-4">
-            <p className="text-sm text-slate-500">
-              Your dietary preferences{hasPantryItems ? ' and pantry items' : ''} will be used to create a personalized recipe.
-            </p>
-            {preferences.dietaryRestrictions && (
-              <p className="text-xs text-slate-400 mt-1">
-                Diet: {preferences.dietaryRestrictions}
-              </p>
-            )}
-            {hasPantryItems && !useWhatIHave && (
-              <p className="text-xs text-slate-400 mt-1">
-                {pantryItems.length} pantry items available
-              </p>
+          {/* Advanced Options */}
+          <div className="border border-slate-200 rounded-xl overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setShowAdvancedOptions(!showAdvancedOptions)}
+              className="w-full flex items-center justify-between p-4 bg-slate-50 hover:bg-slate-100 transition-colors"
+            >
+              <div className="flex items-center gap-2">
+                <Settings size={18} className="text-slate-500" />
+                <span className="font-medium text-slate-700">Recipe Options</span>
+                {(localDiet || useMacroTargets) && (
+                  <span className="text-xs px-2 py-0.5 bg-emerald-100 text-emerald-700 rounded-full">Customized</span>
+                )}
+              </div>
+              {showAdvancedOptions ? (
+                <ChevronUp size={18} className="text-slate-400" />
+              ) : (
+                <ChevronDown size={18} className="text-slate-400" />
+              )}
+            </button>
+
+            {showAdvancedOptions && (
+              <div className="p-4 space-y-5 border-t border-slate-200 bg-white">
+                {/* Dietary Preferences */}
+                <div>
+                  <h4 className="font-medium text-slate-700 mb-3 text-sm">Dietary Preferences</h4>
+                  <div className="space-y-3">
+                    <div>
+                      <label className="block text-xs text-slate-500 mb-1">Diet Type</label>
+                      <input
+                        type="text"
+                        value={localDiet}
+                        onChange={(e) => setLocalDiet(e.target.value)}
+                        placeholder="e.g., Vegetarian, Keto, Low-carb..."
+                        className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none"
+                        disabled={isGenerating}
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs text-slate-500 mb-1">Likes</label>
+                        <input
+                          type="text"
+                          value={localLikes}
+                          onChange={(e) => setLocalLikes(e.target.value)}
+                          placeholder="Foods you enjoy..."
+                          className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none"
+                          disabled={isGenerating}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-slate-500 mb-1">Dislikes</label>
+                        <input
+                          type="text"
+                          value={localDislikes}
+                          onChange={(e) => setLocalDislikes(e.target.value)}
+                          placeholder="Foods to avoid..."
+                          className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none"
+                          disabled={isGenerating}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Meat Portion */}
+                <div>
+                  <label className="flex items-center gap-2 text-sm font-medium text-slate-700 mb-2">
+                    <Beef size={16} className="text-red-500" />
+                    Meat Portion per Person
+                  </label>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="range"
+                      min={50}
+                      max={400}
+                      step={25}
+                      value={meatServingGrams}
+                      onChange={(e) => setMeatServingGrams(parseInt(e.target.value))}
+                      className="flex-1 h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-red-500"
+                      disabled={isGenerating}
+                    />
+                    <div className="flex items-center gap-1 min-w-[70px]">
+                      <input
+                        type="number"
+                        min={50}
+                        max={400}
+                        step={25}
+                        value={meatServingGrams}
+                        onChange={(e) => setMeatServingGrams(parseInt(e.target.value) || 175)}
+                        className="w-16 px-2 py-1 text-sm text-center border border-slate-200 rounded-lg focus:ring-2 focus:ring-amber-500 outline-none"
+                        disabled={isGenerating}
+                      />
+                      <span className="text-xs text-slate-500">g</span>
+                    </div>
+                  </div>
+                  <p className="text-xs text-slate-400 mt-1">Standard: 150-200g per person</p>
+                </div>
+
+                {/* Macro Targets Toggle */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="flex items-center gap-2 text-sm font-medium text-slate-700">
+                      <Target size={16} className="text-indigo-500" />
+                      Target Nutrition (per meal)
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setUseMacroTargets(!useMacroTargets)}
+                      disabled={isGenerating}
+                      className={`relative w-11 h-6 rounded-full transition-colors ${
+                        useMacroTargets ? 'bg-indigo-600' : 'bg-slate-300'
+                      }`}
+                    >
+                      <span
+                        className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform ${
+                          useMacroTargets ? 'translate-x-5' : ''
+                        }`}
+                      />
+                    </button>
+                  </div>
+
+                  {useMacroTargets && (
+                    <div className="space-y-3">
+                      <div className="flex items-start gap-2 p-2 bg-blue-50 rounded-lg">
+                        <Info size={14} className="text-blue-500 mt-0.5 flex-shrink-0" />
+                        <p className="text-xs text-blue-700">
+                          These are per-meal targets (≈⅓ of your daily goals). The recipe will aim to meet these nutritional targets.
+                        </p>
+                      </div>
+                      <div className="grid grid-cols-4 gap-2">
+                        <div className="bg-slate-50 p-2 rounded-lg text-center">
+                          <Flame size={14} className="text-orange-500 mx-auto mb-1" />
+                          <div className="text-sm font-semibold text-slate-700">{mealMacros.calories}</div>
+                          <div className="text-xs text-slate-500">kcal</div>
+                        </div>
+                        <div className="bg-slate-50 p-2 rounded-lg text-center">
+                          <Beef size={14} className="text-red-500 mx-auto mb-1" />
+                          <div className="text-sm font-semibold text-slate-700">{mealMacros.protein}g</div>
+                          <div className="text-xs text-slate-500">Protein</div>
+                        </div>
+                        <div className="bg-slate-50 p-2 rounded-lg text-center">
+                          <Wheat size={14} className="text-amber-500 mx-auto mb-1" />
+                          <div className="text-sm font-semibold text-slate-700">{mealMacros.carbohydrates}g</div>
+                          <div className="text-xs text-slate-500">Carbs</div>
+                        </div>
+                        <div className="bg-slate-50 p-2 rounded-lg text-center">
+                          <Droplets size={14} className="text-yellow-500 mx-auto mb-1" />
+                          <div className="text-sm font-semibold text-slate-700">{mealMacros.fat}g</div>
+                          <div className="text-xs text-slate-500">Fat</div>
+                        </div>
+                      </div>
+                      {!hasPro && (
+                        <p className="text-xs text-slate-400">
+                          Upgrade to Pro to customize your daily macro targets in settings.
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
             )}
           </div>
+
+          {/* Current settings summary */}
+          {!showAdvancedOptions && (localDiet || hasPantryItems) && (
+            <div className="bg-slate-50 rounded-xl p-3">
+              <p className="text-xs text-slate-500">
+                {localDiet && <span>Diet: {localDiet}</span>}
+                {localDiet && hasPantryItems && ' • '}
+                {hasPantryItems && !useWhatIHave && <span>{pantryItems.length} pantry items available</span>}
+              </p>
+            </div>
+          )}
 
           {/* Error */}
           {error && (
@@ -550,6 +768,7 @@ const SingleRecipeGenerator: React.FC<SingleRecipeGeneratorProps> = ({
           preferences={preferences}
           onClose={() => setShowAdjuster(false)}
           onApply={handleApplyAdjustment}
+          currentServings={servings}
         />
       )}
     </div>

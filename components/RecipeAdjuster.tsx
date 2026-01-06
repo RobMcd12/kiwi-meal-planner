@@ -10,6 +10,7 @@ interface RecipeAdjusterProps {
   onApply: (adjustedMeal: Meal, saveAsNew: boolean) => void;
   userName?: string;
   isPublicRecipe?: boolean;
+  currentServings?: number; // Override for meal.servings if known externally
 }
 
 type AdjustmentMode = 'servings' | 'protein' | 'macros' | 'custom';
@@ -21,7 +22,11 @@ const RecipeAdjuster: React.FC<RecipeAdjusterProps> = ({
   onApply,
   userName,
   isPublicRecipe = false,
+  currentServings,
 }) => {
+  // Use currentServings prop if provided, otherwise fall back to meal.servings, then default
+  const effectiveServings = currentServings ?? meal.servings ?? 4;
+
   const [mode, setMode] = useState<AdjustmentMode>('servings');
   const [isAdjusting, setIsAdjusting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -49,8 +54,8 @@ const RecipeAdjuster: React.FC<RecipeAdjusterProps> = ({
     }
   }, [preview, meal.name, hasEditedName]);
 
-  // Servings adjustment
-  const [targetServings, setTargetServings] = useState(meal.servings || 4);
+  // Servings adjustment - use effective servings
+  const [targetServings, setTargetServings] = useState(effectiveServings);
 
   // Protein adjustment
   const [proteinAdjustment, setProteinAdjustment] = useState<'increase' | 'decrease'>('increase');
@@ -198,7 +203,7 @@ const RecipeAdjuster: React.FC<RecipeAdjusterProps> = ({
             {mode === 'servings' && (
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-2">
-                  Adjust servings from {meal.servings || 4} to:
+                  Adjust servings from {effectiveServings} to:
                 </label>
                 <div className="flex items-center gap-3">
                   <button

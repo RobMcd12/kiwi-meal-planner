@@ -761,7 +761,9 @@ export const generateSingleRecipe = async (
   pantryItems: PantryItem[],
   peopleCount: number = 2,
   useWhatIHave: boolean = false,
-  userCountry?: CountryCode | null
+  userCountry?: CountryCode | null,
+  macroTargets?: { calories: number; protein: number; carbohydrates: number; fat: number },
+  meatServingGrams?: number
 ): Promise<Meal> => {
   const apiKey = process.env.API_KEY;
   if (!apiKey) throw new Error("API Key is missing.");
@@ -790,12 +792,22 @@ Goal: minimize extra shopping and reduce food waste.`
     ? `\nCRITICAL - NEVER USE THESE INGREDIENTS (allergies/exclusions): ${excludedIngredients.map(e => e.name).join(', ')}.`
     : '';
 
+  // Build meat portion instruction
+  const meatPortionInstruction = meatServingGrams
+    ? `\nMeat portion size: approximately ${meatServingGrams}g per person (total ${meatServingGrams * peopleCount}g for ${peopleCount} people).`
+    : '';
+
+  // Build macro targets instruction
+  const macroInstruction = macroTargets
+    ? `\nNUTRITION TARGETS (per serving): Aim for approximately ${macroTargets.calories} calories, ${macroTargets.protein}g protein, ${macroTargets.carbohydrates}g carbs, ${macroTargets.fat}g fat. Design the recipe to meet these nutritional goals.`
+    : '';
+
   const prompt = `Create a detailed recipe based on this request: "${recipeDescription}"
 
 For ${peopleCount} people.
 Dietary requirements: ${preferences.dietaryRestrictions || "None"}
 Likes: ${preferences.likes || "Any"}
-Dislikes: ${preferences.dislikes || "None"}${exclusionsInstruction}
+Dislikes: ${preferences.dislikes || "None"}${exclusionsInstruction}${meatPortionInstruction}${macroInstruction}
 Units: ${preferences.unitSystem}
 Temperature: ${preferences.temperatureScale}${localizationInstruction}
 
@@ -825,7 +837,7 @@ Also assign 3-5 relevant tags from: ${ALL_TAGS.join(", ")}`;
 
     const parsed = JSON.parse(response.text);
 
-    // Create a Meal object with unique ID
+    // Create a Meal object with unique ID and servings
     const meal: Meal = {
       id: `single-${Date.now()}`,
       name: parsed.name,
@@ -834,6 +846,7 @@ Also assign 3-5 relevant tags from: ${ALL_TAGS.join(", ")}`;
       instructions: parsed.instructions,
       tags: parsed.tags || [],
       source: 'generated',
+      servings: peopleCount, // Store the servings count
     };
 
     return meal;
