@@ -67,7 +67,9 @@ serve(async (req) => {
     const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
     const prompt = `Generate a detailed description for a professional food photograph of: ${mealName}. ${description}.
-    Describe the plating, lighting, and presentation as if for a high-end food magazine.`;
+    Describe the plating, lighting, and presentation as if for a high-end food magazine.
+
+    IMPORTANT: Only describe ingredients and components that are explicitly part of this specific recipe. Do NOT include garnishes, sides, or ingredients that are not mentioned in the description. The photograph must accurately represent ONLY what is in the actual recipe - no extra vegetables, sauces, or toppings that weren't specified.`;
 
     // Note: As of current Gemini API, direct image generation isn't available via the standard API
     // This function returns a placeholder or could be adapted when image generation is available

@@ -324,7 +324,9 @@ export const generateDishImage = async (mealName: string, description: string): 
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash-image',
       contents: {
-        parts: [{ text: `A high-end food magazine photo of a complete meal: ${mealName}. The image should show the main dish alongside its side dishes as described: ${description}. Warm, appetizing lighting, table setting.` }],
+        parts: [{ text: `A high-end food magazine photo of a complete meal: ${mealName}. The image should show the main dish alongside its side dishes as described: ${description}. Warm, appetizing lighting, table setting.
+
+IMPORTANT: Only show ingredients and components that are explicitly part of this specific recipe. Do NOT add garnishes, sides, or ingredients that are not mentioned in the description. The image must accurately represent ONLY what is in the actual recipe - no extra vegetables, sauces, or toppings that weren't specified.` }],
       },
       config: {
         imageConfig: { aspectRatio: "16:9" }
@@ -366,7 +368,9 @@ Description: ${description}
 
 Special instructions for this image: ${editInstructions}
 
-Create an appetizing, professional food photograph following these instructions.`
+Create an appetizing, professional food photograph following these instructions.
+
+IMPORTANT: Only show ingredients and components that are explicitly part of this specific recipe as described above. Do NOT add garnishes, sides, or ingredients that are not mentioned in the description. The image must accurately represent ONLY what is in the actual recipe - no extra vegetables, sauces, or toppings that weren't specified.`
         }],
       },
       config: {
