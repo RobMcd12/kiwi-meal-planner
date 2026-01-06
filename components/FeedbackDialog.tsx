@@ -1,6 +1,7 @@
 import React, { useState, useRef, useCallback } from 'react';
-import { X, Loader2, Bug, Sparkles, HelpCircle, MessageSquare, CheckCircle, Camera, Trash2, Image as ImageIcon } from 'lucide-react';
+import { X, Loader2, Bug, Sparkles, HelpCircle, MessageSquare, CheckCircle, Camera, Trash2, Image as ImageIcon, Video, Square, Pause, Play, Circle } from 'lucide-react';
 import { submitFeedback } from '../services/feedbackService';
+import { useScreenRecording } from '../hooks/useScreenRecording';
 import type { FeedbackType } from '../types';
 
 interface FeedbackDialogProps {
@@ -20,6 +21,8 @@ const FEEDBACK_TYPES: { type: FeedbackType; label: string; icon: React.ElementTy
   { type: 'other', label: 'Other', icon: MessageSquare },
 ];
 
+const MAX_RECORDING_SECONDS = 30;
+
 const FeedbackDialog: React.FC<FeedbackDialogProps> = ({ isOpen, onClose, currentUser }) => {
   const [type, setType] = useState<FeedbackType>('feature');
   const [subject, setSubject] = useState('');
@@ -30,6 +33,32 @@ const FeedbackDialog: React.FC<FeedbackDialogProps> = ({ isOpen, onClose, curren
   const [screenshot, setScreenshot] = useState<string | null>(null);
   const [isCapturing, setIsCapturing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Screen recording
+  const {
+    state: recordingState,
+    recordingBlob,
+    recordingUrl,
+    elapsedTime,
+    error: recordingError,
+    startRecording,
+    stopRecording,
+    pauseRecording,
+    resumeRecording,
+    clearRecording,
+    isSupported: isRecordingSupported,
+  } = useScreenRecording({
+    maxDurationMs: MAX_RECORDING_SECONDS * 1000,
+  });
+
+  const formatTime = (ms: number): string => {
+    const seconds = Math.floor(ms / 1000);
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const remainingTime = MAX_RECORDING_SECONDS * 1000 - elapsedTime;
 
   const captureScreenshot = useCallback(async () => {
     setIsCapturing(true);
@@ -119,7 +148,8 @@ const FeedbackDialog: React.FC<FeedbackDialogProps> = ({ isOpen, onClose, curren
         type,
         subject.trim(),
         message.trim(),
-        screenshot || undefined
+        screenshot || undefined,
+        recordingBlob || undefined
       );
 
       setSubmitted(true);
@@ -132,6 +162,7 @@ const FeedbackDialog: React.FC<FeedbackDialogProps> = ({ isOpen, onClose, curren
           setMessage('');
           setType('feature');
           setScreenshot(null);
+          clearRecording();
         }, 300);
       }, 2000);
     } catch (err) {
@@ -143,7 +174,8 @@ const FeedbackDialog: React.FC<FeedbackDialogProps> = ({ isOpen, onClose, curren
   };
 
   const handleClose = () => {
-    if (!isSubmitting) {
+    if (!isSubmitting && recordingState === 'idle') {
+      clearRecording();
       onClose();
     }
   };
@@ -295,6 +327,116 @@ const FeedbackDialog: React.FC<FeedbackDialogProps> = ({ isOpen, onClose, curren
                   Add a screenshot to help us understand the issue better.
                 </p>
               </div>
+
+              {/* Screen Recording Section */}
+              {isRecordingSupported && (
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">
+                    Screen Recording (optional, max 30s)
+                  </label>
+
+                  {recordingUrl ? (
+                    // Show recorded video
+                    <div className="relative">
+                      <video
+                        src={recordingUrl}
+                        controls
+                        className="w-full rounded-xl border border-slate-200 max-h-48 bg-slate-900"
+                      />
+                      <button
+                        type="button"
+                        onClick={clearRecording}
+                        className="absolute top-2 right-2 p-1.5 bg-red-500 text-white rounded-full hover:bg-red-600 transition-colors shadow-md"
+                        title="Remove recording"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  ) : recordingState === 'idle' ? (
+                    // Start recording button
+                    <button
+                      type="button"
+                      onClick={startRecording}
+                      className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-xl font-medium transition-colors"
+                    >
+                      <Circle size={16} className="fill-red-500 text-red-500" />
+                      Record Screen
+                    </button>
+                  ) : (
+                    // Recording controls
+                    <div className="bg-slate-100 rounded-xl p-4 space-y-3">
+                      {/* Timer and progress */}
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          {recordingState === 'recording' && (
+                            <span className="w-3 h-3 bg-red-500 rounded-full animate-pulse" />
+                          )}
+                          {recordingState === 'paused' && (
+                            <span className="w-3 h-3 bg-amber-500 rounded-full" />
+                          )}
+                          <span className="text-lg font-mono font-medium text-slate-800">
+                            {formatTime(elapsedTime)}
+                          </span>
+                          <span className="text-sm text-slate-500">
+                            / {formatTime(MAX_RECORDING_SECONDS * 1000)}
+                          </span>
+                        </div>
+                        <span className="text-sm text-slate-500">
+                          {recordingState === 'recording' ? 'Recording...' : 'Paused'}
+                        </span>
+                      </div>
+
+                      {/* Progress bar */}
+                      <div className="h-2 bg-slate-200 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full transition-all duration-100 ${
+                            recordingState === 'recording' ? 'bg-red-500' : 'bg-amber-500'
+                          }`}
+                          style={{ width: `${(elapsedTime / (MAX_RECORDING_SECONDS * 1000)) * 100}%` }}
+                        />
+                      </div>
+
+                      {/* Control buttons */}
+                      <div className="flex gap-2">
+                        {recordingState === 'recording' ? (
+                          <button
+                            type="button"
+                            onClick={pauseRecording}
+                            className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-lg font-medium transition-colors"
+                          >
+                            <Pause size={16} />
+                            Pause
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={resumeRecording}
+                            className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-emerald-500 hover:bg-emerald-600 text-white rounded-lg font-medium transition-colors"
+                          >
+                            <Play size={16} />
+                            Resume
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={stopRecording}
+                          className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-slate-700 hover:bg-slate-800 text-white rounded-lg font-medium transition-colors"
+                        >
+                          <Square size={14} className="fill-white" />
+                          Stop
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {recordingError && (
+                    <p className="text-xs text-red-500 mt-2">{recordingError}</p>
+                  )}
+                  <p className="text-xs text-slate-400 mt-2">
+                    Record your screen to show us exactly what&apos;s happening.
+                  </p>
+                </div>
+              )}
 
               {/* Error */}
               {error && (

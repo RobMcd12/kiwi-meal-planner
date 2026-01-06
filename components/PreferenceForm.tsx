@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { UserPreferences, ExcludedIngredient } from '../types';
 import { Utensils, Heart, ThumbsDown, Scale, Thermometer, Beef, Flame, AlertTriangle, Plus, X, ShieldAlert, Target } from 'lucide-react';
 import MacroTargetsEditor from './MacroTargetsEditor';
+import NumericKeypad from './NumericKeypad';
 
 interface PreferenceFormProps {
   preferences: UserPreferences;
@@ -33,6 +34,21 @@ const PreferenceForm: React.FC<PreferenceFormProps> = ({
   const [newIngredient, setNewIngredient] = useState('');
   const [newReason, setNewReason] = useState<string>('allergy');
   const [activeTab, setActiveTab] = useState<PreferenceTab>('meal');
+
+  // Local state for numeric inputs to allow empty field while typing
+  const [meatServingInput, setMeatServingInput] = useState<string>(
+    preferences.meatServingGrams?.toString() ?? '175'
+  );
+  const [calorieInput, setCalorieInput] = useState<string>(
+    preferences.calorieTarget?.toString() ?? '2000'
+  );
+
+  // Keypad state for mobile
+  const [keypadField, setKeypadField] = useState<'meat' | 'calories' | null>(null);
+
+  // Check if device is mobile/tablet
+  const isTouchDevice = typeof window !== 'undefined' &&
+    ('ontouchstart' in window || navigator.maxTouchPoints > 0);
 
   const handleChange = (field: keyof UserPreferences, value: any) => {
     setPreferences(prev => ({ ...prev, [field]: value }));
@@ -348,11 +364,30 @@ const PreferenceForm: React.FC<PreferenceFormProps> = ({
                   <div className="flex items-center gap-2">
                     <input
                       type="number"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
                       min={50}
                       max={500}
                       step={10}
-                      value={preferences.meatServingGrams ?? 175}
-                      onChange={(e) => handleChange('meatServingGrams', e.target.value === '' ? undefined : parseInt(e.target.value))}
+                      value={meatServingInput}
+                      onChange={(e) => {
+                        setMeatServingInput(e.target.value);
+                        const num = parseInt(e.target.value);
+                        handleChange('meatServingGrams', isNaN(num) ? undefined : num);
+                      }}
+                      onFocus={(e) => {
+                        if (isTouchDevice) {
+                          e.target.blur();
+                          setKeypadField('meat');
+                        }
+                      }}
+                      onBlur={() => {
+                        // Restore default if left empty
+                        if (meatServingInput === '') {
+                          setMeatServingInput('175');
+                          handleChange('meatServingGrams', 175);
+                        }
+                      }}
                       className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none text-center"
                     />
                     <span className="text-sm text-slate-500">g</span>
@@ -369,11 +404,30 @@ const PreferenceForm: React.FC<PreferenceFormProps> = ({
                   <div className="flex items-center gap-2">
                     <input
                       type="number"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
                       min={1000}
                       max={5000}
                       step={50}
-                      value={preferences.calorieTarget ?? 2000}
-                      onChange={(e) => handleChange('calorieTarget', e.target.value === '' ? undefined : parseInt(e.target.value))}
+                      value={calorieInput}
+                      onChange={(e) => {
+                        setCalorieInput(e.target.value);
+                        const num = parseInt(e.target.value);
+                        handleChange('calorieTarget', isNaN(num) ? undefined : num);
+                      }}
+                      onFocus={(e) => {
+                        if (isTouchDevice) {
+                          e.target.blur();
+                          setKeypadField('calories');
+                        }
+                      }}
+                      onBlur={() => {
+                        // Restore default if left empty
+                        if (calorieInput === '') {
+                          setCalorieInput('2000');
+                          handleChange('calorieTarget', 2000);
+                        }
+                      }}
                       className="w-full px-3 py-2 rounded-lg border border-slate-300 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 outline-none text-center"
                     />
                     <span className="text-sm text-slate-500">kcal</span>
@@ -415,6 +469,51 @@ const PreferenceForm: React.FC<PreferenceFormProps> = ({
           )}
         </button>
       )}
+
+      {/* Numeric Keypads for mobile */}
+      <NumericKeypad
+        isOpen={keypadField === 'meat'}
+        onClose={() => setKeypadField(null)}
+        value={meatServingInput}
+        onChange={setMeatServingInput}
+        onConfirm={(value) => {
+          const num = parseInt(value);
+          if (!isNaN(num)) {
+            setMeatServingInput(value);
+            handleChange('meatServingGrams', num);
+          } else {
+            setMeatServingInput('175');
+            handleChange('meatServingGrams', 175);
+          }
+        }}
+        label="Meat per person"
+        unit="g"
+        min={50}
+        max={500}
+        step={10}
+      />
+
+      <NumericKeypad
+        isOpen={keypadField === 'calories'}
+        onClose={() => setKeypadField(null)}
+        value={calorieInput}
+        onChange={setCalorieInput}
+        onConfirm={(value) => {
+          const num = parseInt(value);
+          if (!isNaN(num)) {
+            setCalorieInput(value);
+            handleChange('calorieTarget', num);
+          } else {
+            setCalorieInput('2000');
+            handleChange('calorieTarget', 2000);
+          }
+        }}
+        label="Daily calories"
+        unit="kcal"
+        min={1000}
+        max={5000}
+        step={50}
+      />
     </div>
   );
 };

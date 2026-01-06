@@ -11,8 +11,38 @@ export const submitFeedback = async (
   type: FeedbackType,
   subject: string,
   message: string,
-  screenshot?: string
+  screenshot?: string,
+  recordingBlob?: Blob
 ): Promise<FeedbackItem | null> => {
+  let recordingUrl: string | undefined;
+
+  // Upload recording to storage if provided
+  if (recordingBlob) {
+    try {
+      const fileName = `feedback-recordings/${userId}/${Date.now()}.webm`;
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('feedback-media')
+        .upload(fileName, recordingBlob, {
+          contentType: recordingBlob.type || 'video/webm',
+          cacheControl: '3600',
+        });
+
+      if (uploadError) {
+        console.error('Error uploading recording:', uploadError);
+        // Continue without recording - don't fail the whole submission
+      } else if (uploadData) {
+        // Get public URL for the recording
+        const { data: urlData } = supabase.storage
+          .from('feedback-media')
+          .getPublicUrl(fileName);
+        recordingUrl = urlData.publicUrl;
+      }
+    } catch (err) {
+      console.error('Error uploading recording:', err);
+      // Continue without recording
+    }
+  }
+
   const { data, error } = await supabase
     .from('feedback')
     .insert({
@@ -23,6 +53,7 @@ export const submitFeedback = async (
       subject,
       message,
       screenshot,
+      recording_url: recordingUrl,
       status: 'new',
       user_viewed_response: false,
     })
