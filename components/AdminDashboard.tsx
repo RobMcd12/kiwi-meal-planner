@@ -46,7 +46,8 @@ import {
   getAllFeedback,
   getNewFeedbackCount,
   respondToFeedback,
-  updateFeedbackStatus
+  updateFeedbackStatus,
+  deleteFeedback
 } from '../services/feedbackService';
 import { getAllUsers, setUserAdminStatus, isSuperAdmin, sendPasswordResetEmail, createUser, deleteUser, type UserProfile } from '../services/adminService';
 import {
@@ -187,6 +188,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
   const [responseStatus, setResponseStatus] = useState<FeedbackStatus>('reviewed');
   const [isResponding, setIsResponding] = useState(false);
   const [expandedFeedbackIds, setExpandedFeedbackIds] = useState<Set<string>>(new Set());
+  const [deletingFeedbackId, setDeletingFeedbackId] = useState<string | null>(null);
+  const [feedbackDeleteConfirm, setFeedbackDeleteConfirm] = useState<string | null>(null);
 
   // Users state
   const [usersList, setUsersList] = useState<AdminUserWithDetails[]>([]);
@@ -686,6 +689,24 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
       setNewFeedbackCount(newCount);
     } catch (err) {
       setMessage({ type: 'error', text: 'Failed to update status.' });
+    }
+  };
+
+  const handleDeleteFeedback = async (feedbackItem: FeedbackItem) => {
+    setDeletingFeedbackId(feedbackItem.id);
+    try {
+      await deleteFeedback(feedbackItem.id, feedbackItem.recording_url);
+      setFeedbackList((prev) => prev.filter((f) => f.id !== feedbackItem.id));
+      setFeedbackDeleteConfirm(null);
+      // Update count if deleted item was new
+      if (feedbackItem.status === 'new') {
+        setNewFeedbackCount((prev) => Math.max(0, prev - 1));
+      }
+      setMessage({ type: 'success', text: 'Feedback deleted successfully.' });
+    } catch (err) {
+      setMessage({ type: 'error', text: 'Failed to delete feedback.' });
+    } finally {
+      setDeletingFeedbackId(null);
     }
   };
 
@@ -1218,19 +1239,59 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
                           </div>
                         )}
 
-                        {/* Respond button */}
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedFeedback(item);
-                            setResponseText(item.admin_response || '');
-                            setResponseStatus(item.status === 'new' ? 'reviewed' : item.status);
-                          }}
-                          className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg transition-colors"
-                        >
-                          <Send size={16} />
-                          {item.admin_response ? 'Update Response' : 'Respond'}
-                        </button>
+                        {/* Action buttons */}
+                        <div className="flex items-center gap-3">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedFeedback(item);
+                              setResponseText(item.admin_response || '');
+                              setResponseStatus(item.status === 'new' ? 'reviewed' : item.status);
+                            }}
+                            className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg transition-colors"
+                          >
+                            <Send size={16} />
+                            {item.admin_response ? 'Update Response' : 'Respond'}
+                          </button>
+
+                          {/* Delete button with confirmation */}
+                          {feedbackDeleteConfirm === item.id ? (
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm text-slate-500">Delete?</span>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteFeedback(item);
+                                }}
+                                disabled={deletingFeedbackId === item.id}
+                                className="px-3 py-1.5 bg-red-500 hover:bg-red-600 text-white text-sm font-medium rounded-lg transition-colors disabled:opacity-50"
+                              >
+                                {deletingFeedbackId === item.id ? 'Deleting...' : 'Yes'}
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setFeedbackDeleteConfirm(null);
+                                }}
+                                className="px-3 py-1.5 bg-slate-200 hover:bg-slate-300 text-slate-700 text-sm font-medium rounded-lg transition-colors"
+                              >
+                                No
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setFeedbackDeleteConfirm(item.id);
+                              }}
+                              className="flex items-center gap-2 px-4 py-2 bg-slate-100 hover:bg-red-50 text-slate-600 hover:text-red-600 text-sm font-medium rounded-lg transition-colors"
+                              title="Delete feedback"
+                            >
+                              <Trash2 size={16} />
+                              Delete
+                            </button>
+                          )}
+                        </div>
                       </div>
                     )}
                   </div>

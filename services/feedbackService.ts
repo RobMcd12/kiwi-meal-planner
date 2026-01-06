@@ -212,3 +212,41 @@ export const updateFeedbackStatus = async (
     throw error;
   }
 };
+
+/**
+ * Delete feedback item (admin only)
+ * Also deletes associated recording from storage if present
+ */
+export const deleteFeedback = async (feedbackId: string, recordingUrl?: string): Promise<void> => {
+  // Delete recording from storage if present
+  if (recordingUrl) {
+    try {
+      // Extract the file path from the URL
+      const urlParts = recordingUrl.split('/feedback-media/');
+      if (urlParts.length > 1) {
+        const filePath = urlParts[1];
+        const { error: storageError } = await supabase.storage
+          .from('feedback-media')
+          .remove([filePath]);
+
+        if (storageError) {
+          console.error('Error deleting recording file:', storageError);
+          // Continue with feedback deletion even if storage deletion fails
+        }
+      }
+    } catch (err) {
+      console.error('Error deleting recording:', err);
+    }
+  }
+
+  // Delete the feedback record
+  const { error } = await supabase
+    .from('feedback')
+    .delete()
+    .eq('id', feedbackId);
+
+  if (error) {
+    console.error('Error deleting feedback:', error);
+    throw error;
+  }
+};
