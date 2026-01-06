@@ -1017,6 +1017,31 @@ export const deleteSavedMealPlan = async (id: string): Promise<void> => {
   await supabase.from('saved_meal_plans').delete().eq('id', id);
 };
 
+export const updateSavedMealPlanName = async (id: string, name: string): Promise<boolean> => {
+  if (!isSupabaseConfigured()) {
+    updateSavedMealPlanNameLocal(id, name);
+    return true;
+  }
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    updateSavedMealPlanNameLocal(id, name);
+    return true;
+  }
+
+  const { error } = await supabase
+    .from('saved_meal_plans')
+    .update({ name, updated_at: new Date().toISOString() })
+    .eq('id', id);
+
+  if (error) {
+    console.error('Failed to update meal plan name:', error);
+    return false;
+  }
+
+  return true;
+};
+
 // Local storage helpers for saved plans
 const saveMealPlanLocal = (plan: SavedMealPlan): void => {
   const plans = getSavedMealPlansLocal();
@@ -1030,6 +1055,14 @@ const getSavedMealPlansLocal = (): SavedMealPlan[] => {
 const deleteSavedMealPlanLocal = (id: string): void => {
   const plans = getSavedMealPlansLocal();
   safeSetItem(STORAGE_KEYS.SAVED_PLANS, JSON.stringify(plans.filter(p => p.id !== id)));
+};
+
+const updateSavedMealPlanNameLocal = (id: string, name: string): void => {
+  const plans = getSavedMealPlansLocal();
+  const updatedPlans = plans.map(p =>
+    p.id === id ? { ...p, name, updatedAt: new Date().toISOString() } : p
+  );
+  safeSetItem(STORAGE_KEYS.SAVED_PLANS, JSON.stringify(updatedPlans));
 };
 
 // ============================================
