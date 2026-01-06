@@ -1953,24 +1953,27 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({
                   </div>
                   <div className="flex items-center gap-2 flex-wrap">
                     {/* Display selected categories */}
-                    {openMealCategories.length > 0 && (
-                      <>
-                        {openMealCategories.map(catId => {
-                          const category = userCategories.find(c => c.id === catId);
-                          if (!category) return null;
-                          const colors = getCategoryColorClasses(category.color);
-                          return (
-                            <span
-                              key={catId}
-                              className={`inline-flex items-center gap-1 px-2 py-1 text-sm font-medium rounded-full border ${colors.bg} ${colors.text} ${colors.border}`}
-                            >
-                              {category.name}
-                            </span>
-                          );
-                        })}
-                      </>
-                    )}
-                    {/* Category selector */}
+                    {openMealCategories.map(catId => {
+                      const category = userCategories.find(c => c.id === catId);
+                      if (!category) return null;
+                      const colors = getCategoryColorClasses(category.color);
+                      return (
+                        <span
+                          key={catId}
+                          className={`inline-flex items-center gap-1 px-2 py-1 text-sm font-medium rounded-full border ${colors.bg} ${colors.text} ${colors.border}`}
+                        >
+                          {category.name}
+                          <button
+                            type="button"
+                            onClick={() => handleCategoriesChange(openMeal.id, openMealCategories.filter(id => id !== catId))}
+                            className="hover:bg-black/10 rounded-full p-0.5"
+                          >
+                            <X size={12} />
+                          </button>
+                        </span>
+                      );
+                    })}
+                    {/* Add category button */}
                     <CategorySelector
                       categories={userCategories}
                       selectedCategoryIds={openMealCategories}

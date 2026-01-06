@@ -125,38 +125,18 @@ const CategorySelector: React.FC<CategorySelectorProps> = ({
   };
 
   if (compact) {
-    // Compact mode - shows selected categories as pills
+    // Compact mode - just shows the add button (selected categories are shown by parent)
     return (
       <div className="relative" ref={dropdownRef}>
         <div className="flex items-center gap-1 flex-wrap">
-          {selectedCategories.map(cat => {
-            const colors = getCategoryColorClasses(cat.color);
-            return (
-              <span
-                key={cat.id}
-                className={`inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full border ${colors.bg} ${colors.text} ${colors.border}`}
-              >
-                {cat.name}
-                {!disabled && (
-                  <button
-                    type="button"
-                    onClick={(e) => { e.stopPropagation(); toggleCategory(cat.id); }}
-                    className="hover:bg-black/10 rounded-full p-0.5"
-                  >
-                    <X size={10} />
-                  </button>
-                )}
-              </span>
-            );
-          })}
           {!disabled && (
             <button
               type="button"
               onClick={() => setShowDropdown(!showDropdown)}
-              className="inline-flex items-center gap-1 px-2 py-0.5 text-xs text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-full transition-colors"
+              className="inline-flex items-center gap-1 px-3 py-1.5 text-sm font-medium text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 border border-indigo-200 rounded-full transition-colors"
             >
-              <FolderPlus size={12} />
-              {selectedCategories.length === 0 && 'Category'}
+              <Plus size={14} />
+              Category
             </button>
           )}
         </div>
