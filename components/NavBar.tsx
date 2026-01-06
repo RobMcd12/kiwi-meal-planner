@@ -14,7 +14,7 @@ const NavBar: React.FC<NavBarProps> = ({ currentStep, onNavigate }) => {
     { step: AppStep.FAVORITES, label: 'Cookbook', icon: BookHeart, color: 'rose' },
     { step: AppStep.SAVED_PLANS, label: 'Saved Plans', icon: FolderHeart, color: 'indigo' },
     { step: AppStep.SHOPPING_LIST, label: 'Shopping', icon: ShoppingCart, color: 'teal' },
-    { step: AppStep.SETTINGS, label: 'Pantry', icon: Apple, color: 'orange' },
+    { step: AppStep.PANTRY, label: 'Pantry', icon: Apple, color: 'orange' },
   ];
 
   const getColorClasses = (color: string, isActive: boolean) => {
@@ -58,12 +58,12 @@ const NavBar: React.FC<NavBarProps> = ({ currentStep, onNavigate }) => {
 
   // Check if current step matches or is a sub-step
   const isActiveStep = (itemStep: AppStep): boolean => {
-    // For Pantry, it's under settings with pantry tab - we'll highlight it when in settings
-    if (itemStep === AppStep.SETTINGS && currentStep === AppStep.SETTINGS) {
+    // For meal plan creation flow - only highlight Meal Plan for CONFIG and PREFERENCES (not PANTRY anymore)
+    if (itemStep === AppStep.CONFIG && (currentStep === AppStep.CONFIG || currentStep === AppStep.PREFERENCES)) {
       return true;
     }
-    // For meal plan creation flow
-    if (itemStep === AppStep.CONFIG && (currentStep === AppStep.CONFIG || currentStep === AppStep.PANTRY || currentStep === AppStep.PREFERENCES)) {
+    // For Pantry standalone page
+    if (itemStep === AppStep.PANTRY && currentStep === AppStep.PANTRY) {
       return true;
     }
     // For shopping list

@@ -624,19 +624,30 @@ export const getFavoriteMeals = async (): Promise<Meal[]> => {
   return mealsWithTags;
 };
 
-export const removeFavoriteMeal = async (id: string): Promise<void> => {
+export const removeFavoriteMeal = async (id: string): Promise<boolean> => {
   if (!isSupabaseConfigured()) {
     removeFavoriteMealLocal(id);
-    return;
+    return true;
   }
 
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) {
     removeFavoriteMealLocal(id);
-    return;
+    return true;
   }
 
-  await supabase.from('favorite_meals').delete().eq('id', id);
+  const { error } = await supabase
+    .from('favorite_meals')
+    .delete()
+    .eq('id', id)
+    .eq('user_id', user.id);
+
+  if (error) {
+    console.error('Error deleting favorite meal:', error);
+    return false;
+  }
+
+  return true;
 };
 
 /**
