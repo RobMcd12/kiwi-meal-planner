@@ -24,6 +24,7 @@ import { UploadProvider } from './contexts/UploadContext';
 import { TimerProvider } from './contexts/TimerContext';
 import GlobalTimerIndicator from './components/GlobalTimerIndicator';
 import NotificationPermissionPrompt from './components/NotificationPermissionPrompt';
+import NavBar from './components/NavBar';
 import { ToastContainer } from './components/Toast';
 import { useToast } from './hooks/useToast';
 import { useNavigationHistory, pathToStep, isOAuthCallback } from './hooks/useNavigationHistory';
@@ -45,7 +46,7 @@ import { getSubscriptionState } from './services/subscriptionService';
 import { getUserProfile } from './services/profileService';
 import { getUserMacroTargets } from './services/macroTargetService';
 import type { SubscriptionState } from './types';
-import { ChefHat, Settings, LogOut, User, Shield, MessageSquare, Bell, HelpCircle, Menu, X, CalendarPlus, BookHeart, FolderHeart, Sparkles, UserCircle, RefreshCw, List } from 'lucide-react';
+import { ChefHat, Settings, LogOut, User, Shield, MessageSquare, Bell, HelpCircle, Menu, X, CalendarPlus, BookHeart, FolderHeart, Sparkles, UserCircle, RefreshCw, List, ShoppingCart, Apple } from 'lucide-react';
 import HelpModal from './components/HelpModal';
 
 // --- Default States ---
@@ -832,6 +833,20 @@ const AppContent: React.FC = () => {
                   <FolderHeart size={20} className="text-indigo-600" />
                   Saved Plans
                 </button>
+                <button
+                  onClick={() => { setStep(AppStep.SHOPPING_LIST); setShowMobileMenu(false); }}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+                >
+                  <ShoppingCart size={20} className="text-teal-600" />
+                  Shopping List
+                </button>
+                <button
+                  onClick={() => { setSettingsInitialTab('pantry'); setStep(AppStep.SETTINGS); setShowMobileMenu(false); }}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+                >
+                  <Apple size={20} className="text-orange-600" />
+                  Pantry
+                </button>
               </div>
 
               {/* Settings & Account */}
@@ -944,6 +959,20 @@ const AppContent: React.FC = () => {
           </div>
         )}
       </header>
+
+      {/* Navigation Bar - shown on all pages except Welcome */}
+      {step !== AppStep.WELCOME && (
+        <NavBar
+          currentStep={step}
+          onNavigate={(targetStep) => {
+            // Special handling for pantry - go to settings with pantry tab
+            if (targetStep === AppStep.SETTINGS) {
+              setSettingsInitialTab('pantry');
+            }
+            setStep(targetStep);
+          }}
+        />
+      )}
 
       {/* Main Content */}
       <main className="flex-1 w-full max-w-5xl mx-auto p-4 md:p-8">
