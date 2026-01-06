@@ -262,6 +262,7 @@ export interface FeedbackItem {
   subject: string;
   message: string;
   screenshot?: string; // Base64 encoded screenshot image
+  recording_url?: string; // URL to screen recording video in Supabase Storage
   status: FeedbackStatus;
   admin_response?: string;
   admin_responded_at?: string;

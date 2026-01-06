@@ -491,6 +491,8 @@ const AppContent: React.FC = () => {
               setPreferences={setPreferences}
               onSubmit={handleGenerate}
               isLoading={loading}
+              hasPro={subscriptionState?.hasPro ?? false}
+              onUpgradeClick={() => setStep(AppStep.FEATURES)}
             />
           </div>
         );

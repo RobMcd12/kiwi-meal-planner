@@ -34,7 +34,10 @@ import {
   ChefHat,
   Play,
   Film,
-  AlertCircle
+  AlertCircle,
+  ChevronDown,
+  ChevronUp,
+  ChevronsDownUp
 } from 'lucide-react';
 import { useAuth } from './AuthProvider';
 import { supabase, isSupabaseConfigured } from '../services/authService';
@@ -65,7 +68,7 @@ import AdminRecipeBrowser from './admin/AdminRecipeBrowser';
 import { getAllUsersWithDetails } from '../services/loginHistoryService';
 import { grantProAccess, revokeProAccess } from '../services/subscriptionService';
 import { getVideoCount } from '../services/recipeVideoService';
-import { Crown, BookOpen, HardDrive, Calendar, ArrowUpDown, ChevronDown } from 'lucide-react';
+import { Crown, BookOpen, HardDrive, Calendar, ArrowUpDown } from 'lucide-react';
 import ResponsiveTabs from './ResponsiveTabs';
 
 interface AdminDashboardProps {
@@ -183,6 +186,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
   const [responseText, setResponseText] = useState('');
   const [responseStatus, setResponseStatus] = useState<FeedbackStatus>('reviewed');
   const [isResponding, setIsResponding] = useState(false);
+  const [expandedFeedbackIds, setExpandedFeedbackIds] = useState<Set<string>>(new Set());
 
   // Users state
   const [usersList, setUsersList] = useState<AdminUserWithDetails[]>([]);
@@ -1016,6 +1020,19 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
                 className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none"
               />
             </div>
+            <button
+              onClick={() => {
+                if (expandedFeedbackIds.size === filteredFeedback.length) {
+                  setExpandedFeedbackIds(new Set());
+                } else {
+                  setExpandedFeedbackIds(new Set(filteredFeedback.map(f => f.id)));
+                }
+              }}
+              className="flex items-center gap-2 px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-lg text-sm font-medium transition-colors whitespace-nowrap"
+            >
+              <ChevronsDownUp size={16} />
+              {expandedFeedbackIds.size === filteredFeedback.length ? 'Collapse All' : 'Expand All'}
+            </button>
             <div className="flex gap-2 flex-wrap">
               {(['all', 'new', 'reviewed', 'in-progress', 'resolved'] as const).map((f) => (
                 <button
@@ -1049,86 +1066,150 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
               <p className="text-slate-500">No feedback found.</p>
             </div>
           ) : (
-            <div className="space-y-4">
-              {filteredFeedback.map((item) => (
-                <div
-                  key={item.id}
-                  className="bg-white rounded-xl border border-slate-200 p-5"
-                >
-                  <div className="flex items-start justify-between gap-4 mb-3">
-                    <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-lg">{getTypeIcon(item.type)}</span>
-                        <h3 className="font-medium text-slate-800">{item.subject}</h3>
-                      </div>
-                      <p className="text-sm text-slate-500">
-                        From: {item.user_name} {item.user_email && `(${item.user_email})`}
-                      </p>
-                      <p className="text-xs text-slate-400 mt-1">
-                        {formatDateTime(item.created_at)} • {item.type}
-                      </p>
-                    </div>
-                    <select
-                      value={item.status}
-                      onChange={(e) => handleStatusChange(item.id, e.target.value as FeedbackStatus)}
-                      className={`px-3 py-1.5 rounded-lg text-sm font-medium border-0 cursor-pointer ${getStatusColor(item.status)}`}
-                    >
-                      <option value="new">New</option>
-                      <option value="reviewed">Reviewed</option>
-                      <option value="in-progress">In Progress</option>
-                      <option value="resolved">Resolved</option>
-                    </select>
-                  </div>
-
-                  <p className="text-slate-700 whitespace-pre-wrap mb-4 bg-slate-50 p-3 rounded-lg">
-                    {item.message}
-                  </p>
-
-                  {/* Screenshot */}
-                  {item.screenshot && (
-                    <div className="mb-4">
-                      <p className="text-sm font-medium text-slate-600 mb-2">Attached Screenshot:</p>
-                      <a
-                        href={item.screenshot}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="block"
-                      >
-                        <img
-                          src={item.screenshot}
-                          alt="Feedback screenshot"
-                          className="max-w-full max-h-64 rounded-lg border border-slate-200 hover:border-emerald-500 transition-colors cursor-pointer"
-                        />
-                      </a>
-                      <p className="text-xs text-slate-400 mt-1">Click to view full size</p>
-                    </div>
-                  )}
-
-                  {/* Previous response */}
-                  {item.admin_response && (
-                    <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4 mb-4">
-                      <p className="text-sm text-emerald-700 mb-1 font-medium">
-                        Response by {item.admin_name || 'Admin'}
-                        {item.admin_responded_at && ` on ${formatDateTime(item.admin_responded_at)}`}
-                      </p>
-                      <p className="text-slate-700 whitespace-pre-wrap">{item.admin_response}</p>
-                    </div>
-                  )}
-
-                  {/* Respond button */}
-                  <button
-                    onClick={() => {
-                      setSelectedFeedback(item);
-                      setResponseText(item.admin_response || '');
-                      setResponseStatus(item.status === 'new' ? 'reviewed' : item.status);
-                    }}
-                    className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg transition-colors"
+            <div className="space-y-3">
+              {filteredFeedback.map((item) => {
+                const isExpanded = expandedFeedbackIds.has(item.id);
+                return (
+                  <div
+                    key={item.id}
+                    className="bg-white rounded-xl border border-slate-200 overflow-hidden"
                   >
-                    <Send size={16} />
-                    {item.admin_response ? 'Update Response' : 'Respond'}
-                  </button>
-                </div>
-              ))}
+                    {/* Collapsed header - always visible */}
+                    <button
+                      onClick={() => {
+                        setExpandedFeedbackIds(prev => {
+                          const next = new Set(prev);
+                          if (next.has(item.id)) {
+                            next.delete(item.id);
+                          } else {
+                            next.add(item.id);
+                          }
+                          return next;
+                        });
+                      }}
+                      className="w-full p-4 text-left hover:bg-slate-50 transition-colors"
+                    >
+                      <div className="flex items-center justify-between gap-4">
+                        <div className="flex items-center gap-3 min-w-0 flex-1">
+                          <span className="text-lg flex-shrink-0">{getTypeIcon(item.type)}</span>
+                          <div className="min-w-0">
+                            <h3 className="font-medium text-slate-800 truncate">{item.subject}</h3>
+                            <p className="text-sm text-slate-500 truncate">
+                              {item.user_name} • {formatDateTime(item.created_at)}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          {item.admin_response && (
+                            <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-xs rounded-full">
+                              Replied
+                            </span>
+                          )}
+                          <span className={`px-2.5 py-1 text-xs font-medium rounded-full capitalize ${getStatusColor(item.status)}`}>
+                            {item.status.replace('-', ' ')}
+                          </span>
+                          {isExpanded ? (
+                            <ChevronUp size={20} className="text-slate-400" />
+                          ) : (
+                            <ChevronDown size={20} className="text-slate-400" />
+                          )}
+                        </div>
+                      </div>
+                    </button>
+
+                    {/* Expanded content */}
+                    {isExpanded && (
+                      <div className="border-t border-slate-200 p-5 bg-slate-50 space-y-4">
+                        {/* User info and status */}
+                        <div className="flex items-center justify-between gap-4">
+                          <p className="text-sm text-slate-500">
+                            From: {item.user_name} {item.user_email && `(${item.user_email})`}
+                          </p>
+                          <select
+                            value={item.status}
+                            onChange={(e) => {
+                              e.stopPropagation();
+                              handleStatusChange(item.id, e.target.value as FeedbackStatus);
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                            className={`px-3 py-1.5 rounded-lg text-sm font-medium border-0 cursor-pointer ${getStatusColor(item.status)}`}
+                          >
+                            <option value="new">New</option>
+                            <option value="reviewed">Reviewed</option>
+                            <option value="in-progress">In Progress</option>
+                            <option value="resolved">Resolved</option>
+                          </select>
+                        </div>
+
+                        {/* Message */}
+                        <div>
+                          <p className="text-sm font-medium text-slate-600 mb-2">Message:</p>
+                          <p className="text-slate-700 whitespace-pre-wrap bg-white p-3 rounded-lg border border-slate-200">
+                            {item.message}
+                          </p>
+                        </div>
+
+                        {/* Screenshot */}
+                        {item.screenshot && (
+                          <div>
+                            <p className="text-sm font-medium text-slate-600 mb-2">Attached Screenshot:</p>
+                            <a
+                              href={item.screenshot}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="block"
+                            >
+                              <img
+                                src={item.screenshot}
+                                alt="Feedback screenshot"
+                                className="max-w-full max-h-64 rounded-lg border border-slate-200 hover:border-emerald-500 transition-colors cursor-pointer"
+                              />
+                            </a>
+                            <p className="text-xs text-slate-400 mt-1">Click to view full size</p>
+                          </div>
+                        )}
+
+                        {/* Screen Recording */}
+                        {item.recording_url && (
+                          <div>
+                            <p className="text-sm font-medium text-slate-600 mb-2">Screen Recording:</p>
+                            <video
+                              src={item.recording_url}
+                              controls
+                              className="max-w-full max-h-64 rounded-lg border border-slate-200 bg-slate-900"
+                            />
+                          </div>
+                        )}
+
+                        {/* Previous response */}
+                        {item.admin_response && (
+                          <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-4">
+                            <p className="text-sm text-emerald-700 mb-1 font-medium">
+                              Response by {item.admin_name || 'Admin'}
+                              {item.admin_responded_at && ` on ${formatDateTime(item.admin_responded_at)}`}
+                            </p>
+                            <p className="text-slate-700 whitespace-pre-wrap">{item.admin_response}</p>
+                          </div>
+                        )}
+
+                        {/* Respond button */}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedFeedback(item);
+                            setResponseText(item.admin_response || '');
+                            setResponseStatus(item.status === 'new' ? 'reviewed' : item.status);
+                          }}
+                          className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-sm font-medium rounded-lg transition-colors"
+                        >
+                          <Send size={16} />
+                          {item.admin_response ? 'Update Response' : 'Respond'}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
           )}
 
