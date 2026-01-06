@@ -304,26 +304,37 @@ const MacroTargetsEditor: React.FC<MacroTargetsEditorProps> = ({ hasPro, onUpgra
         </details>
       </div>
 
-      {/* Actions */}
+      {/* Actions - always show for Pro users */}
       {hasPro && (
-        <div className="flex items-center justify-between pt-2">
+        <div className="flex items-center justify-between pt-4 border-t border-slate-200 mt-4 relative z-20">
           <button
+            type="button"
             onClick={handleReset}
-            disabled={isSaving || !isCustom}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-sm text-slate-600 hover:text-slate-800 hover:bg-slate-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={isSaving}
+            className={`flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg transition-colors ${
+              isCustom
+                ? 'text-slate-600 hover:text-slate-800 hover:bg-slate-100'
+                : 'text-slate-400 cursor-not-allowed'
+            }`}
           >
             <RotateCcw size={14} />
             Reset to defaults
+            {!isCustom && <span className="text-xs">(no custom targets)</span>}
           </button>
 
           <div className="flex items-center gap-2">
             {saveSuccess && (
-              <span className="text-sm text-emerald-600">Saved!</span>
+              <span className="text-sm text-emerald-600 animate-fadeIn">Saved!</span>
             )}
             <button
+              type="button"
               onClick={handleSave}
-              disabled={isSaving || !hasChanges}
-              className="flex items-center gap-1.5 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={isSaving}
+              className={`flex items-center gap-1.5 px-4 py-2 font-medium rounded-lg transition-colors ${
+                hasChanges
+                  ? 'bg-indigo-600 hover:bg-indigo-700 text-white'
+                  : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+              }`}
             >
               {isSaving ? (
                 <>
@@ -333,7 +344,7 @@ const MacroTargetsEditor: React.FC<MacroTargetsEditorProps> = ({ hasPro, onUpgra
               ) : (
                 <>
                   <Save size={16} />
-                  Save Targets
+                  {hasChanges ? 'Save Targets' : 'No changes'}
                 </>
               )}
             </button>
