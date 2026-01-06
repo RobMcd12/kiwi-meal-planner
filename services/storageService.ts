@@ -3,6 +3,7 @@ import type { Meal, MealPlanResponse, MealConfig, UserPreferences, PantryItem, P
 import { CONSTANTS } from '../types';
 import { autoTagRecipe } from './geminiService';
 import { assignTagsToRecipe, getRecipeTags } from './recipeService';
+import { safeSetItem, safeGetItem } from '../utils/localStorageUtils';
 
 // ============================================
 // LOCAL STORAGE KEYS (for fallback/migration)
@@ -1019,16 +1020,16 @@ export const deleteSavedMealPlan = async (id: string): Promise<void> => {
 // Local storage helpers for saved plans
 const saveMealPlanLocal = (plan: SavedMealPlan): void => {
   const plans = getSavedMealPlansLocal();
-  localStorage.setItem(STORAGE_KEYS.SAVED_PLANS, JSON.stringify([plan, ...plans]));
+  safeSetItem(STORAGE_KEYS.SAVED_PLANS, JSON.stringify([plan, ...plans]));
 };
 
 const getSavedMealPlansLocal = (): SavedMealPlan[] => {
-  return safeParse(localStorage.getItem(STORAGE_KEYS.SAVED_PLANS), []);
+  return safeParse(safeGetItem(STORAGE_KEYS.SAVED_PLANS), []);
 };
 
 const deleteSavedMealPlanLocal = (id: string): void => {
   const plans = getSavedMealPlansLocal();
-  localStorage.setItem(STORAGE_KEYS.SAVED_PLANS, JSON.stringify(plans.filter(p => p.id !== id)));
+  safeSetItem(STORAGE_KEYS.SAVED_PLANS, JSON.stringify(plans.filter(p => p.id !== id)));
 };
 
 // ============================================
@@ -1036,11 +1037,11 @@ const deleteSavedMealPlanLocal = (id: string): void => {
 // ============================================
 
 const loadPantryLocal = (): PantryItem[] => {
-  return safeParse(localStorage.getItem(STORAGE_KEYS.PANTRY), []);
+  return safeParse(safeGetItem(STORAGE_KEYS.PANTRY), []);
 };
 
 const savePantryLocal = (items: PantryItem[]): void => {
-  localStorage.setItem(STORAGE_KEYS.PANTRY, JSON.stringify(items));
+  safeSetItem(STORAGE_KEYS.PANTRY, JSON.stringify(items));
 };
 
 const saveFavoriteMealLocal = (meal: Meal): boolean => {
@@ -1048,46 +1049,46 @@ const saveFavoriteMealLocal = (meal: Meal): boolean => {
   const mealId = meal.id || generateId();
   if (!favorites.some(f => f.id === mealId)) {
     const newMeal = { ...meal, isFavorite: true, id: mealId };
-    localStorage.setItem(STORAGE_KEYS.FAVORITES, JSON.stringify([...favorites, newMeal]));
+    safeSetItem(STORAGE_KEYS.FAVORITES, JSON.stringify([...favorites, newMeal]));
     return true;
   }
   return false;
 };
 
 const getFavoriteMealsLocal = (): Meal[] => {
-  return safeParse(localStorage.getItem(STORAGE_KEYS.FAVORITES), []);
+  return safeParse(safeGetItem(STORAGE_KEYS.FAVORITES), []);
 };
 
 const removeFavoriteMealLocal = (id: string): void => {
   const favorites = getFavoriteMealsLocal();
   const updated = favorites.filter(f => f.id !== id);
-  localStorage.setItem(STORAGE_KEYS.FAVORITES, JSON.stringify(updated));
+  safeSetItem(STORAGE_KEYS.FAVORITES, JSON.stringify(updated));
 };
 
 const saveConfigLocal = (config: MealConfig): void => {
-  localStorage.setItem(STORAGE_KEYS.CONFIG, JSON.stringify(config));
+  safeSetItem(STORAGE_KEYS.CONFIG, JSON.stringify(config));
 };
 
 const loadConfigLocal = (fallback: MealConfig): MealConfig => {
-  return safeParse(localStorage.getItem(STORAGE_KEYS.CONFIG), fallback);
+  return safeParse(safeGetItem(STORAGE_KEYS.CONFIG), fallback);
 };
 
 const savePreferencesLocal = (prefs: UserPreferences): void => {
-  localStorage.setItem(STORAGE_KEYS.PREFERENCES, JSON.stringify(prefs));
+  safeSetItem(STORAGE_KEYS.PREFERENCES, JSON.stringify(prefs));
 };
 
 const loadPreferencesLocal = (fallback: UserPreferences): UserPreferences => {
-  return safeParse(localStorage.getItem(STORAGE_KEYS.PREFERENCES), fallback);
+  return safeParse(safeGetItem(STORAGE_KEYS.PREFERENCES), fallback);
 };
 
 const savePlanToHistoryLocal = (plan: MealPlanResponse): void => {
   const history = getPlanHistoryLocal();
   const updated = [plan, ...history].slice(0, CONSTANTS.MAX_HISTORY_ENTRIES);
-  localStorage.setItem(STORAGE_KEYS.HISTORY, JSON.stringify(updated));
+  safeSetItem(STORAGE_KEYS.HISTORY, JSON.stringify(updated));
 };
 
 const getPlanHistoryLocal = (): MealPlanResponse[] => {
-  return safeParse(localStorage.getItem(STORAGE_KEYS.HISTORY), []);
+  return safeParse(safeGetItem(STORAGE_KEYS.HISTORY), []);
 };
 
 // ============================================

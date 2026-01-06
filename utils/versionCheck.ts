@@ -5,6 +5,8 @@
  * This ensures users get the latest code after a deployment.
  */
 
+import { safeSetItem, safeGetItem } from './localStorageUtils';
+
 // Injected at build time by Vite
 declare const __APP_VERSION__: string;
 
@@ -25,22 +27,14 @@ export const getCurrentVersion = (): string => {
  * Get the stored version from localStorage
  */
 export const getStoredVersion = (): string | null => {
-  try {
-    return localStorage.getItem(VERSION_STORAGE_KEY);
-  } catch {
-    return null;
-  }
+  return safeGetItem(VERSION_STORAGE_KEY);
 };
 
 /**
  * Store the current version in localStorage
  */
 export const storeVersion = (version: string): void => {
-  try {
-    localStorage.setItem(VERSION_STORAGE_KEY, version);
-  } catch {
-    // Ignore storage errors
-  }
+  safeSetItem(VERSION_STORAGE_KEY, version);
 };
 
 /**

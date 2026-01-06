@@ -1,4 +1,5 @@
 import { supabase, isSupabaseConfigured } from './authService';
+import { safeSetItem, safeGetItem } from '../utils/localStorageUtils';
 
 // Types
 export interface ShoppingListSelections {
@@ -22,7 +23,7 @@ const DEFAULT_SELECTIONS: ShoppingListSelections = {
 
 const getSelectionsLocal = (): ShoppingListSelections => {
   try {
-    const saved = localStorage.getItem(STORAGE_KEY);
+    const saved = safeGetItem(STORAGE_KEY);
     if (saved) {
       return JSON.parse(saved);
     }
@@ -33,13 +34,7 @@ const getSelectionsLocal = (): ShoppingListSelections => {
 };
 
 const saveSelectionsLocal = (selections: ShoppingListSelections): boolean => {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(selections));
-    return true;
-  } catch (e) {
-    console.error('Failed to save local shopping list selections:', e);
-    return false;
-  }
+  return safeSetItem(STORAGE_KEY, JSON.stringify(selections));
 };
 
 // ============================================
