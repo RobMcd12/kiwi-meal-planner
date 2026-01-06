@@ -12,7 +12,7 @@ const NavBar: React.FC<NavBarProps> = ({ currentStep, onNavigate }) => {
     { step: AppStep.CONFIG, label: 'Meal Plan', icon: CalendarPlus, color: 'emerald' },
     { step: AppStep.SINGLE_RECIPE, label: 'Recipe', icon: Sparkles, color: 'amber' },
     { step: AppStep.FAVORITES, label: 'Cookbook', icon: BookHeart, color: 'rose' },
-    { step: AppStep.SAVED_PLANS, label: 'Saved', icon: FolderHeart, color: 'indigo' },
+    { step: AppStep.SAVED_PLANS, label: 'Saved Plans', icon: FolderHeart, color: 'indigo' },
     { step: AppStep.SHOPPING_LIST, label: 'Shopping', icon: ShoppingCart, color: 'teal' },
     { step: AppStep.SETTINGS, label: 'Pantry', icon: Apple, color: 'orange' },
   ];
@@ -20,16 +20,25 @@ const NavBar: React.FC<NavBarProps> = ({ currentStep, onNavigate }) => {
   const getColorClasses = (color: string, isActive: boolean) => {
     if (isActive) {
       switch (color) {
-        case 'emerald': return 'bg-emerald-100 text-emerald-700 border-emerald-300';
-        case 'amber': return 'bg-amber-100 text-amber-700 border-amber-300';
-        case 'rose': return 'bg-rose-100 text-rose-700 border-rose-300';
-        case 'indigo': return 'bg-indigo-100 text-indigo-700 border-indigo-300';
-        case 'teal': return 'bg-teal-100 text-teal-700 border-teal-300';
-        case 'orange': return 'bg-orange-100 text-orange-700 border-orange-300';
-        default: return 'bg-slate-100 text-slate-700 border-slate-300';
+        case 'emerald': return 'bg-emerald-100 text-emerald-700 border-emerald-400';
+        case 'amber': return 'bg-amber-100 text-amber-700 border-amber-400';
+        case 'rose': return 'bg-rose-100 text-rose-700 border-rose-400';
+        case 'indigo': return 'bg-indigo-100 text-indigo-700 border-indigo-400';
+        case 'teal': return 'bg-teal-100 text-teal-700 border-teal-400';
+        case 'orange': return 'bg-orange-100 text-orange-700 border-orange-400';
+        default: return 'bg-slate-100 text-slate-700 border-slate-400';
       }
     }
-    return 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50 hover:border-slate-300';
+    // Non-active: white background with colored border matching the icon
+    switch (color) {
+      case 'emerald': return 'bg-white text-slate-600 border-emerald-300 hover:bg-emerald-50 hover:border-emerald-400';
+      case 'amber': return 'bg-white text-slate-600 border-amber-300 hover:bg-amber-50 hover:border-amber-400';
+      case 'rose': return 'bg-white text-slate-600 border-rose-300 hover:bg-rose-50 hover:border-rose-400';
+      case 'indigo': return 'bg-white text-slate-600 border-indigo-300 hover:bg-indigo-50 hover:border-indigo-400';
+      case 'teal': return 'bg-white text-slate-600 border-teal-300 hover:bg-teal-50 hover:border-teal-400';
+      case 'orange': return 'bg-white text-slate-600 border-orange-300 hover:bg-orange-50 hover:border-orange-400';
+      default: return 'bg-white text-slate-600 border-slate-300 hover:bg-slate-50 hover:border-slate-400';
+    }
   };
 
   const getIconColor = (color: string, isActive: boolean) => {

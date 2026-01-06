@@ -84,6 +84,9 @@ const MasterShoppingList: React.FC<MasterShoppingListProps> = ({
   const [draggedItemIndex, setDraggedItemIndex] = useState<number | null>(null);
   const [customItemOrder, setCustomItemOrder] = useState<string[]>([]); // Array of item IDs in custom order
 
+  // Collapsed categories state (for category and supermarket views)
+  const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(new Set());
+
   // Save selections to database
   const saveSelections = useCallback(async (planIds: Set<string>, recipeIds: Set<string>, checked: Set<string>) => {
     setIsSaving(true);
@@ -422,6 +425,43 @@ const MasterShoppingList: React.FC<MasterShoppingListProps> = ({
   }, [items, sortMode, selectedLayoutId, layouts, customItemOrder]);
 
   const sortedData = getSortedItems();
+
+  // Initialize all categories as collapsed when switching to category/supermarket view
+  useEffect(() => {
+    if (sortMode === 'category' || sortMode === 'supermarket') {
+      const allCategories = new Set(sortedData.groups.map(g => g.title));
+      setCollapsedCategories(allCategories);
+    } else {
+      setCollapsedCategories(new Set());
+    }
+  }, [sortMode]);
+
+  // Toggle individual category collapse
+  const toggleCategoryCollapse = (category: string) => {
+    setCollapsedCategories(prev => {
+      const next = new Set(prev);
+      if (next.has(category)) {
+        next.delete(category);
+      } else {
+        next.add(category);
+      }
+      return next;
+    });
+  };
+
+  // Expand all categories
+  const expandAllCategories = () => {
+    setCollapsedCategories(new Set());
+  };
+
+  // Collapse all categories
+  const collapseAllCategories = () => {
+    const allCategories = new Set(sortedData.groups.map(g => g.title));
+    setCollapsedCategories(allCategories);
+  };
+
+  const allCollapsed = sortedData.groups.length > 0 && collapsedCategories.size === sortedData.groups.length;
+  const allExpanded = collapsedCategories.size === 0;
 
   // Group items by source type (for backward compatibility with print/share)
   const groupedItems = {
@@ -1176,6 +1216,26 @@ const MasterShoppingList: React.FC<MasterShoppingListProps> = ({
             </span>
           )}
 
+          {/* Expand/Collapse All button - only show in category or supermarket mode */}
+          {(sortMode === 'category' || sortMode === 'supermarket') && sortedData.groups.length > 1 && (
+            <button
+              onClick={allExpanded ? collapseAllCategories : expandAllCategories}
+              className="px-3 py-1.5 text-sm text-slate-600 hover:text-slate-800 flex items-center gap-1"
+            >
+              {allExpanded ? (
+                <>
+                  <ChevronUp size={14} />
+                  Collapse All
+                </>
+              ) : (
+                <>
+                  <ChevronDown size={14} />
+                  Expand All
+                </>
+              )}
+            </button>
+          )}
+
           {hasPro && (
             <button
               onClick={() => setShowLayoutModal(true)}
@@ -1209,20 +1269,38 @@ const MasterShoppingList: React.FC<MasterShoppingListProps> = ({
 
             const uncheckedCount = group.items.filter(i => !checkedItems.has(i.id)).length;
 
+            const isCollapsed = collapsedCategories.has(group.title);
+            const isCollapsible = sortMode === 'category' || sortMode === 'supermarket';
+
             return (
               <div key={`${group.title}-${groupIndex}`} className={`${colors.bg} rounded-xl border ${colors.border} overflow-hidden`}>
                 {/* Only show header for category/supermarket modes, or if it's not the main list group */}
                 {(sortMode !== 'list' || group.title !== 'Shopping List') && (
-                  <div className={`px-4 py-3 ${colors.headerBg} border-b ${colors.border} flex items-center gap-2`}>
+                  <button
+                    onClick={() => isCollapsible && toggleCategoryCollapse(group.title)}
+                    className={`w-full px-4 py-3 ${colors.headerBg} ${!isCollapsed ? `border-b ${colors.border}` : ''} flex items-center gap-2 ${isCollapsible ? 'cursor-pointer hover:bg-slate-100 transition-colors' : ''}`}
+                    disabled={!isCollapsible}
+                  >
                     {sortMode === 'list' && <LayoutList size={18} className={colors.accent} />}
                     {sortMode === 'category' && <Package size={18} className={colors.accent} />}
                     {sortMode === 'supermarket' && <Store size={18} className={colors.accent} />}
                     <h3 className={`font-semibold ${colors.text}`}>{group.title}</h3>
-                    <span className={`ml-auto text-sm ${colors.accent}`}>
+                    <span className={`text-sm ${colors.accent}`}>
                       {uncheckedCount} items
                     </span>
-                  </div>
+                    {isCollapsible && (
+                      <span className="ml-auto">
+                        {isCollapsed ? (
+                          <ChevronDown size={18} className={colors.accent} />
+                        ) : (
+                          <ChevronUp size={18} className={colors.accent} />
+                        )}
+                      </span>
+                    )}
+                  </button>
                 )}
+                {/* Items - only show if not collapsed */}
+                {!isCollapsed && (
                 <div className="divide-y divide-slate-100">
                   {group.items.map((item, itemIndex) => (
                     <div
@@ -1290,6 +1368,7 @@ const MasterShoppingList: React.FC<MasterShoppingListProps> = ({
                     </div>
                   ))}
                 </div>
+                )}
               </div>
             );
           })}

@@ -369,7 +369,7 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({
   }, [currentRecipes]);
 
   const handleDelete = async (id: string, name: string) => {
-    await removeFavoriteMeal(name);
+    await removeFavoriteMeal(id);
     // Remove from both lists (in case it appears in both or we're on 'all' tab)
     setGeneratedRecipes(prev => prev.filter(m => m.id !== id));
     setUploadedRecipes(prev => prev.filter(m => m.id !== id));
