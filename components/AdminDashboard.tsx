@@ -1176,8 +1176,34 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
                             <video
                               src={item.recording_url}
                               controls
+                              crossOrigin="anonymous"
+                              playsInline
+                              preload="metadata"
                               className="max-w-full max-h-64 rounded-lg border border-slate-200 bg-slate-900"
-                            />
+                              onError={(e) => {
+                                console.error('Video load error:', e);
+                                const target = e.target as HTMLVideoElement;
+                                target.style.display = 'none';
+                                target.parentElement?.insertAdjacentHTML(
+                                  'beforeend',
+                                  '<p class="text-sm text-red-500 mt-2">Failed to load video. The recording may no longer be available.</p>'
+                                );
+                              }}
+                            >
+                              <source src={item.recording_url} type="video/webm" />
+                              <source src={item.recording_url} type="video/mp4" />
+                              Your browser does not support video playback.
+                            </video>
+                            <p className="text-xs text-slate-400 mt-1">
+                              <a
+                                href={item.recording_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="hover:text-indigo-600 underline"
+                              >
+                                Open video in new tab
+                              </a>
+                            </p>
                           </div>
                         )}
 
