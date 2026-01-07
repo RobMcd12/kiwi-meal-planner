@@ -893,7 +893,48 @@ We value your input!
 1. Click **Feedback** in the header
 2. Choose a category (Bug, Feature Request, General)
 3. Write your message
-4. Submit
+4. Optionally attach a screenshot or screen recording (see below)
+5. Submit
+
+### Attaching Screenshots
+
+Screenshots help us understand issues faster:
+
+1. Click the **📷 Screenshot** button in the feedback dialog
+2. A screenshot of your current screen is captured automatically
+3. The screenshot appears as a preview in the feedback form
+4. Click **×** on the preview to remove it if needed
+5. Submit your feedback with the screenshot attached
+
+**Tips for screenshots:**
+- Navigate to the screen showing the issue before opening feedback
+- The screenshot captures exactly what you see
+- Useful for UI bugs, layout issues, or showing specific errors
+
+### Recording Your Screen
+
+For complex issues or step-by-step problems, record a video:
+
+1. Click the **🎥 Record** button in the feedback dialog
+2. Your browser will ask permission to record the screen
+3. Select which screen/window/tab to share
+4. Perform the actions that demonstrate the issue
+5. Click **Stop Recording** when finished
+6. The recording appears as a preview in the feedback form
+7. Submit your feedback with the video attached
+
+**Tips for screen recordings:**
+- Keep recordings short (under 30 seconds is ideal)
+- Focus on reproducing the specific issue
+- Narrate or annotate if helpful (your microphone can be included)
+- Great for demonstrating bugs that are hard to describe
+
+### What Gets Captured
+
+| Attachment | Format | Best For |
+|------------|--------|----------|
+| **Screenshot** | PNG image | Static UI issues, error messages, layout problems |
+| **Recording** | WebM video | Step-by-step bugs, interaction issues, "how to reproduce" |
 
 ### Viewing Responses
 - When admins respond, you'll see a 🔔 notification badge
