@@ -530,22 +530,106 @@ frame-src 'self' https://js.stripe.com;`}</pre>
       const contentWidth = pageWidth - (margin * 2);
       let yPos = margin;
 
+      // Helper function to check page break
+      const checkPageBreak = (requiredSpace: number): void => {
+        if (yPos + requiredSpace > pageHeight - margin - 15) {
+          pdf.addPage();
+          yPos = margin + 20;
+          addPageHeader();
+        }
+      };
+
       // Helper function to add text with word wrap
-      const addWrappedText = (text: string, x: number, y: number, maxWidth: number, lineHeight: number, fontSize: number, fontStyle: string = 'normal'): number => {
+      const addWrappedText = (text: string, x: number, maxWidth: number, lineHeight: number, fontSize: number, fontStyle: string = 'normal'): void => {
         pdf.setFontSize(fontSize);
         pdf.setFont('helvetica', fontStyle);
         const lines = pdf.splitTextToSize(text, maxWidth);
         lines.forEach((line: string) => {
-          if (y > pageHeight - margin - 10) {
-            pdf.addPage();
-            y = margin;
-            // Add header on new page
-            addPageHeader();
-          }
-          pdf.text(line, x, y);
-          y += lineHeight;
+          checkPageBreak(lineHeight);
+          pdf.text(line, x, yPos);
+          yPos += lineHeight;
         });
-        return y;
+      };
+
+      // Helper function to add section header
+      const addSectionHeader = (title: string): void => {
+        checkPageBreak(20);
+        pdf.setTextColor(5, 150, 105);
+        pdf.setFontSize(14);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text(title, margin, yPos);
+        yPos += 3;
+        pdf.setDrawColor(226, 232, 240);
+        pdf.setLineWidth(0.3);
+        pdf.line(margin, yPos, pageWidth - margin, yPos);
+        yPos += 8;
+        pdf.setTextColor(30, 41, 59);
+      };
+
+      // Helper function to add sub-header
+      const addSubHeader = (title: string): void => {
+        checkPageBreak(12);
+        yPos += 3;
+        pdf.setTextColor(30, 41, 59);
+        pdf.setFontSize(11);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text(title, margin, yPos);
+        yPos += 6;
+        pdf.setFont('helvetica', 'normal');
+      };
+
+      // Helper function to add bullet point
+      const addBullet = (text: string): void => {
+        checkPageBreak(5);
+        pdf.setFontSize(10);
+        pdf.setFont('helvetica', 'normal');
+        pdf.text('•', margin + 2, yPos);
+        const lines = pdf.splitTextToSize(text, contentWidth - 8);
+        lines.forEach((line: string, i: number) => {
+          if (i > 0) checkPageBreak(5);
+          pdf.text(line, margin + 7, yPos);
+          yPos += 5;
+        });
+      };
+
+      // Helper function to add a table
+      const addTable = (headers: string[], rows: string[][]): void => {
+        const colWidths = headers.map(() => contentWidth / headers.length);
+        const rowHeight = 7;
+
+        // Calculate space needed
+        checkPageBreak(rowHeight * 2 + 5);
+
+        // Header row
+        pdf.setFillColor(248, 250, 252);
+        pdf.rect(margin, yPos - 4, contentWidth, rowHeight, 'F');
+        pdf.setFontSize(9);
+        pdf.setFont('helvetica', 'bold');
+        let xPos = margin + 2;
+        headers.forEach((header, i) => {
+          const cellText = pdf.splitTextToSize(header, colWidths[i] - 4);
+          pdf.text(cellText[0], xPos, yPos);
+          xPos += colWidths[i];
+        });
+        yPos += rowHeight;
+
+        // Data rows
+        pdf.setFont('helvetica', 'normal');
+        rows.forEach((row, rowIndex) => {
+          checkPageBreak(rowHeight);
+          if (rowIndex % 2 === 1) {
+            pdf.setFillColor(248, 250, 252);
+            pdf.rect(margin, yPos - 4, contentWidth, rowHeight, 'F');
+          }
+          xPos = margin + 2;
+          row.forEach((cell, i) => {
+            const cellText = pdf.splitTextToSize(cell, colWidths[i] - 4);
+            pdf.text(cellText[0], xPos, yPos);
+            xPos += colWidths[i];
+          });
+          yPos += rowHeight;
+        });
+        yPos += 3;
       };
 
       // Add page header
@@ -561,7 +645,7 @@ frame-src 'self' https://js.stripe.com;`}</pre>
         pdf.setTextColor(100, 116, 139);
         pdf.setFontSize(10);
         pdf.setFont('helvetica', 'normal');
-        pdf.text('Security & Compliance Documentation', pageWidth - margin - 60, 17);
+        pdf.text('Security & Compliance', pageWidth - margin - 38, 17);
       };
 
       // Add page footer
@@ -610,72 +694,405 @@ frame-src 'self' https://js.stripe.com;`}</pre>
       yPos += 6;
       pdf.text('Owner: Unicloud Limited', margin, yPos);
 
-      // Add table of contents
+      // Table of contents
       pdf.addPage();
-      yPos = margin + 15;
+      yPos = margin + 20;
       addPageHeader();
 
       pdf.setTextColor(5, 150, 105);
       pdf.setFontSize(18);
       pdf.setFont('helvetica', 'bold');
       pdf.text('Table of Contents', margin, yPos);
-      yPos += 10;
+      yPos += 12;
 
       pdf.setTextColor(30, 41, 59);
       pdf.setFontSize(11);
       pdf.setFont('helvetica', 'normal');
-      sections.forEach((section, index) => {
-        pdf.text(section.title, margin, yPos);
+      const tocItems = [
+        '1. Executive Summary',
+        '2. System Architecture',
+        '3. Authentication & Access Control',
+        '4. Data Protection & Privacy',
+        '5. API & Network Security',
+        '6. Payment Security (PCI DSS)',
+        '7. Regulatory Compliance',
+        '8. OWASP Top 10 Mitigation',
+        '9. Security Features Summary',
+        '10. Security Audit Log',
+        '11. Contact Information'
+      ];
+      tocItems.forEach((item) => {
+        pdf.text(item, margin, yPos);
         yPos += 7;
       });
 
-      // Add content sections
-      sections.forEach((section) => {
-        pdf.addPage();
-        yPos = margin + 15;
-        addPageHeader();
+      // Section 1: Executive Summary
+      pdf.addPage();
+      yPos = margin + 20;
+      addPageHeader();
+      addSectionHeader('1. Executive Summary');
 
-        // Section title
-        pdf.setTextColor(5, 150, 105);
-        pdf.setFontSize(16);
-        pdf.setFont('helvetica', 'bold');
-        yPos = addWrappedText(section.title, margin, yPos, contentWidth, 8, 16, 'bold');
-        yPos += 3;
-        pdf.setDrawColor(226, 232, 240);
-        pdf.setLineWidth(0.3);
-        pdf.line(margin, yPos, pageWidth - margin, yPos);
-        yPos += 8;
+      pdf.setFontSize(10);
+      addWrappedText('This document provides a comprehensive overview of the security measures, data protection practices, and regulatory compliance status of the Kiwi Meal Planner application.', margin, contentWidth, 5, 10);
+      yPos += 5;
 
-        // Section content - simplified for PDF
-        pdf.setTextColor(30, 41, 59);
-        pdf.setFontSize(10);
-        pdf.setFont('helvetica', 'normal');
+      pdf.setFillColor(236, 253, 245);
+      pdf.rect(margin, yPos - 3, contentWidth, 20, 'F');
+      pdf.setTextColor(6, 95, 70);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('Security Posture: STRONG', margin + 3, yPos + 2);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(9);
+      yPos += 7;
+      addWrappedText('All critical and high priority security controls have been implemented. The application demonstrates mature security architecture with comprehensive protections.', margin + 3, contentWidth - 6, 4, 9);
+      yPos += 8;
+      pdf.setTextColor(30, 41, 59);
 
-        // Add basic content based on section
-        switch (section.id) {
-          case 'executive-summary':
-            yPos = addWrappedText('This document provides a comprehensive overview of the security measures, data protection practices, and regulatory compliance status of the Kiwi Meal Planner application.', margin, yPos, contentWidth, 5, 10);
-            yPos += 5;
-            yPos = addWrappedText('Security Posture: STRONG - All critical and high priority security controls have been implemented.', margin, yPos, contentWidth, 5, 10, 'bold');
-            break;
-          case 'authentication':
-            yPos = addWrappedText('Authentication Methods: Email/Password, Google OAuth (PKCE), Apple OAuth (PKCE), GitHub OAuth (PKCE)', margin, yPos, contentWidth, 5, 10);
-            yPos += 5;
-            yPos = addWrappedText('Session Management: JWT tokens with HTTP-only cookies, auto-refresh enabled, PKCE flow for all OAuth providers.', margin, yPos, contentWidth, 5, 10);
-            break;
-          case 'data-protection':
-            yPos = addWrappedText('Encryption: TLS 1.3 in transit, AES-256 at rest. All user data tables implement PostgreSQL Row-Level Security (RLS) policies.', margin, yPos, contentWidth, 5, 10);
-            break;
-          case 'payment-security':
-            yPos = addWrappedText('PCI DSS Compliance: Level 4 Merchant via Stripe. No cardholder data is stored, processed, or transmitted directly by the application.', margin, yPos, contentWidth, 5, 10);
-            break;
-          case 'privacy-compliance':
-            yPos = addWrappedText('New Zealand Privacy Act 2020: COMPLIANT with all 13 Information Privacy Principles (IPPs).', margin, yPos, contentWidth, 5, 10);
-            break;
-          default:
-            yPos = addWrappedText('See full documentation for detailed information.', margin, yPos, contentWidth, 5, 10);
-        }
+      addSubHeader('Compliance Overview');
+      addTable(
+        ['Category', 'Status', 'Last Audit'],
+        [
+          ['Authentication', 'Compliant', 'January 2026'],
+          ['Authorization (RLS)', 'Compliant', 'January 2026'],
+          ['Data Encryption', 'Compliant', 'January 2026'],
+          ['API Security', 'Compliant', 'January 2026'],
+          ['Payment Security', 'Compliant', 'January 2026'],
+          ['Privacy Compliance', 'Compliant', 'January 2026'],
+        ]
+      );
+
+      // Section 2: System Architecture
+      pdf.addPage();
+      yPos = margin + 20;
+      addPageHeader();
+      addSectionHeader('2. System Architecture');
+
+      addSubHeader('Technology Stack');
+      addTable(
+        ['Layer', 'Technology', 'Security Features'],
+        [
+          ['Frontend', 'React 19, TypeScript, Vite', 'CSP headers, XSS protection'],
+          ['Backend', 'Supabase (PostgreSQL)', 'RLS, encrypted connections'],
+          ['Authentication', 'Supabase Auth', 'PKCE OAuth, JWT tokens'],
+          ['Serverless', 'Deno Edge Functions', 'Sandboxed execution'],
+          ['Payments', 'Stripe', 'PCI DSS Level 1'],
+          ['AI Services', 'Google Gemini', 'Server-side only'],
+          ['Hosting', 'Railway', 'TLS 1.3, DDoS protection'],
+        ]
+      );
+
+      addSubHeader('Environments');
+      addTable(
+        ['Environment', 'URL', 'Purpose'],
+        [
+          ['Production', 'kiwimealplanner.co.nz', 'Live user traffic'],
+          ['Staging', 'kiwi-meal-planner-production.up.railway.app', 'Pre-release testing'],
+          ['Development', 'localhost:3000', 'Local development'],
+        ]
+      );
+
+      // Section 3: Authentication & Access Control
+      pdf.addPage();
+      yPos = margin + 20;
+      addPageHeader();
+      addSectionHeader('3. Authentication & Access Control');
+
+      addSubHeader('Authentication Methods');
+      addTable(
+        ['Method', 'Implementation', 'Security Level'],
+        [
+          ['Email/Password', 'Supabase Auth', 'Standard'],
+          ['Google OAuth', 'PKCE flow', 'High'],
+          ['Apple OAuth', 'PKCE flow', 'High'],
+          ['GitHub OAuth', 'PKCE flow', 'High'],
+        ]
+      );
+
+      addSubHeader('Session Management');
+      addBullet('Token Type: JWT (JSON Web Tokens)');
+      addBullet('Token Storage: HTTP-only cookies (Supabase managed)');
+      addBullet('PKCE Flow: Enabled for all OAuth providers');
+      addBullet('Auto-refresh: Enabled');
+
+      addSubHeader('Role-Based Access Control');
+      addTable(
+        ['Role', 'Permissions', 'Verification'],
+        [
+          ['User', 'Own data only', 'RLS policies'],
+          ['Admin', 'View all users, manage settings', 'is_admin database flag'],
+          ['Super Admin', 'Full system access', 'Server-side secret verification'],
+        ]
+      );
+
+      addSubHeader('Admin Impersonation Safeguards');
+      addBullet('Cannot impersonate self');
+      addBullet('Cannot impersonate other admins');
+      addBullet('Session-only storage (cleared on logout)');
+      addBullet('Full audit logging of all impersonation actions');
+
+      // Section 4: Data Protection & Privacy
+      pdf.addPage();
+      yPos = margin + 20;
+      addPageHeader();
+      addSectionHeader('4. Data Protection & Privacy');
+
+      addSubHeader('Encryption Standards');
+      addTable(
+        ['Data State', 'Encryption', 'Standard'],
+        [
+          ['In Transit', 'TLS 1.3', 'HTTPS enforced'],
+          ['At Rest', 'AES-256', 'Supabase managed'],
+          ['Backups', 'AES-256', 'Supabase managed'],
+        ]
+      );
+
+      addSubHeader('Row-Level Security (RLS)');
+      addWrappedText('All user data tables implement PostgreSQL RLS policies:', margin, contentWidth, 5, 10);
+      yPos += 2;
+      addTable(
+        ['Table', 'Policy', 'Description'],
+        [
+          ['profiles', 'User owns', 'Users can only access own profile'],
+          ['user_preferences', 'User owns', 'Users can only access own preferences'],
+          ['pantry_items', 'User owns', 'Users can only access own pantry'],
+          ['favorite_meals', 'User owns + public', 'Own recipes + public recipes'],
+          ['user_subscriptions', 'User owns', 'Users can only access own subscription'],
+          ['admin_action_logs', 'Admin only', 'Only admins can view logs'],
+        ]
+      );
+
+      addSubHeader('Data Retention');
+      addTable(
+        ['Data Type', 'Retention Period', 'Deletion Method'],
+        [
+          ['Account Data', 'Until deletion requested', 'CASCADE delete'],
+          ['Media Files', '10 days', 'Automatic cleanup'],
+          ['Saved Recipes', 'Until user deletes', 'Manual or CASCADE'],
+          ['Login History', '1 year', 'Automatic purge'],
+          ['Deleted Accounts', '30 days', 'Hard delete'],
+        ]
+      );
+
+      // Section 5: API & Network Security
+      pdf.addPage();
+      yPos = margin + 20;
+      addPageHeader();
+      addSectionHeader('5. API & Network Security');
+
+      addSubHeader('Content Security Policy (CSP)');
+      pdf.setFillColor(30, 41, 59);
+      pdf.rect(margin, yPos - 3, contentWidth, 35, 'F');
+      pdf.setTextColor(226, 232, 240);
+      pdf.setFontSize(8);
+      pdf.setFont('courier', 'normal');
+      const cspLines = [
+        "default-src 'self';",
+        "script-src 'self' 'unsafe-inline' 'unsafe-eval';",
+        "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;",
+        "font-src 'self' https://fonts.gstatic.com;",
+        "img-src 'self' data: blob: https:;",
+        "connect-src 'self' https://*.supabase.co wss://*.supabase.co;",
+        "frame-src 'self' https://js.stripe.com;"
+      ];
+      cspLines.forEach((line) => {
+        pdf.text(line, margin + 3, yPos);
+        yPos += 5;
       });
+      yPos += 5;
+      pdf.setTextColor(30, 41, 59);
+      pdf.setFont('helvetica', 'normal');
+
+      addSubHeader('Security Headers');
+      addTable(
+        ['Header', 'Value', 'Purpose'],
+        [
+          ['X-Content-Type-Options', 'nosniff', 'Prevent MIME sniffing'],
+          ['X-Frame-Options', 'SAMEORIGIN', 'Prevent clickjacking'],
+          ['Referrer-Policy', 'strict-origin-when-cross-origin', 'Control referrer info'],
+        ]
+      );
+
+      addSubHeader('CORS Configuration');
+      addWrappedText('Allowed Origins:', margin, contentWidth, 5, 10);
+      addBullet('https://kiwimealplanner.co.nz');
+      addBullet('https://www.kiwimealplanner.co.nz');
+      addBullet('https://kiwi-meal-planner-production.up.railway.app');
+      addBullet('localhost:3000 (development only)');
+
+      addSubHeader('Rate Limiting');
+      addTable(
+        ['Endpoint Type', 'Requests', 'Window'],
+        [
+          ['AI Generation', '10', '1 minute'],
+          ['Standard API', '60', '1 minute'],
+          ['Auth Endpoints', '10', '15 minutes'],
+          ['Admin Endpoints', '30', '1 minute'],
+          ['Webhooks', '100', '1 minute'],
+        ]
+      );
+
+      // Section 6: Payment Security
+      pdf.addPage();
+      yPos = margin + 20;
+      addPageHeader();
+      addSectionHeader('6. Payment Security (PCI DSS)');
+
+      pdf.setFillColor(236, 253, 245);
+      pdf.rect(margin, yPos - 3, contentWidth, 20, 'F');
+      pdf.setTextColor(6, 95, 70);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('PCI DSS Compliance: Level 4 Merchant', margin + 3, yPos + 2);
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(9);
+      yPos += 7;
+      addWrappedText('Kiwi Meal Planner does not store, process, or transmit cardholder data directly. All payment processing is handled by Stripe, a PCI DSS Level 1 Service Provider.', margin + 3, contentWidth - 6, 4, 9);
+      yPos += 8;
+      pdf.setTextColor(30, 41, 59);
+
+      addSubHeader('Payment Flow');
+      pdf.setFillColor(241, 245, 249);
+      pdf.rect(margin, yPos - 3, contentWidth, 10, 'F');
+      pdf.setFontSize(9);
+      pdf.text('User -> Stripe Checkout (hosted) -> Stripe processes payment -> Webhook -> App updates subscription', margin + 3, yPos + 2);
+      yPos += 15;
+
+      addSubHeader('Security Controls');
+      addTable(
+        ['Control', 'Implementation', 'Status'],
+        [
+          ['Card data storage', 'None (Stripe handles)', 'Compliant'],
+          ['Secure transmission', 'TLS 1.3', 'Compliant'],
+          ['Webhook signature verification', 'HMAC-SHA256', 'Compliant'],
+          ['PCI-compliant checkout', 'Stripe Checkout', 'Compliant'],
+        ]
+      );
+
+      // Section 7: Regulatory Compliance
+      pdf.addPage();
+      yPos = margin + 20;
+      addPageHeader();
+      addSectionHeader('7. Regulatory Compliance');
+
+      addSubHeader('New Zealand Privacy Act 2020');
+      addTable(
+        ['IPP Principle', 'Status', 'Notes'],
+        [
+          ['IPP 1 - Purpose of Collection', 'Compliant', 'Clear purpose in privacy policy'],
+          ['IPP 2 - Source of Information', 'Compliant', 'Direct collection from users'],
+          ['IPP 3 - Collection Notice', 'Compliant', 'Privacy policy accessible'],
+          ['IPP 4 - Manner of Collection', 'Compliant', 'Lawful, non-intrusive'],
+          ['IPP 5 - Storage and Security', 'Compliant', 'Encryption, access controls'],
+          ['IPP 6 - Access to Information', 'Compliant', 'Data export available'],
+          ['IPP 7 - Correction of Information', 'Compliant', 'User can update profile'],
+          ['IPP 8 - Accuracy', 'Compliant', 'User controls own data'],
+          ['IPP 9 - Retention', 'Compliant', 'Clear retention periods'],
+          ['IPP 10 - Use Limitation', 'Compliant', 'Data used only for stated purposes'],
+          ['IPP 11 - Disclosure', 'Compliant', 'Third parties documented'],
+          ['IPP 12 - Cross-Border Disclosure', 'Compliant', 'International transfers documented'],
+          ['IPP 13 - Unique Identifiers', 'Compliant', 'Standard auth identifiers'],
+        ]
+      );
+
+      addSubHeader('User Consent Management');
+      addTable(
+        ['Consent Type', 'Required', 'Default'],
+        [
+          ['Essential (App functionality)', 'Yes', 'Always on'],
+          ['Analytics', 'No', 'Off'],
+          ['Marketing', 'No', 'Off'],
+          ['Third-party sharing', 'No', 'Off'],
+          ['Login tracking (security)', 'Yes', 'On'],
+        ]
+      );
+
+      // Section 8: OWASP Top 10
+      pdf.addPage();
+      yPos = margin + 20;
+      addPageHeader();
+      addSectionHeader('8. OWASP Top 10 Mitigation');
+
+      addTable(
+        ['Risk', 'Status', 'Mitigation'],
+        [
+          ['A01: Broken Access Control', 'Compliant', 'RLS policies, RBAC, admin controls'],
+          ['A02: Cryptographic Failures', 'Compliant', 'TLS 1.3, AES-256 at rest'],
+          ['A03: Injection', 'Compliant', 'Parameterized queries (Supabase SDK)'],
+          ['A04: Insecure Design', 'Compliant', 'Security-first architecture'],
+          ['A05: Security Misconfiguration', 'Compliant', 'CSP, security headers, CORS'],
+          ['A06: Vulnerable Components', 'Compliant', 'Regular dependency updates'],
+          ['A07: Auth Failures', 'Compliant', 'PKCE OAuth, session management'],
+          ['A08: Data Integrity Failures', 'Compliant', 'Webhook signatures, input validation'],
+          ['A09: Logging Failures', 'Compliant', 'Admin action logs, login history'],
+          ['A10: SSRF', 'Compliant', 'Edge Function isolation'],
+        ]
+      );
+
+      // Section 9: Security Features Summary
+      pdf.addPage();
+      yPos = margin + 20;
+      addPageHeader();
+      addSectionHeader('9. Security Features Summary');
+
+      addTable(
+        ['Feature', 'Status', 'Reference'],
+        [
+          ['Rate Limiting', 'Compliant', 'rate_limit_logs table, Edge Functions'],
+          ['Server-side Subscription Validation', 'Compliant', 'validate-subscription Edge Function'],
+          ['Admin Notifications', 'Compliant', 'admin_notifications table'],
+          ['User Consent Management', 'Compliant', 'user_consents table'],
+          ['Security Audit Logging', 'Compliant', 'admin_action_logs table'],
+          ['Multi-factor Authentication', 'Planned', 'Future enhancement'],
+          ['API Key Rotation', 'Planned', 'Future enhancement'],
+        ]
+      );
+
+      // Section 10: Security Audit Log
+      pdf.addPage();
+      yPos = margin + 20;
+      addPageHeader();
+      addSectionHeader('10. Security Audit Log');
+
+      addSubHeader('Recent Security Changes');
+      addTable(
+        ['Date', 'Change', 'Implemented By'],
+        [
+          ['Jan 2026', 'Implemented API rate limiting (10 req/min for AI)', 'Security Enhancement'],
+          ['Jan 2026', 'Added server-side subscription validation', 'Security Enhancement'],
+          ['Jan 2026', 'Implemented admin notification system with email', 'Security Enhancement'],
+          ['Jan 2026', 'Added user consent management system', 'Security Enhancement'],
+          ['Jan 2026', 'Enabled Gemini Edge Functions (API key protection)', 'Security Audit'],
+          ['Jan 2026', 'Enabled Stripe webhook signature validation', 'Security Audit'],
+          ['Jan 2026', 'Restricted CORS to allowed domains', 'Security Audit'],
+          ['Jan 2026', 'Added Content Security Policy headers', 'Security Audit'],
+          ['Jan 2026', 'Moved super admin to Supabase secret', 'Security Audit'],
+        ]
+      );
+
+      // Section 11: Contact Information
+      pdf.addPage();
+      yPos = margin + 20;
+      addPageHeader();
+      addSectionHeader('11. Contact Information');
+
+      addSubHeader('Company Details');
+      addBullet('Company: Unicloud Limited');
+      addBullet('Website: www.unicloud.co.nz');
+      addBullet('Email: admin@unicloud.co.nz');
+      yPos += 3;
+
+      addSubHeader('Privacy Inquiries');
+      addBullet('Email: admin@unicloud.co.nz');
+      addBullet('Response time: Within 20 working days');
+      yPos += 3;
+
+      addSubHeader('Security Vulnerabilities');
+      addBullet('Email: admin@unicloud.co.nz');
+      addBullet('Subject: [SECURITY] Vulnerability Report');
+      yPos += 3;
+
+      addSubHeader('Privacy Commissioner');
+      addBullet('Office of the Privacy Commissioner');
+      addBullet('Website: www.privacy.org.nz');
 
       // Add page numbers
       const totalPages = pdf.getNumberOfPages();
