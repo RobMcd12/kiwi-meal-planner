@@ -49,7 +49,7 @@ import {
   updateFeedbackStatus,
   deleteFeedback
 } from '../services/feedbackService';
-import { getAllUsers, setUserAdminStatus, isSuperAdmin, sendPasswordResetEmail, createUser, deleteUser, type UserProfile } from '../services/adminService';
+import { getAllUsers, setUserAdminStatus, checkIsSuperAdmin, sendPasswordResetEmail, createUser, deleteUser, type UserProfile } from '../services/adminService';
 import {
   getAllInstructions,
   createInstruction,
@@ -71,6 +71,7 @@ import { grantProAccess, revokeProAccess } from '../services/subscriptionService
 import { getVideoCount } from '../services/recipeVideoService';
 import { Crown, BookOpen, HardDrive, Calendar, ArrowUpDown } from 'lucide-react';
 import ResponsiveTabs from './ResponsiveTabs';
+import SecurityComplianceViewer from './SecurityComplianceViewer';
 
 interface AdminDashboardProps {
   onBack: () => void;
@@ -150,7 +151,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
   const { user, isAdmin, refreshAdminStatus, startImpersonation } = useAuth();
   const [stats, setStats] = useState<Stats>({ totalUsers: 0, totalMealPlans: 0, totalFavorites: 0, totalVideos: 0 });
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'overview' | 'feedback' | 'data' | 'users' | 'instructions' | 'subscriptions' | 'videos'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'feedback' | 'data' | 'users' | 'instructions' | 'subscriptions' | 'videos' | 'security'>('overview');
   const [counterModalType, setCounterModalType] = useState<'users' | 'videos' | 'recipes' | 'mealPlans' | null>(null);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
@@ -217,7 +218,19 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
   const [impersonatingUserId, setImpersonatingUserId] = useState<string | null>(null);
 
   // Check if current user is super admin (can manage other admins)
-  const currentUserIsSuperAdmin = isSuperAdmin(user?.email ?? undefined);
+  const [currentUserIsSuperAdmin, setCurrentUserIsSuperAdmin] = useState(false);
+  const [superAdminUserIds, setSuperAdminUserIds] = useState<Set<string>>(new Set());
+
+  // Load super admin status on mount
+  useEffect(() => {
+    const checkSuperAdmin = async () => {
+      if (user?.id) {
+        const isSuperAdmin = await checkIsSuperAdmin(user.id);
+        setCurrentUserIsSuperAdmin(isSuperAdmin);
+      }
+    };
+    checkSuperAdmin();
+  }, [user?.id]);
 
   useEffect(() => {
     loadStats();
@@ -924,6 +937,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
           { id: 'subscriptions', label: 'Subscriptions', icon: <Crown size={18} /> },
           { id: 'data', label: 'Data Management', icon: <Database size={18} /> },
           { id: 'users', label: 'Users', icon: <Users size={18} /> },
+          { id: 'security', label: 'Security', icon: <ShieldCheck size={18} /> },
         ]}
         activeTab={activeTab}
         onTabChange={(tabId) => setActiveTab(tabId as any)}
@@ -2062,7 +2076,10 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
                 Showing {filteredAndSortedUsers.length} of {usersList.length} users
               </div>
               {filteredAndSortedUsers.map((userItem) => {
-                const isUserSuperAdmin = isSuperAdmin(userItem.email);
+                // Note: Super admin status is checked via Edge Function, but for display
+                // purposes we use the is_admin database flag. The actual super admin
+                // is identified by the currentUserIsSuperAdmin state for access control.
+                const isUserSuperAdmin = userItem.isAdmin && superAdminUserIds.has(userItem.userId);
                 const subDisplay = getSubscriptionDisplay(userItem.subscription);
                 const hasAdminGrant = userItem.subscription?.adminGrantedPro;
                 return (
@@ -2532,6 +2549,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
             </div>
           )}
         </div>
+      )}
+
+      {/* Security Tab */}
+      {activeTab === 'security' && (
+        <SecurityComplianceViewer />
       )}
 
       {/* Dashboard Counter Modal */}

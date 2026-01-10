@@ -1,8 +1,9 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
 import { GoogleGenerativeAI } from 'https://esm.sh/@google/generative-ai@0.21.0';
-import { corsHeaders, handleCors } from '../_shared/cors.ts';
+import { corsHeaders, handleCors, getCorsHeaders } from '../_shared/cors.ts';
 import { verifyAuth } from '../_shared/auth.ts';
 import { responseSchema } from '../_shared/schemas.ts';
+import { checkRateLimit, RATE_LIMITS, rateLimitExceededResponse, getRateLimitHeaders, getClientIP } from '../_shared/rateLimit.ts';
 
 interface MealConfig {
   days: number;
@@ -30,14 +31,25 @@ serve(async (req) => {
   const corsResponse = handleCors(req);
   if (corsResponse) return corsResponse;
 
+  const origin = req.headers.get('origin');
+  const responseHeaders = getCorsHeaders(origin);
+
   try {
     // Verify authentication
     const auth = await verifyAuth(req);
     if (!auth) {
       return new Response(
         JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 401, headers: { ...responseHeaders, 'Content-Type': 'application/json' } }
       );
+    }
+
+    // Check rate limit for AI generation endpoints
+    const clientIP = getClientIP(req);
+    const rateLimitResult = await checkRateLimit(auth.userId, clientIP, RATE_LIMITS.AI_GENERATION);
+
+    if (!rateLimitResult.allowed) {
+      return rateLimitExceededResponse(rateLimitResult, responseHeaders);
     }
 
     // Parse request body

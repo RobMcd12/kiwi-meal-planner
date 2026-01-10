@@ -1,5 +1,5 @@
 import { supabase, isSupabaseConfigured } from './authService';
-import { isSuperAdmin } from './adminService';
+import { checkIsSuperAdmin } from './adminService';
 import type {
   SubscriptionConfig,
   UserSubscription,
@@ -9,8 +9,8 @@ import type {
   AdminSubscriptionGrant
 } from '../types';
 
-// Super admin email - always has Pro
-const SUPER_ADMIN_EMAIL = 'rob@unicloud.co.nz';
+// SECURITY: Super admin email moved to Supabase secret
+// Use checkIsSuperAdmin() from adminService for verification
 
 // ============================================
 // SUBSCRIPTION CONFIGURATION
@@ -137,13 +137,18 @@ export const getUserSubscription = async (userId?: string): Promise<UserSubscrip
  * Check if user has Pro access (considering all sources)
  */
 export const checkHasPro = async (userId?: string): Promise<boolean> => {
-  // First check if this is the super admin by getting current user's email
+  // Get user ID if not provided
   if (!userId) {
     const { data: { user } } = await supabase.auth.getUser();
-    if (user?.email === SUPER_ADMIN_EMAIL) {
-      return true;
-    }
     userId = user?.id;
+  }
+
+  if (!userId) return false;
+
+  // Check if super admin via Edge Function
+  const isSuperAdminUser = await checkIsSuperAdmin(userId);
+  if (isSuperAdminUser) {
+    return true;
   }
 
   const subscription = await getUserSubscription(userId);
@@ -238,15 +243,14 @@ export const canCreateRecipe = async (userId?: string): Promise<boolean> => {
  * Get full subscription state (for context providers)
  */
 export const getSubscriptionState = async (userId?: string): Promise<SubscriptionState> => {
-  // Check if super admin first
-  let isSuperAdminUser = false;
+  // Get user ID if not provided
   if (!userId) {
     const { data: { user } } = await supabase.auth.getUser();
-    if (user?.email === SUPER_ADMIN_EMAIL) {
-      isSuperAdminUser = true;
-    }
     userId = user?.id;
   }
+
+  // Check if super admin via Edge Function
+  const isSuperAdminUser = userId ? await checkIsSuperAdmin(userId) : false;
 
   const [subscription, config, recipeCount] = await Promise.all([
     getUserSubscription(userId),

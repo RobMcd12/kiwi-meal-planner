@@ -229,8 +229,8 @@ Deno.serve(async (req) => {
     if (!isValid) {
       console.error('Invalid webhook signature');
       console.error('Signature received:', signature.substring(0, 50) + '...');
-      // For debugging, still process the event but log the issue
-      // return new Response('Invalid signature', { status: 400 });
+      // SECURITY: Reject requests with invalid signatures to prevent forged events
+      return new Response('Invalid signature', { status: 400 });
     }
 
     const event = JSON.parse(body);

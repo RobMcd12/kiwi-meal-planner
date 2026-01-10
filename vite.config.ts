@@ -110,9 +110,8 @@ export default defineConfig(({ mode }) => {
         })
       ],
       define: {
-        // Gemini key
-        'process.env.API_KEY': JSON.stringify(env.GEMINI_API_KEY || process.env.GEMINI_API_KEY),
-        'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY || process.env.GEMINI_API_KEY),
+        // SECURITY: Gemini API key removed from client bundle - now handled via Edge Functions
+        // See services/geminiService.ts USE_EDGE_FUNCTIONS = true
         // Expose NEXT_PUBLIC vars to import.meta.env for Vite
         'import.meta.env.NEXT_PUBLIC_SUPABASE_URL': JSON.stringify(supabaseUrl),
         'import.meta.env.NEXT_PUBLIC_SUPABASE_ANON_KEY': JSON.stringify(supabaseAnonKey),

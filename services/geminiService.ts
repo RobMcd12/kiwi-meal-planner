@@ -16,7 +16,7 @@ export const TAG_CATEGORIES = {
 const ALL_TAGS = [...TAG_CATEGORIES.cuisine, ...TAG_CATEGORIES.dietary, ...TAG_CATEGORIES.mealType, ...TAG_CATEGORIES.other];
 
 // Feature flag: Set to true to use Edge Functions (production), false for client-side (development)
-const USE_EDGE_FUNCTIONS = false; // Disabled - using client-side Gemini API
+const USE_EDGE_FUNCTIONS = true; // SECURITY: Enabled to protect API key from browser exposure
 
 // --- Schema Definitions ---
 const ingredientSchema: Schema = {

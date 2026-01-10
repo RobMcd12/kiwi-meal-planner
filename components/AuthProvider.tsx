@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback, ReactNode } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase, onAuthStateChange, isSupabaseConfigured } from '../services/authService';
-import { checkIsAdmin, isSuperAdmin, getUserForImpersonation } from '../services/adminService';
+import { checkIsAdmin, getUserForImpersonation } from '../services/adminService';
 import { recordLogin } from '../services/loginHistoryService';
 import { logAdminAction, ActionType, ResourceType } from '../services/adminActionLogService';
 

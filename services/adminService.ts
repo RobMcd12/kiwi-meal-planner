@@ -1,7 +1,11 @@
 import { supabase, isSupabaseConfigured } from './authService';
 
-// Super admin email that always has admin access
-const SUPER_ADMIN_EMAIL = 'rob@unicloud.co.nz';
+// SECURITY: Super admin email moved to Supabase secret (SUPER_ADMIN_EMAIL)
+// Use checkIsSuperAdmin() Edge Function to verify super admin status
+
+// Cache for super admin check (avoids repeated API calls)
+let superAdminCache: { [userId: string]: { isSuperAdmin: boolean; timestamp: number } } = {};
+const SUPER_ADMIN_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 export interface UserProfile {
   id: string;
@@ -13,16 +17,54 @@ export interface UserProfile {
 }
 
 /**
+ * Check if a user is a super admin via Edge Function
+ * SECURITY: Super admin email is stored server-side, not in client code
+ */
+export const checkIsSuperAdmin = async (userId: string): Promise<boolean> => {
+  if (!isSupabaseConfigured()) {
+    return false;
+  }
+
+  // Check cache first
+  const cached = superAdminCache[userId];
+  if (cached && Date.now() - cached.timestamp < SUPER_ADMIN_CACHE_TTL) {
+    return cached.isSuperAdmin;
+  }
+
+  try {
+    const { data, error } = await supabase.functions.invoke('check-super-admin', {
+      body: {},
+    });
+
+    if (error) {
+      console.error('Error checking super admin status:', error);
+      return false;
+    }
+
+    const isSuperAdmin = data?.isSuperAdmin === true;
+
+    // Cache the result
+    superAdminCache[userId] = { isSuperAdmin, timestamp: Date.now() };
+
+    return isSuperAdmin;
+  } catch (err) {
+    console.error('Error checking super admin status:', err);
+    return false;
+  }
+};
+
+/**
  * Check if a user is an admin (either super admin or database admin)
  */
 export const checkIsAdmin = async (userId: string, email?: string): Promise<boolean> => {
-  // Super admin always has access
-  if (email === SUPER_ADMIN_EMAIL) {
-    return true;
-  }
-
   if (!isSupabaseConfigured()) {
     return false;
+  }
+
+  // Check super admin status via Edge Function
+  const isSuperAdmin = await checkIsSuperAdmin(userId);
+  if (isSuperAdmin) {
+    return true;
   }
 
   try {
@@ -97,10 +139,12 @@ export const setUserAdminStatus = async (userId: string, isAdmin: boolean): Prom
 };
 
 /**
- * Check if an email is the super admin
+ * Check if current user is super admin (async version using Edge Function)
+ * SECURITY: Super admin check now goes through server-side validation
  */
-export const isSuperAdmin = (email?: string): boolean => {
-  return email === SUPER_ADMIN_EMAIL;
+export const isSuperAdmin = async (userId?: string): Promise<boolean> => {
+  if (!userId) return false;
+  return checkIsSuperAdmin(userId);
 };
 
 /**
