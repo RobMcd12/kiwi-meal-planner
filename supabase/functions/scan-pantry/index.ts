@@ -138,23 +138,33 @@ Deno.serve(async (req) => {
 
         prompt = `Analyze these images of a pantry, refrigerator, freezer, or kitchen counter with ingredients.
 
-Identify ALL visible food items, ingredients, and cooking supplies. Be thorough and specific.
+Identify ALL visible food items, ingredients, and cooking supplies. Be thorough and SPECIFIC about item types.
 
-CRITICAL - For EVERY item, you MUST estimate the REMAINING quantity:
-- Count individual items (e.g., "eggs (6)", "apples (3)", "onions (2)")
-- For containers/bottles: estimate how much is LEFT, not the original size
-  - If a 1L milk bottle looks half full: "milk (~500ml remaining)"
-  - If a jar of sauce is mostly empty: "pasta sauce (~100ml remaining)"
-  - If a butter block is partially used: "butter (~200g remaining)"
-- For packaged items, estimate remaining contents based on visual appearance
-- For bulk items, estimate visible amounts (e.g., "rice (~500g)", "potatoes (~1kg)")
-- Include the quantity in parentheses after the item name
+CRITICAL RULES:
 
-For each item:
-- Use common names with quantity: "eggs (6)" not just "eggs"
-- ALWAYS estimate remaining amounts - this is critical for meal planning
-- Be realistic about partially used items - most pantries have opened packages
-- Include brand names if clearly visible
+1. BE SPECIFIC ABOUT ITEM TYPES - Never use generic names:
+   - Vinegar: Identify the TYPE (e.g., "balsamic vinegar", "white wine vinegar", "apple cider vinegar", "rice vinegar", "red wine vinegar", "distilled white vinegar")
+   - Oil: Identify the TYPE (e.g., "olive oil", "vegetable oil", "coconut oil", "sesame oil", "avocado oil")
+   - Flour: Identify the TYPE (e.g., "all-purpose flour", "bread flour", "whole wheat flour", "almond flour")
+   - Sugar: Identify the TYPE (e.g., "white sugar", "brown sugar", "powdered sugar", "coconut sugar")
+   - Cheese: Identify the TYPE (e.g., "cheddar cheese", "parmesan cheese", "mozzarella cheese", "cream cheese")
+   - Milk: Identify the TYPE (e.g., "whole milk", "skim milk", "oat milk", "almond milk")
+   - Read labels carefully to identify specific product types
+
+2. ESTIMATE REMAINING QUANTITY for EVERY item:
+   - Count individual items: "eggs (6)", "apples (3)", "onions (2)"
+   - For containers/bottles: estimate how much is LEFT (not original size)
+     - Half-full 1L milk: "whole milk (~500ml remaining)"
+     - Mostly empty sauce jar: "marinara sauce (~100ml remaining)"
+     - Partially used butter: "butter (~200g remaining)"
+   - For packaged items: estimate remaining contents visually
+   - For bulk items: estimate visible amounts ("basmati rice (~500g)", "potatoes (~1kg)")
+   - Include the quantity in parentheses after the item name
+
+3. For each item:
+   - ALWAYS include the specific type + remaining quantity
+   - Read labels to identify exact product names/types
+   - Be realistic about partially used items
 
 Group items into categories:
 - Produce (fruits, vegetables)
@@ -166,7 +176,7 @@ Group items into categories:
 - Condiments & Sauces
 - Other
 
-Return all identified items as a flat list in "items" and categorized in "categories". Every item MUST include a remaining quantity estimate.`;
+Return all identified items as a flat list in "items" and categorized in "categories". Every item MUST be specific about type AND include a remaining quantity estimate.`;
         break;
 
       case 'video':
@@ -186,23 +196,33 @@ Return all identified items as a flat list in "items" and categorized in "catego
 
         prompt = `Analyze this video of a pantry, refrigerator, freezer, or kitchen counter with ingredients.
 
-Identify ALL visible food items, ingredients, and cooking supplies throughout the video. Be thorough and specific.
+Identify ALL visible food items, ingredients, and cooking supplies throughout the video. Be thorough and SPECIFIC about item types.
 
-CRITICAL - For EVERY item, you MUST estimate the REMAINING quantity:
-- Count individual items (e.g., "eggs (6)", "apples (3)", "onions (2)")
-- For containers/bottles: estimate how much is LEFT, not the original size
-  - If a 1L milk bottle looks half full: "milk (~500ml remaining)"
-  - If a jar of sauce is mostly empty: "pasta sauce (~100ml remaining)"
-  - If a butter block is partially used: "butter (~200g remaining)"
-- For packaged items, estimate remaining contents based on visual appearance
-- For bulk items, estimate visible amounts (e.g., "rice (~500g)", "potatoes (~1kg)")
-- Include the quantity in parentheses after the item name
+CRITICAL RULES:
 
-For each item:
-- Use common names with quantity: "eggs (6)" not just "eggs"
-- ALWAYS estimate remaining amounts - this is critical for meal planning
-- Be realistic about partially used items - most pantries have opened packages
-- Include brand names if clearly visible
+1. BE SPECIFIC ABOUT ITEM TYPES - Never use generic names:
+   - Vinegar: Identify the TYPE (e.g., "balsamic vinegar", "white wine vinegar", "apple cider vinegar", "rice vinegar", "red wine vinegar", "distilled white vinegar")
+   - Oil: Identify the TYPE (e.g., "olive oil", "vegetable oil", "coconut oil", "sesame oil", "avocado oil")
+   - Flour: Identify the TYPE (e.g., "all-purpose flour", "bread flour", "whole wheat flour", "almond flour")
+   - Sugar: Identify the TYPE (e.g., "white sugar", "brown sugar", "powdered sugar", "coconut sugar")
+   - Cheese: Identify the TYPE (e.g., "cheddar cheese", "parmesan cheese", "mozzarella cheese", "cream cheese")
+   - Milk: Identify the TYPE (e.g., "whole milk", "skim milk", "oat milk", "almond milk")
+   - Read labels carefully to identify specific product types
+
+2. ESTIMATE REMAINING QUANTITY for EVERY item:
+   - Count individual items: "eggs (6)", "apples (3)", "onions (2)"
+   - For containers/bottles: estimate how much is LEFT (not original size)
+     - Half-full 1L milk: "whole milk (~500ml remaining)"
+     - Mostly empty sauce jar: "marinara sauce (~100ml remaining)"
+     - Partially used butter: "butter (~200g remaining)"
+   - For packaged items: estimate remaining contents visually
+   - For bulk items: estimate visible amounts ("basmati rice (~500g)", "potatoes (~1kg)")
+   - Include the quantity in parentheses after the item name
+
+3. For each item:
+   - ALWAYS include the specific type + remaining quantity
+   - Read labels to identify exact product names/types
+   - Be realistic about partially used items
 
 Group items into categories:
 - Produce (fruits, vegetables)
@@ -214,7 +234,7 @@ Group items into categories:
 - Condiments & Sauces
 - Other
 
-Return all identified items as a flat list in "items" and categorized in "categories". Every item MUST include a remaining quantity estimate.`;
+Return all identified items as a flat list in "items" and categorized in "categories". Every item MUST be specific about type AND include a remaining quantity estimate.`;
         break;
 
       case 'audio':

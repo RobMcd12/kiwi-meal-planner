@@ -99,6 +99,10 @@ const PantryManager: React.FC<PantryManagerProps> = ({ items, setItems, onNext, 
   };
 
   const handleScannedItems = (scannedItems: PantryItem[], mode: PantryUploadMode) => {
+    console.log('handleScannedItems called with mode:', mode);
+    console.log('Scanned items:', scannedItems.map(i => ({ id: i.id, name: i.name })));
+    console.log('Existing items:', items.map(i => ({ id: i.id, name: i.name })));
+
     if (mode === 'replace') {
       // Replace all existing items with new scanned items
       setItems(scannedItems);
@@ -106,27 +110,40 @@ const PantryManager: React.FC<PantryManagerProps> = ({ items, setItems, onNext, 
       // Update existing items with new quantities/names AND add new items
       const updatedItems = [...items];
       const newItems: PantryItem[] = [];
+      const processedIds = new Set<string>(); // Track which items we've already processed
 
       scannedItems.forEach(scanned => {
-        // Check if item exists by ID (for updates) or by base name
-        const existingIndex = updatedItems.findIndex(existing =>
-          existing.id === scanned.id ||
-          existing.name.replace(/\s*\([^)]*\)\s*$/, '').trim().toLowerCase() ===
-          scanned.name.replace(/\s*\([^)]*\)\s*$/, '').trim().toLowerCase()
-        );
+        // Check if item exists by ID first (most reliable for updates)
+        let existingIndex = updatedItems.findIndex(existing => existing.id === scanned.id);
+
+        // If not found by ID, try matching by base name
+        if (existingIndex < 0) {
+          const scannedBaseName = scanned.name.replace(/\s*\([^)]*\)\s*$/, '').trim().toLowerCase();
+          existingIndex = updatedItems.findIndex(existing => {
+            const existingBaseName = existing.name.replace(/\s*\([^)]*\)\s*$/, '').trim().toLowerCase();
+            return existingBaseName === scannedBaseName && !processedIds.has(existing.id);
+          });
+        }
+
+        console.log(`Processing "${scanned.name}" (id: ${scanned.id}), found at index: ${existingIndex}`);
 
         if (existingIndex >= 0) {
           // Update existing item's name (which includes quantity)
+          const existingItem = updatedItems[existingIndex];
+          processedIds.add(existingItem.id);
+          console.log(`Updating existing item "${existingItem.name}" -> "${scanned.name}"`);
           updatedItems[existingIndex] = {
-            ...updatedItems[existingIndex],
+            ...existingItem,
             name: scanned.name,
           };
         } else {
           // Add as new item
+          console.log(`Adding new item: "${scanned.name}"`);
           newItems.push(scanned);
         }
       });
 
+      console.log('Final updated items:', updatedItems.length, 'New items:', newItems.length);
       setItems([...updatedItems, ...newItems]);
     } else {
       // Add only new items that don't exist yet (add_new mode)
