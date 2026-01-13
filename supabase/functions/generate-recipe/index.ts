@@ -1,9 +1,14 @@
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
+/**
+ * Generate Recipe Edge Function
+ *
+ * Generates a single recipe based on user description using Gemini AI.
+ */
+
 import { GoogleGenerativeAI } from 'https://esm.sh/@google/generative-ai@0.21.0';
 import { corsHeaders, handleCors, getCorsHeaders } from '../_shared/cors.ts';
 import { verifyAuth } from '../_shared/auth.ts';
 import { mealSchema } from '../_shared/schemas.ts';
-import { checkRateLimit, RATE_LIMITS, rateLimitExceededResponse, getRateLimitHeaders, getClientIP } from '../_shared/rateLimit.ts';
+import { checkRateLimit, RATE_LIMITS, rateLimitExceededResponse, getClientIP } from '../_shared/rateLimit.ts';
 
 interface UserPreferences {
   dietaryRestrictions: string;
@@ -36,7 +41,7 @@ interface GenerateRecipeRequest {
   meatServingGrams?: number;
 }
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   // Handle CORS preflight
   const corsResponse = handleCors(req);
   if (corsResponse) return corsResponse;
