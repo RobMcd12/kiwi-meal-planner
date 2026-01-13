@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Camera, Upload, X, Loader2, Check, Plus, Trash2, Image as ImageIcon, Sparkles, AlertCircle, AlertTriangle, Edit3, RefreshCw } from 'lucide-react';
+import { Camera, Upload, X, Loader2, Check, Plus, Trash2, Image as ImageIcon, Sparkles, AlertCircle, AlertTriangle, Edit3, RefreshCw, Star } from 'lucide-react';
 import { scanPantryFromImages } from '../services/geminiService';
 import type { PantryItem, ScannedPantryResult, PantryUploadMode } from '../types';
 
@@ -17,11 +17,12 @@ interface ImagePreview {
   preview: string;
 }
 
-// Track editable items with their names
+// Track editable items with their names and staple status
 interface EditableItem {
   originalName: string;
   editedName: string;
   selected: boolean;
+  isStaple: boolean;
 }
 
 const PantryScanner: React.FC<PantryScannerProps> = ({ onItemsScanned, onClose, existingItemCount, existingItems = [] }) => {
@@ -66,6 +67,10 @@ const PantryScanner: React.FC<PantryScannerProps> = ({ onItemsScanned, onClose, 
   // Count duplicates in selected items
   const duplicatesInSelection = Array.from(selectedItems).filter(isDuplicate).length;
   const newItemsInSelection = selectedItems.size - duplicatesInSelection;
+
+  // Count staples in selected items
+  const staplesInSelection = Array.from(editableItems.values())
+    .filter(item => item.selected && item.isStaple).length;
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -123,10 +128,15 @@ const PantryScanner: React.FC<PantryScannerProps> = ({ onItemsScanned, onClose, 
       const newEditableItems = new Map<string, EditableItem>();
       result.items.forEach((item, index) => {
         const id = `item-${index}`;
+        // Check if existing item is a staple
+        const existingItem = existingItems.find(
+          existing => getBaseItemName(existing.name) === getBaseItemName(item)
+        );
         newEditableItems.set(id, {
           originalName: item,
           editedName: item,
           selected: true,
+          isStaple: existingItem?.isStaple || false,
         });
       });
       setEditableItems(newEditableItems);
@@ -155,6 +165,17 @@ const PantryScanner: React.FC<PantryScannerProps> = ({ onItemsScanned, onClose, 
       const item = next.get(itemId);
       if (item) {
         next.set(itemId, { ...item, editedName: newName });
+      }
+      return next;
+    });
+  };
+
+  const toggleItemStaple = (itemId: string) => {
+    setEditableItems(prev => {
+      const next = new Map(prev);
+      const item = next.get(itemId);
+      if (item) {
+        next.set(itemId, { ...item, isStaple: !item.isStaple });
       }
       return next;
     });
@@ -198,6 +219,7 @@ const PantryScanner: React.FC<PantryScannerProps> = ({ onItemsScanned, onClose, 
       items.push({
         id: `scanned-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         name: item.editedName,
+        isStaple: item.isStaple,
       });
     });
 
@@ -221,6 +243,7 @@ const PantryScanner: React.FC<PantryScannerProps> = ({ onItemsScanned, onClose, 
           items.push({
             id: existingItem.id,
             name: item.editedName,
+            isStaple: item.isStaple,
           });
         }
       } else {
@@ -228,6 +251,7 @@ const PantryScanner: React.FC<PantryScannerProps> = ({ onItemsScanned, onClose, 
         items.push({
           id: `scanned-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
           name: item.editedName,
+          isStaple: item.isStaple,
         });
       }
     });
@@ -424,12 +448,16 @@ const PantryScanner: React.FC<PantryScannerProps> = ({ onItemsScanned, onClose, 
                     <div className="w-4 h-4 rounded bg-slate-200 border border-slate-300"></div>
                     <span className="text-xs text-slate-600">Deselected (will be skipped)</span>
                   </div>
+                  <div className="flex items-center gap-2">
+                    <Star size={16} className="text-yellow-500 fill-yellow-500" />
+                    <span className="text-xs text-slate-600">Staple item (will auto-add to shopping list when low)</span>
+                  </div>
                 </div>
               </div>
 
               {/* Summary info */}
-              {(newItemsInSelection > 0 || duplicatesInSelection > 0) && (
-                <div className="flex gap-3 text-sm">
+              {(newItemsInSelection > 0 || duplicatesInSelection > 0 || staplesInSelection > 0) && (
+                <div className="flex flex-wrap gap-3 text-sm">
                   {newItemsInSelection > 0 && (
                     <div className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-100 text-emerald-700 rounded-lg">
                       <Plus size={14} />
@@ -440,6 +468,12 @@ const PantryScanner: React.FC<PantryScannerProps> = ({ onItemsScanned, onClose, 
                     <div className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-100 text-amber-700 rounded-lg">
                       <RefreshCw size={14} />
                       <span>{duplicatesInSelection} to update</span>
+                    </div>
+                  )}
+                  {staplesInSelection > 0 && (
+                    <div className="flex items-center gap-1.5 px-3 py-1.5 bg-yellow-100 text-yellow-700 rounded-lg">
+                      <Star size={14} className="fill-yellow-500" />
+                      <span>{staplesInSelection} staple{staplesInSelection !== 1 ? 's' : ''}</span>
                     </div>
                   )}
                 </div>
@@ -525,6 +559,19 @@ const PantryScanner: React.FC<PantryScannerProps> = ({ onItemsScanned, onClose, 
                           <Edit3 size={14} />
                         </button>
                       )}
+
+                      {/* Staple toggle button */}
+                      <button
+                        onClick={() => toggleItemStaple(itemId)}
+                        className={`flex-shrink-0 p-1.5 rounded-lg transition-colors ${
+                          item.isStaple
+                            ? 'text-yellow-500 hover:text-yellow-600 bg-yellow-50'
+                            : 'text-slate-300 hover:text-yellow-500 hover:bg-yellow-50'
+                        }`}
+                        title={item.isStaple ? 'Remove staple flag' : 'Mark as staple item'}
+                      >
+                        <Star size={14} className={item.isStaple ? 'fill-yellow-500' : ''} />
+                      </button>
 
                       {/* Status badge */}
                       {item.selected && (

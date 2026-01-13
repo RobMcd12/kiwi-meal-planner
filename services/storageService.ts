@@ -341,9 +341,207 @@ export const removePantryItem = async (id: string): Promise<void> => {
   await supabase.from('pantry_items').delete().eq('id', id);
 };
 
-// Sync function for bulk pantry operations
+// Sync function for bulk pantry operations (localStorage only - use savePantryItems for Supabase)
 export const savePantry = async (items: PantryItem[]): Promise<void> => {
   savePantryLocal(items);
+};
+
+// Save or update multiple pantry items to Supabase
+// Used by PantryScanner to persist scanned items
+export const savePantryItems = async (
+  items: PantryItem[],
+  mode: 'add_new' | 'update_existing' | 'replace'
+): Promise<PantryItem[]> => {
+  if (!isSupabaseConfigured()) {
+    // For localStorage fallback
+    const existing = loadPantryLocal();
+    if (mode === 'replace') {
+      savePantryLocal(items);
+      return items;
+    } else if (mode === 'update_existing') {
+      // Update existing items, add new ones
+      const updatedItems = [...existing];
+      items.forEach(item => {
+        const existingIndex = updatedItems.findIndex(e => e.id === item.id);
+        if (existingIndex >= 0) {
+          updatedItems[existingIndex] = { ...updatedItems[existingIndex], ...item };
+        } else {
+          updatedItems.push(item);
+        }
+      });
+      savePantryLocal(updatedItems);
+      return updatedItems;
+    } else {
+      // add_new - filter out duplicates by name
+      const newItems = items.filter(
+        item => !existing.some(e => e.name.toLowerCase() === item.name.toLowerCase())
+      );
+      const combined = [...existing, ...newItems];
+      savePantryLocal(combined);
+      return combined;
+    }
+  }
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    // Same localStorage fallback for unauthenticated users
+    const existing = loadPantryLocal();
+    if (mode === 'replace') {
+      savePantryLocal(items);
+      return items;
+    } else if (mode === 'update_existing') {
+      const updatedItems = [...existing];
+      items.forEach(item => {
+        const existingIndex = updatedItems.findIndex(e => e.id === item.id);
+        if (existingIndex >= 0) {
+          updatedItems[existingIndex] = { ...updatedItems[existingIndex], ...item };
+        } else {
+          updatedItems.push(item);
+        }
+      });
+      savePantryLocal(updatedItems);
+      return updatedItems;
+    } else {
+      const newItems = items.filter(
+        item => !existing.some(e => e.name.toLowerCase() === item.name.toLowerCase())
+      );
+      const combined = [...existing, ...newItems];
+      savePantryLocal(combined);
+      return combined;
+    }
+  }
+
+  // Supabase operations
+  const savedItems: PantryItem[] = [];
+
+  if (mode === 'replace') {
+    // Delete all existing items first
+    await supabase.from('pantry_items').delete().eq('user_id', user.id);
+
+    // Insert all new items
+    for (const item of items) {
+      const { data, error } = await supabase
+        .from('pantry_items')
+        .insert({
+          user_id: user.id,
+          name: item.name,
+          is_staple: item.isStaple || false,
+          needs_restock: item.needsRestock || false,
+          quantity: item.quantity || null,
+          unit: item.unit || null,
+        })
+        .select('id, name, is_staple, needs_restock, quantity, unit')
+        .single();
+
+      if (!error && data) {
+        savedItems.push({
+          id: data.id,
+          name: data.name,
+          isStaple: data.is_staple,
+          needsRestock: data.needs_restock,
+          quantity: data.quantity,
+          unit: data.unit,
+        });
+      }
+    }
+  } else if (mode === 'update_existing') {
+    // Update existing items by ID, insert new ones
+    for (const item of items) {
+      // Check if this is an existing item (has a valid UUID format)
+      const isExistingId = item.id && !item.id.startsWith('scanned-');
+
+      if (isExistingId) {
+        // Update existing item
+        const { data, error } = await supabase
+          .from('pantry_items')
+          .update({
+            name: item.name,
+            is_staple: item.isStaple || false,
+            needs_restock: item.needsRestock || false,
+            quantity: item.quantity || null,
+            unit: item.unit || null,
+          })
+          .eq('id', item.id)
+          .select('id, name, is_staple, needs_restock, quantity, unit')
+          .single();
+
+        if (!error && data) {
+          savedItems.push({
+            id: data.id,
+            name: data.name,
+            isStaple: data.is_staple,
+            needsRestock: data.needs_restock,
+            quantity: data.quantity,
+            unit: data.unit,
+          });
+        }
+      } else {
+        // Insert new item
+        const { data, error } = await supabase
+          .from('pantry_items')
+          .insert({
+            user_id: user.id,
+            name: item.name,
+            is_staple: item.isStaple || false,
+            needs_restock: item.needsRestock || false,
+            quantity: item.quantity || null,
+            unit: item.unit || null,
+          })
+          .select('id, name, is_staple, needs_restock, quantity, unit')
+          .single();
+
+        if (!error && data) {
+          savedItems.push({
+            id: data.id,
+            name: data.name,
+            isStaple: data.is_staple,
+            needsRestock: data.needs_restock,
+            quantity: data.quantity,
+            unit: data.unit,
+          });
+        }
+      }
+    }
+  } else {
+    // add_new - only insert items that don't exist
+    for (const item of items) {
+      // Check if item with this name already exists
+      const { data: existing } = await supabase
+        .from('pantry_items')
+        .select('id')
+        .eq('user_id', user.id)
+        .ilike('name', item.name)
+        .single();
+
+      if (!existing) {
+        const { data, error } = await supabase
+          .from('pantry_items')
+          .insert({
+            user_id: user.id,
+            name: item.name,
+            is_staple: item.isStaple || false,
+            needs_restock: item.needsRestock || false,
+            quantity: item.quantity || null,
+            unit: item.unit || null,
+          })
+          .select('id, name, is_staple, needs_restock, quantity, unit')
+          .single();
+
+        if (!error && data) {
+          savedItems.push({
+            id: data.id,
+            name: data.name,
+            isStaple: data.is_staple,
+            needsRestock: data.needs_restock,
+            quantity: data.quantity,
+            unit: data.unit,
+          });
+        }
+      }
+    }
+  }
+
+  return savedItems;
 };
 
 // Update a pantry item's staple status with optional category transfer

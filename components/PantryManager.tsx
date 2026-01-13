@@ -8,7 +8,7 @@ import LiveDictation from './LiveDictation';
 import AudioRecorder from './AudioRecorder';
 import PantryItemEditModal from './PantryItemEditModal';
 import PantryCategorizedList from './PantryCategorizedList';
-import { savePantryItem, updatePantryItemStaple, togglePantryItemRestock, clearStaplesRestock, updatePantryItemQuantity, removePantryItem } from '../services/storageService';
+import { savePantryItem, savePantryItems, updatePantryItemStaple, togglePantryItemRestock, clearStaplesRestock, updatePantryItemQuantity, removePantryItem, loadPantry } from '../services/storageService';
 
 interface PantryManagerProps {
   items: PantryItem[];
@@ -98,63 +98,18 @@ const PantryManager: React.FC<PantryManagerProps> = ({ items, setItems, onNext, 
     }
   };
 
-  const handleScannedItems = (scannedItems: PantryItem[], mode: PantryUploadMode) => {
+  const handleScannedItems = async (scannedItems: PantryItem[], mode: PantryUploadMode) => {
     console.log('handleScannedItems called with mode:', mode);
     console.log('Scanned items:', scannedItems.map(i => ({ id: i.id, name: i.name })));
-    console.log('Existing items:', items.map(i => ({ id: i.id, name: i.name })));
 
-    if (mode === 'replace') {
-      // Replace all existing items with new scanned items
-      setItems(scannedItems);
-    } else if (mode === 'update_existing') {
-      // Update existing items with new quantities/names AND add new items
-      const updatedItems = [...items];
-      const newItems: PantryItem[] = [];
-      const processedIds = new Set<string>(); // Track which items we've already processed
+    // Save items to Supabase/localStorage and get back items with real IDs
+    const savedItems = await savePantryItems(scannedItems, mode);
+    console.log('Saved items from Supabase:', savedItems.map(i => ({ id: i.id, name: i.name })));
 
-      scannedItems.forEach(scanned => {
-        // Check if item exists by ID first (most reliable for updates)
-        let existingIndex = updatedItems.findIndex(existing => existing.id === scanned.id);
+    // Reload the full pantry to get consistent state
+    const refreshedPantry = await loadPantry();
+    setItems(refreshedPantry);
 
-        // If not found by ID, try matching by base name
-        if (existingIndex < 0) {
-          const scannedBaseName = scanned.name.replace(/\s*\([^)]*\)\s*$/, '').trim().toLowerCase();
-          existingIndex = updatedItems.findIndex(existing => {
-            const existingBaseName = existing.name.replace(/\s*\([^)]*\)\s*$/, '').trim().toLowerCase();
-            return existingBaseName === scannedBaseName && !processedIds.has(existing.id);
-          });
-        }
-
-        console.log(`Processing "${scanned.name}" (id: ${scanned.id}), found at index: ${existingIndex}`);
-
-        if (existingIndex >= 0) {
-          // Update existing item's name (which includes quantity)
-          const existingItem = updatedItems[existingIndex];
-          processedIds.add(existingItem.id);
-          console.log(`Updating existing item "${existingItem.name}" -> "${scanned.name}"`);
-          updatedItems[existingIndex] = {
-            ...existingItem,
-            name: scanned.name,
-          };
-        } else {
-          // Add as new item
-          console.log(`Adding new item: "${scanned.name}"`);
-          newItems.push(scanned);
-        }
-      });
-
-      console.log('Final updated items:', updatedItems.length, 'New items:', newItems.length);
-      setItems([...updatedItems, ...newItems]);
-    } else {
-      // Add only new items that don't exist yet (add_new mode)
-      const newItems = scannedItems.filter(
-        scanned => !items.some(existing =>
-          existing.name.replace(/\s*\([^)]*\)\s*$/, '').trim().toLowerCase() ===
-          scanned.name.replace(/\s*\([^)]*\)\s*$/, '').trim().toLowerCase()
-        )
-      );
-      setItems([...items, ...newItems]);
-    }
     setShowScanner(false);
   };
 
