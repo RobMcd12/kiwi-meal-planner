@@ -1,13 +1,35 @@
-import { serve } from 'https://deno.land/std@0.168.0/http/server.ts';
-import { GoogleGenerativeAI } from 'https://esm.sh/@google/generative-ai@0.21.0';
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.47.0';
-import { corsHeaders, handleCors } from '../_shared/cors.ts';
-import { verifyAuth } from '../_shared/auth.ts';
+/**
+ * Generate Dish Image Edge Function
+ *
+ * Generates a food photograph for a meal using Gemini AI image generation.
+ */
 
-serve(async (req) => {
+import { GoogleGenAI } from 'https://esm.sh/@google/genai@0.14.1';
+import { handleCors, getCorsHeaders } from '../_shared/cors.ts';
+import { verifyAuth } from '../_shared/auth.ts';
+import { checkRateLimit, RATE_LIMITS, rateLimitExceededResponse, getClientIP } from '../_shared/rateLimit.ts';
+
+interface GenerateImageRequest {
+  mealName: string;
+  description: string;
+  editInstructions?: string;
+}
+
+Deno.serve(async (req) => {
   // Handle CORS preflight
   const corsResponse = handleCors(req);
   if (corsResponse) return corsResponse;
+
+  const origin = req.headers.get('origin');
+  const responseHeaders = getCorsHeaders(origin);
+
+  // Check for POST method
+  if (req.method !== 'POST') {
+    return new Response('Method not allowed', {
+      status: 405,
+      headers: responseHeaders,
+    });
+  }
 
   try {
     // Verify authentication
@@ -15,40 +37,26 @@ serve(async (req) => {
     if (!auth) {
       return new Response(
         JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 401, headers: { ...responseHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
+    // Check rate limit for AI generation endpoints
+    const clientIP = getClientIP(req);
+    const rateLimitResult = await checkRateLimit(auth.userId, clientIP, RATE_LIMITS.AI_GENERATION);
+
+    if (!rateLimitResult.allowed) {
+      return rateLimitExceededResponse(rateLimitResult, responseHeaders);
+    }
+
     // Parse request body
-    const { mealName, description } = await req.json() as {
-      mealName: string;
-      description: string;
-    };
+    const { mealName, description, editInstructions } = await req.json() as GenerateImageRequest;
 
     // Validate input
     if (!mealName || typeof mealName !== 'string') {
       return new Response(
         JSON.stringify({ error: 'Invalid input: mealName is required' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Check cache first
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    );
-
-    const { data: cachedImage } = await supabase
-      .from('meal_image_cache')
-      .select('image_data')
-      .eq('meal_name', mealName)
-      .single();
-
-    if (cachedImage?.image_data) {
-      return new Response(
-        JSON.stringify({ imageData: cachedImage.image_data }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 400, headers: { ...responseHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -57,43 +65,66 @@ serve(async (req) => {
     if (!apiKey) {
       return new Response(
         JSON.stringify({ error: 'API key not configured' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 500, headers: { ...responseHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    const genAI = new GoogleGenerativeAI(apiKey);
+    const ai = new GoogleGenAI({ apiKey });
 
-    // Use Gemini's image generation model
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    // Build the prompt based on whether this is an edit or new generation
+    let prompt: string;
+    if (editInstructions) {
+      prompt = `A high-end food magazine photo of: ${mealName}.
+Description: ${description}
 
-    const prompt = `Generate a detailed description for a professional food photograph of: ${mealName}. ${description}.
-    Describe the plating, lighting, and presentation as if for a high-end food magazine.
+Special instructions for this image: ${editInstructions}
 
-    IMPORTANT: Only describe ingredients and components that are explicitly part of this specific recipe. Do NOT include garnishes, sides, or ingredients that are not mentioned in the description. The photograph must accurately represent ONLY what is in the actual recipe - no extra vegetables, sauces, or toppings that weren't specified.`;
+Create an appetizing, professional food photograph following these instructions.
 
-    // Note: As of current Gemini API, direct image generation isn't available via the standard API
-    // This function returns a placeholder or could be adapted when image generation is available
-    // For now, we'll return null to indicate no image was generated
+IMPORTANT: Only show ingredients and components that are explicitly part of this specific recipe as described above. Do NOT add garnishes, sides, or ingredients that are not mentioned in the description. The image must accurately represent ONLY what is in the actual recipe - no extra vegetables, sauces, or toppings that weren't specified.`;
+    } else {
+      prompt = `A high-end food magazine photo of a complete meal: ${mealName}. The image should show the main dish alongside its side dishes as described: ${description}. Warm, appetizing lighting, table setting.
 
-    const result = await model.generateContent(prompt);
-    const response = result.response;
-    const imageDescription = response.text();
+IMPORTANT: Only show ingredients and components that are explicitly part of this specific recipe. Do NOT add garnishes, sides, or ingredients that are not mentioned in the description. The image must accurately represent ONLY what is in the actual recipe - no extra vegetables, sauces, or toppings that weren't specified.`;
+    }
 
-    // Store the description in cache (or actual image when available)
-    // For now, we return null as actual image generation requires different API
+    // Generate the image using Gemini 2.5 Flash image model
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash-preview-05-20',
+      contents: {
+        parts: [{ text: prompt }],
+      },
+      config: {
+        responseModalities: ['image', 'text'],
+        imageSafety: 'block_low_and_above',
+      }
+    });
+
+    // Extract image data from response
+    let imageData: string | null = null;
+    for (const part of response.candidates?.[0]?.content?.parts || []) {
+      if (part.inlineData) {
+        imageData = `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
+        break;
+      }
+    }
+
+    if (!imageData) {
+      return new Response(
+        JSON.stringify({ error: 'No image generated' }),
+        { status: 500, headers: { ...responseHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     return new Response(
-      JSON.stringify({
-        imageData: null,
-        description: imageDescription,
-        message: 'Image generation not available - using client-side generation'
-      }),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      JSON.stringify({ imageData }),
+      { headers: { ...responseHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
     console.error('Error generating dish image:', error);
     return new Response(
       JSON.stringify({ error: error.message || 'Failed to generate image' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { status: 500, headers: { ...responseHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });

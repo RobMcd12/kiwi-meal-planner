@@ -135,6 +135,30 @@ const generateShoppingListViaEdge = async (
   return data as MealPlanResponse;
 };
 
+// Edge Function for dish image generation
+const generateDishImageViaEdge = async (
+  mealName: string,
+  description: string,
+  editInstructions?: string
+): Promise<string | null> => {
+  const { data, error } = await invokeWithAuth('generate-dish-image', {
+    mealName,
+    description,
+    editInstructions,
+  });
+
+  if (error) {
+    console.error('Edge Function error:', error);
+    throw new Error(error.message || 'Failed to generate image');
+  }
+
+  if (!data) {
+    throw new Error('No data returned from Edge Function');
+  }
+
+  return data.imageData || null;
+};
+
 // Edge Function for pantry scanning (images, video, audio, dictation)
 const scanPantryViaEdge = async (
   type: 'images' | 'video' | 'audio' | 'dictation',
@@ -350,6 +374,17 @@ Return weeklyPlan with meals on Day 1, Day 2, etc.`;
 };
 
 export const generateDishImage = async (mealName: string, description: string): Promise<string | null> => {
+  // Use Edge Functions in production when configured
+  if (USE_EDGE_FUNCTIONS && isSupabaseConfigured()) {
+    try {
+      return await generateDishImageViaEdge(mealName, description);
+    } catch (e) {
+      console.error("Failed to generate image via Edge Function", e);
+      return null;
+    }
+  }
+
+  // Fall back to client-side API call (development only)
   const apiKey = process.env.API_KEY;
   if (!apiKey) throw new Error("API Key is missing.");
   const ai = new GoogleGenAI({ apiKey });
@@ -388,6 +423,17 @@ export const editDishImage = async (
   description: string,
   editInstructions: string
 ): Promise<string | null> => {
+  // Use Edge Functions in production when configured
+  if (USE_EDGE_FUNCTIONS && isSupabaseConfigured()) {
+    try {
+      return await generateDishImageViaEdge(mealName, description, editInstructions);
+    } catch (e) {
+      console.error("Failed to edit image via Edge Function", e);
+      return null;
+    }
+  }
+
+  // Fall back to client-side API call (development only)
   const apiKey = process.env.API_KEY;
   if (!apiKey) throw new Error("API Key is missing.");
   const ai = new GoogleGenAI({ apiKey });
