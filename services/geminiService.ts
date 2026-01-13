@@ -787,6 +787,59 @@ const singleRecipeSchema: Schema = {
 };
 
 /**
+ * Generate a single recipe via Edge Function
+ */
+const generateSingleRecipeViaEdge = async (
+  recipeDescription: string,
+  preferences: UserPreferences,
+  pantryItems: PantryItem[],
+  peopleCount: number,
+  useWhatIHave: boolean,
+  macroTargets?: { calories: number; protein: number; carbohydrates: number; fat: number },
+  meatServingGrams?: number
+): Promise<Meal> => {
+  const session = await getSession();
+  if (!session) {
+    throw new Error('Authentication required');
+  }
+
+  const { data, error } = await supabase.functions.invoke('generate-recipe', {
+    body: {
+      recipeDescription,
+      preferences,
+      pantryItems,
+      peopleCount,
+      useWhatIHave,
+      macroTargets,
+      meatServingGrams
+    }
+  });
+
+  if (error) {
+    console.error('Edge Function error:', error);
+    throw new Error(error.message || 'Failed to generate recipe');
+  }
+
+  if (!data) {
+    throw new Error('No data returned from Edge Function');
+  }
+
+  // Ensure the response has the expected structure
+  const meal: Meal = {
+    id: data.id || `single-${Date.now()}`,
+    name: data.name,
+    description: data.description,
+    ingredients: data.ingredients,
+    instructions: data.instructions,
+    tags: data.tags || [],
+    source: 'generated',
+    servings: data.servings || peopleCount,
+  };
+
+  return meal;
+};
+
+/**
  * Generate a single recipe based on user description
  * Uses pantry items and preferences like the meal planner
  */
@@ -800,6 +853,20 @@ export const generateSingleRecipe = async (
   macroTargets?: { calories: number; protein: number; carbohydrates: number; fat: number },
   meatServingGrams?: number
 ): Promise<Meal> => {
+  // Use Edge Functions in production when configured
+  if (USE_EDGE_FUNCTIONS && isSupabaseConfigured()) {
+    return generateSingleRecipeViaEdge(
+      recipeDescription,
+      preferences,
+      pantryItems,
+      peopleCount,
+      useWhatIHave,
+      macroTargets,
+      meatServingGrams
+    );
+  }
+
+  // Fall back to client-side API call (development only)
   const apiKey = process.env.API_KEY;
   if (!apiKey) throw new Error("API Key is missing.");
 
