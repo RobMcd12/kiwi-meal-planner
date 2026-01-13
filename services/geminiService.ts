@@ -1,6 +1,6 @@
 import { GoogleGenAI, Type, Schema } from "@google/genai";
 import { UserPreferences, PantryItem, MealPlanResponse, MealConfig, Meal, ExtractedRecipe, ScannedPantryResult, SideDish, CountryCode, MacroTargets, DEFAULT_MACRO_TARGETS } from "../types";
-import { supabase, isSupabaseConfigured } from "./authService";
+import { supabase, isSupabaseConfigured, getSession } from "./authService";
 import { getInstructionsByTag, buildPromptWithInstructions } from "./adminInstructionsService";
 import { getLocalizationInstruction } from "./profileService";
 import { formatMacroTargetsForPrompt } from "./macroTargetService";
@@ -89,14 +89,33 @@ const responseSchema: Schema = {
 
 // --- Edge Function Calls (Production) ---
 
+/**
+ * Helper to invoke Edge Function with explicit auth header
+ * This ensures the access token is properly passed
+ */
+const invokeWithAuth = async (functionName: string, body: Record<string, unknown>) => {
+  const session = await getSession();
+  const accessToken = session?.access_token;
+
+  if (!accessToken) {
+    console.warn(`No access token available for ${functionName} call`);
+    throw new Error('Not authenticated');
+  }
+
+  return supabase.functions.invoke(functionName, {
+    body,
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+};
+
 const generateMealPlanViaEdge = async (
   config: MealConfig,
   preferences: UserPreferences,
   pantryItems: PantryItem[]
 ): Promise<MealPlanResponse> => {
-  const { data, error } = await supabase.functions.invoke('generate-meal-plan', {
-    body: { config, preferences, pantryItems },
-  });
+  const { data, error } = await invokeWithAuth('generate-meal-plan', { config, preferences, pantryItems });
 
   if (error) throw error;
   if (!data) throw new Error('No data returned from Edge Function');
@@ -109,9 +128,7 @@ const generateShoppingListViaEdge = async (
   peopleCount: number,
   pantryItems: PantryItem[]
 ): Promise<MealPlanResponse> => {
-  const { data, error } = await supabase.functions.invoke('generate-shopping-list', {
-    body: { meals, peopleCount, pantryItems },
-  });
+  const { data, error } = await invokeWithAuth('generate-shopping-list', { meals, peopleCount, pantryItems });
 
   if (error) throw error;
   if (!data) throw new Error('No data returned from Edge Function');
@@ -129,9 +146,7 @@ const scanPantryViaEdge = async (
     dictationText?: string;
   }
 ): Promise<ScannedPantryResult> => {
-  const { data, error } = await supabase.functions.invoke('scan-pantry', {
-    body: { type, ...payload },
-  });
+  const { data, error } = await invokeWithAuth('scan-pantry', { type, ...payload });
 
   if (error) throw error;
   if (!data) throw new Error('No data returned from Edge Function');

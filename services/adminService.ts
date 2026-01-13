@@ -1,4 +1,4 @@
-import { supabase, isSupabaseConfigured } from './authService';
+import { supabase, isSupabaseConfigured, getSession } from './authService';
 
 // SECURITY: Super admin email moved to Supabase secret (SUPER_ADMIN_EMAIL)
 // Use checkIsSuperAdmin() Edge Function to verify super admin status
@@ -6,6 +6,27 @@ import { supabase, isSupabaseConfigured } from './authService';
 // Cache for super admin check (avoids repeated API calls)
 let superAdminCache: { [userId: string]: { isSuperAdmin: boolean; timestamp: number } } = {};
 const SUPER_ADMIN_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+/**
+ * Helper to invoke Edge Function with explicit auth header
+ * This ensures the access token is properly passed even if there are timing issues
+ */
+const invokeWithAuth = async (functionName: string, body: Record<string, unknown>) => {
+  const session = await getSession();
+  const accessToken = session?.access_token;
+
+  if (!accessToken) {
+    console.warn(`No access token available for ${functionName} call`);
+    return { data: null, error: new Error('No access token') };
+  }
+
+  return supabase.functions.invoke(functionName, {
+    body,
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+    },
+  });
+};
 
 export interface UserProfile {
   id: string;
@@ -32,9 +53,7 @@ export const checkIsSuperAdmin = async (userId: string): Promise<boolean> => {
   }
 
   try {
-    const { data, error } = await supabase.functions.invoke('check-super-admin', {
-      body: {},
-    });
+    const { data, error } = await invokeWithAuth('check-super-admin', {});
 
     if (error) {
       console.error('Error checking super admin status:', error);
