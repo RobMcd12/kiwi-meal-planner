@@ -341,6 +341,24 @@ export const removePantryItem = async (id: string): Promise<void> => {
   await supabase.from('pantry_items').delete().eq('id', id);
 };
 
+// Clear all pantry items by staple type
+export const clearPantryItems = async (isStaple: boolean): Promise<void> => {
+  if (!isSupabaseConfigured()) {
+    const items = loadPantryLocal();
+    savePantryLocal(items.filter(item => item.isStaple !== isStaple));
+    return;
+  }
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    const items = loadPantryLocal();
+    savePantryLocal(items.filter(item => item.isStaple !== isStaple));
+    return;
+  }
+
+  await supabase.from('pantry_items').delete().eq('user_id', user.id).eq('is_staple', isStaple);
+};
+
 // Sync function for bulk pantry operations (localStorage only - use savePantryItems for Supabase)
 export const savePantry = async (items: PantryItem[]): Promise<void> => {
   savePantryLocal(items);

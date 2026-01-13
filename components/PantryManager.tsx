@@ -8,7 +8,7 @@ import LiveDictation from './LiveDictation';
 import AudioRecorder from './AudioRecorder';
 import PantryItemEditModal from './PantryItemEditModal';
 import PantryCategorizedList from './PantryCategorizedList';
-import { savePantryItem, savePantryItems, updatePantryItemStaple, togglePantryItemRestock, clearStaplesRestock, updatePantryItemQuantity, removePantryItem, loadPantry } from '../services/storageService';
+import { savePantryItem, savePantryItems, updatePantryItemStaple, togglePantryItemRestock, clearStaplesRestock, updatePantryItemQuantity, removePantryItem, clearPantryItems, loadPantry } from '../services/storageService';
 
 interface PantryManagerProps {
   items: PantryItem[];
@@ -140,6 +140,22 @@ const PantryManager: React.FC<PantryManagerProps> = ({ items, setItems, onNext, 
     if (success) {
       setItems(items.map(item => ({ ...item, needsRestock: false })));
     }
+  };
+
+  const handleEmptyPantry = async () => {
+    if (!window.confirm('Are you sure you want to remove all items from your pantry? This cannot be undone.')) {
+      return;
+    }
+    await clearPantryItems(false);
+    setItems(items.filter(item => item.isStaple));
+  };
+
+  const handleEmptyStaples = async () => {
+    if (!window.confirm('Are you sure you want to remove all staple items? This cannot be undone.')) {
+      return;
+    }
+    await clearPantryItems(true);
+    setItems(items.filter(item => !item.isStaple));
   };
 
   const handleQuantitySave = async (quantity: number | null, unit: string | null) => {
@@ -331,7 +347,7 @@ const PantryManager: React.FC<PantryManagerProps> = ({ items, setItems, onNext, 
             </div>
           </div>
 
-          <div className="bg-slate-50 rounded-lg p-4 min-h-[200px] max-h-[500px] overflow-y-auto mb-8 border border-slate-200">
+          <div className="bg-slate-50 rounded-lg p-4 min-h-[200px] max-h-[500px] overflow-y-auto border border-slate-200">
             <PantryCategorizedList
               items={items}
               setItems={setItems}
@@ -343,6 +359,17 @@ const PantryManager: React.FC<PantryManagerProps> = ({ items, setItems, onNext, 
               formatQuantity={formatQuantity}
             />
           </div>
+
+          {/* Empty Pantry Button */}
+          {regularItems.length > 0 && (
+            <button
+              onClick={handleEmptyPantry}
+              className="w-full mt-4 mb-8 py-2.5 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 border border-red-200"
+            >
+              <Trash2 size={16} />
+              Empty My Pantry ({regularItems.length} items)
+            </button>
+          )}
         </>
       )}
 
@@ -431,6 +458,17 @@ const PantryManager: React.FC<PantryManagerProps> = ({ items, setItems, onNext, 
               formatQuantity={formatQuantity}
             />
           </div>
+
+          {/* Empty Staples Button */}
+          {stapleItems.length > 0 && (
+            <button
+              onClick={handleEmptyStaples}
+              className="w-full mt-4 py-2.5 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-lg font-medium transition-colors flex items-center justify-center gap-2 border border-red-200"
+            >
+              <Trash2 size={16} />
+              Empty My Staples ({stapleItems.length} items)
+            </button>
+          )}
         </div>
       )}
 
