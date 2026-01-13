@@ -403,7 +403,7 @@ export interface ScannedPantryResult {
   };
 }
 
-export type PantryUploadMode = 'replace' | 'add_new';
+export type PantryUploadMode = 'replace' | 'add_new' | 'update_existing';
 
 // ============================================
 // RECIPE VIDEO TYPES

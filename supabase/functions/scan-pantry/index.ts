@@ -140,17 +140,21 @@ Deno.serve(async (req) => {
 
 Identify ALL visible food items, ingredients, and cooking supplies. Be thorough and specific.
 
-IMPORTANT - For EVERY item, you MUST estimate quantities:
-- Count individual items (e.g., "6 eggs", "3 apples", "2 onions")
-- Estimate container sizes from packaging (e.g., "1L milk", "500g butter", "400g canned tomatoes")
-- For bulk items, estimate amounts (e.g., "~500g chicken breast", "~1kg potatoes")
-- Include the quantity directly in the item name (e.g., "milk (1L)" not just "milk")
+CRITICAL - For EVERY item, you MUST estimate the REMAINING quantity:
+- Count individual items (e.g., "eggs (6)", "apples (3)", "onions (2)")
+- For containers/bottles: estimate how much is LEFT, not the original size
+  - If a 1L milk bottle looks half full: "milk (~500ml remaining)"
+  - If a jar of sauce is mostly empty: "pasta sauce (~100ml remaining)"
+  - If a butter block is partially used: "butter (~200g remaining)"
+- For packaged items, estimate remaining contents based on visual appearance
+- For bulk items, estimate visible amounts (e.g., "rice (~500g)", "potatoes (~1kg)")
+- Include the quantity in parentheses after the item name
 
 For each item:
-- Use common names (e.g., "eggs (6)" not "chicken eggs")
-- ALWAYS include quantity estimates - this is critical for meal planning
-- Note package sizes when visible on labels
-- Include brand names if visible
+- Use common names with quantity: "eggs (6)" not just "eggs"
+- ALWAYS estimate remaining amounts - this is critical for meal planning
+- Be realistic about partially used items - most pantries have opened packages
+- Include brand names if clearly visible
 
 Group items into categories:
 - Produce (fruits, vegetables)
@@ -162,7 +166,7 @@ Group items into categories:
 - Condiments & Sauces
 - Other
 
-Return all identified items as a flat list in "items" and categorized in "categories". Every item MUST include a quantity estimate.`;
+Return all identified items as a flat list in "items" and categorized in "categories". Every item MUST include a remaining quantity estimate.`;
         break;
 
       case 'video':
@@ -184,17 +188,21 @@ Return all identified items as a flat list in "items" and categorized in "catego
 
 Identify ALL visible food items, ingredients, and cooking supplies throughout the video. Be thorough and specific.
 
-IMPORTANT - For EVERY item, you MUST estimate quantities:
-- Count individual items (e.g., "6 eggs", "3 apples", "2 onions")
-- Estimate container sizes from packaging (e.g., "1L milk", "500g butter", "400g canned tomatoes")
-- For bulk items, estimate amounts (e.g., "~500g chicken breast", "~1kg potatoes")
-- Include the quantity directly in the item name (e.g., "milk (1L)" not just "milk")
+CRITICAL - For EVERY item, you MUST estimate the REMAINING quantity:
+- Count individual items (e.g., "eggs (6)", "apples (3)", "onions (2)")
+- For containers/bottles: estimate how much is LEFT, not the original size
+  - If a 1L milk bottle looks half full: "milk (~500ml remaining)"
+  - If a jar of sauce is mostly empty: "pasta sauce (~100ml remaining)"
+  - If a butter block is partially used: "butter (~200g remaining)"
+- For packaged items, estimate remaining contents based on visual appearance
+- For bulk items, estimate visible amounts (e.g., "rice (~500g)", "potatoes (~1kg)")
+- Include the quantity in parentheses after the item name
 
 For each item:
-- Use common names (e.g., "eggs (6)" not "chicken eggs")
-- ALWAYS include quantity estimates - this is critical for meal planning
-- Note package sizes when visible on labels
-- Include brand names if visible
+- Use common names with quantity: "eggs (6)" not just "eggs"
+- ALWAYS estimate remaining amounts - this is critical for meal planning
+- Be realistic about partially used items - most pantries have opened packages
+- Include brand names if clearly visible
 
 Group items into categories:
 - Produce (fruits, vegetables)
@@ -206,7 +214,7 @@ Group items into categories:
 - Condiments & Sauces
 - Other
 
-Return all identified items as a flat list in "items" and categorized in "categories". Every item MUST include a quantity estimate.`;
+Return all identified items as a flat list in "items" and categorized in "categories". Every item MUST include a remaining quantity estimate.`;
         break;
 
       case 'audio':

@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Camera, Upload, X, Loader2, Check, Plus, Trash2, Image as ImageIcon, Sparkles, AlertCircle, AlertTriangle } from 'lucide-react';
+import { Camera, Upload, X, Loader2, Check, Plus, Trash2, Image as ImageIcon, Sparkles, AlertCircle, AlertTriangle, Edit3, RefreshCw } from 'lucide-react';
 import { scanPantryFromImages } from '../services/geminiService';
 import type { PantryItem, ScannedPantryResult, PantryUploadMode } from '../types';
 import PantryUploadModeModal from './PantryUploadModeModal';
@@ -18,23 +18,53 @@ interface ImagePreview {
   preview: string;
 }
 
+// Track editable items with their names
+interface EditableItem {
+  originalName: string;
+  editedName: string;
+  selected: boolean;
+}
+
 const PantryScanner: React.FC<PantryScannerProps> = ({ onItemsScanned, onClose, existingItemCount, existingItems = [] }) => {
   const [images, setImages] = useState<ImagePreview[]>([]);
   const [isScanning, setIsScanning] = useState(false);
   const [scanResult, setScanResult] = useState<ScannedPantryResult | null>(null);
-  const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
+  const [editableItems, setEditableItems] = useState<Map<string, EditableItem>>(new Map());
+  const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showUploadModeModal, setShowUploadModeModal] = useState(false);
+  const [includeUpdates, setIncludeUpdates] = useState(true); // Option to update existing items
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
-  // Helper to check if an item already exists in pantry (case-insensitive)
+  // Helper to check if an item already exists in pantry (case-insensitive, ignoring quantity in parens)
+  const getBaseItemName = (itemName: string): string => {
+    // Extract just the item name without quantity (e.g., "milk (~500ml)" -> "milk")
+    return itemName.replace(/\s*\([^)]*\)\s*$/, '').trim().toLowerCase();
+  };
+
   const isDuplicate = (itemName: string): boolean => {
+    const baseName = getBaseItemName(itemName);
     return existingItems.some(
-      existing => existing.name.toLowerCase() === itemName.toLowerCase()
+      existing => getBaseItemName(existing.name) === baseName
     );
   };
+
+  // Find the existing item that matches
+  const findExistingItem = (itemName: string): PantryItem | undefined => {
+    const baseName = getBaseItemName(itemName);
+    return existingItems.find(
+      existing => getBaseItemName(existing.name) === baseName
+    );
+  };
+
+  // Get selected items from editableItems
+  const selectedItems = new Set(
+    Array.from(editableItems.values())
+      .filter(item => item.selected)
+      .map(item => item.editedName)
+  );
 
   // Count duplicates in selected items
   const duplicatesInSelection = Array.from(selectedItems).filter(isDuplicate).length;
@@ -92,8 +122,17 @@ const PantryScanner: React.FC<PantryScannerProps> = ({ onItemsScanned, onClose, 
         images.map(img => ({ base64: img.base64, mimeType: img.mimeType }))
       );
       setScanResult(result);
-      // Pre-select all items
-      setSelectedItems(new Set(result.items));
+      // Initialize editable items - pre-select all
+      const newEditableItems = new Map<string, EditableItem>();
+      result.items.forEach((item, index) => {
+        const id = `item-${index}`;
+        newEditableItems.set(id, {
+          originalName: item,
+          editedName: item,
+          selected: true,
+        });
+      });
+      setEditableItems(newEditableItems);
     } catch (err) {
       console.error('Scan error:', err);
       setError('Failed to analyze images. Please try again.');
@@ -102,30 +141,58 @@ const PantryScanner: React.FC<PantryScannerProps> = ({ onItemsScanned, onClose, 
     }
   };
 
-  const toggleItem = (item: string) => {
-    setSelectedItems(prev => {
-      const next = new Set(prev);
-      if (next.has(item)) {
-        next.delete(item);
-      } else {
-        next.add(item);
+  const toggleItem = (itemId: string) => {
+    setEditableItems(prev => {
+      const next = new Map(prev);
+      const item = next.get(itemId);
+      if (item) {
+        next.set(itemId, { ...item, selected: !item.selected });
+      }
+      return next;
+    });
+  };
+
+  const updateItemName = (itemId: string, newName: string) => {
+    setEditableItems(prev => {
+      const next = new Map(prev);
+      const item = next.get(itemId);
+      if (item) {
+        next.set(itemId, { ...item, editedName: newName });
       }
       return next;
     });
   };
 
   const selectAll = () => {
-    if (scanResult) {
-      setSelectedItems(new Set(scanResult.items));
-    }
+    setEditableItems(prev => {
+      const next = new Map(prev);
+      next.forEach((item, id) => {
+        next.set(id, { ...item, selected: true });
+      });
+      return next;
+    });
   };
 
   const deselectAll = () => {
-    setSelectedItems(new Set());
+    setEditableItems(prev => {
+      const next = new Map(prev);
+      next.forEach((item, id) => {
+        next.set(id, { ...item, selected: false });
+      });
+      return next;
+    });
+  };
+
+  // Find item ID by original name
+  const findItemIdByName = (name: string): string | undefined => {
+    for (const [id, item] of editableItems.entries()) {
+      if (item.originalName === name) return id;
+    }
+    return undefined;
   };
 
   const handleAddSelected = () => {
-    // If there are existing items, show the upload mode modal
+    // If there are existing items and user wants to update them, show the upload mode modal
     if (existingItemCount > 0) {
       setShowUploadModeModal(true);
     } else {
@@ -135,13 +202,36 @@ const PantryScanner: React.FC<PantryScannerProps> = ({ onItemsScanned, onClose, 
   };
 
   const finalizeAddItems = (mode: PantryUploadMode) => {
-    // Filter out duplicates - only add new items
-    const newItemNames = Array.from(selectedItems).filter(name => !isDuplicate(name));
-    const items: PantryItem[] = newItemNames.map(name => ({
-      id: `scanned-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      name,
-    }));
-    onItemsScanned(items, mode);
+    const items: PantryItem[] = [];
+
+    // Get all selected items
+    editableItems.forEach((item) => {
+      if (!item.selected) return;
+
+      const isExisting = isDuplicate(item.editedName);
+
+      if (isExisting && includeUpdates) {
+        // Update existing item - use the existing item's ID but new name
+        const existingItem = findExistingItem(item.editedName);
+        if (existingItem) {
+          items.push({
+            id: existingItem.id,
+            name: item.editedName,
+            // Preserve other fields from existing item
+          });
+        }
+      } else if (!isExisting) {
+        // New item
+        items.push({
+          id: `scanned-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          name: item.editedName,
+        });
+      }
+    });
+
+    // Use 'update_existing' mode when includeUpdates is true and we have duplicates
+    const finalMode = includeUpdates && duplicatesInSelection > 0 ? 'update_existing' : mode;
+    onItemsScanned(items, finalMode as PantryUploadMode);
   };
 
   const handleUploadModeSelect = (mode: PantryUploadMode) => {
@@ -320,90 +410,128 @@ const PantryScanner: React.FC<PantryScannerProps> = ({ onItemsScanned, onClose, 
                 </div>
               </div>
 
-              {/* Duplicate warning */}
+              {/* Duplicate warning and update toggle */}
               {duplicatesInSelection > 0 && (
-                <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 flex items-start gap-2">
-                  <AlertTriangle size={18} className="text-amber-500 mt-0.5 flex-shrink-0" />
-                  <div>
-                    <p className="text-sm font-medium text-amber-800">
-                      {duplicatesInSelection} item{duplicatesInSelection !== 1 ? 's' : ''} already in your pantry
-                    </p>
-                    <p className="text-xs text-amber-600 mt-0.5">
-                      Items marked with a yellow border are already in your pantry. Selecting them will not add duplicates.
-                    </p>
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 space-y-3">
+                  <div className="flex items-start gap-2">
+                    <AlertTriangle size={18} className="text-amber-500 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <p className="text-sm font-medium text-amber-800">
+                        {duplicatesInSelection} item{duplicatesInSelection !== 1 ? 's' : ''} already in your pantry
+                      </p>
+                      <p className="text-xs text-amber-600 mt-0.5">
+                        Items marked with a yellow border are already in your pantry.
+                      </p>
+                    </div>
                   </div>
+                  {/* Toggle for updating existing items */}
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={includeUpdates}
+                      onChange={(e) => setIncludeUpdates(e.target.checked)}
+                      className="w-4 h-4 rounded border-amber-300 text-amber-600 focus:ring-amber-500"
+                    />
+                    <span className="text-sm text-amber-800">
+                      <RefreshCw size={14} className="inline mr-1" />
+                      Update quantities for existing items
+                    </span>
+                  </label>
                 </div>
               )}
 
-              {/* Categorized Items */}
-              {scanResult.categories ? (
-                <div className="space-y-4">
-                  {Object.entries(scanResult.categories).map(([category, items]) => {
-                    if (!items || items.length === 0) return null;
-                    return (
-                      <div key={category} className="bg-slate-50 rounded-xl p-3">
-                        <h4 className="font-medium text-slate-700 mb-2">
-                          {categoryLabels[category] || category}
-                        </h4>
-                        <div className="flex flex-wrap gap-2">
-                          {items.map((item, idx) => {
-                            const isExisting = isDuplicate(item);
-                            const isSelected = selectedItems.has(item);
-                            return (
-                              <button
-                                key={idx}
-                                onClick={() => toggleItem(item)}
-                                className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                                  isSelected
-                                    ? isExisting
-                                      ? 'bg-amber-400 text-white border-2 border-amber-500'
-                                      : 'bg-emerald-500 text-white'
-                                    : isExisting
-                                      ? 'bg-amber-50 text-amber-700 border-2 border-amber-300'
-                                      : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
-                                }`}
-                                title={isExisting ? 'Already in pantry' : 'New item'}
-                              >
-                                {isSelected && <Check size={14} className="inline mr-1" />}
-                                {isExisting && !isSelected && <AlertTriangle size={12} className="inline mr-1" />}
-                                {item}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                // Flat list if no categories
-                <div className="flex flex-wrap gap-2">
-                  {scanResult.items.map((item, idx) => {
-                    const isExisting = isDuplicate(item);
-                    const isSelected = selectedItems.has(item);
-                    return (
+              {/* Editing instructions */}
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 flex items-start gap-2">
+                <Edit3 size={18} className="text-blue-500 mt-0.5 flex-shrink-0" />
+                <p className="text-sm text-blue-700">
+                  Click the <Edit3 size={12} className="inline" /> icon on any item to edit its name or quantity before adding.
+                </p>
+              </div>
+
+              {/* Items List - now using editableItems */}
+              <div className="space-y-2">
+                {Array.from(editableItems.entries()).map(([itemId, item]) => {
+                  const isExisting = isDuplicate(item.editedName);
+                  const isEditing = editingItemId === itemId;
+
+                  return (
+                    <div
+                      key={itemId}
+                      className={`flex items-center gap-2 p-2 rounded-lg transition-colors ${
+                        item.selected
+                          ? isExisting
+                            ? 'bg-amber-100 border-2 border-amber-400'
+                            : 'bg-emerald-100 border-2 border-emerald-400'
+                          : 'bg-slate-50 border border-slate-200'
+                      }`}
+                    >
+                      {/* Checkbox */}
                       <button
-                        key={idx}
-                        onClick={() => toggleItem(item)}
-                        className={`px-3 py-1.5 rounded-full text-sm font-medium transition-colors ${
-                          isSelected
+                        onClick={() => toggleItem(itemId)}
+                        className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center transition-colors ${
+                          item.selected
                             ? isExisting
-                              ? 'bg-amber-400 text-white border-2 border-amber-500'
+                              ? 'bg-amber-500 text-white'
                               : 'bg-emerald-500 text-white'
-                            : isExisting
-                              ? 'bg-amber-50 text-amber-700 border-2 border-amber-300'
-                              : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                            : 'bg-white border-2 border-slate-300 hover:border-slate-400'
                         }`}
-                        title={isExisting ? 'Already in pantry' : 'New item'}
                       >
-                        {isSelected && <Check size={14} className="inline mr-1" />}
-                        {isExisting && !isSelected && <AlertTriangle size={12} className="inline mr-1" />}
-                        {item}
+                        {item.selected && <Check size={14} />}
                       </button>
-                    );
-                  })}
-                </div>
-              )}
+
+                      {/* Item name - editable or display */}
+                      {isEditing ? (
+                        <input
+                          type="text"
+                          value={item.editedName}
+                          onChange={(e) => updateItemName(itemId, e.target.value)}
+                          onBlur={() => setEditingItemId(null)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') setEditingItemId(null);
+                            if (e.key === 'Escape') {
+                              updateItemName(itemId, item.originalName);
+                              setEditingItemId(null);
+                            }
+                          }}
+                          autoFocus
+                          className="flex-1 px-2 py-1 text-sm bg-white border border-emerald-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                          placeholder="Item name with quantity"
+                        />
+                      ) : (
+                        <span
+                          className={`flex-1 text-sm ${
+                            item.selected ? 'text-slate-800 font-medium' : 'text-slate-600'
+                          }`}
+                        >
+                          {isExisting && <AlertTriangle size={12} className="inline mr-1 text-amber-500" />}
+                          {item.editedName}
+                          {item.editedName !== item.originalName && (
+                            <span className="text-xs text-slate-400 ml-1">(edited)</span>
+                          )}
+                        </span>
+                      )}
+
+                      {/* Edit button */}
+                      {!isEditing && (
+                        <button
+                          onClick={() => setEditingItemId(itemId)}
+                          className="flex-shrink-0 p-1.5 text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors"
+                          title="Edit item name/quantity"
+                        >
+                          <Edit3 size={14} />
+                        </button>
+                      )}
+
+                      {/* Status badge */}
+                      {isExisting && (
+                        <span className="flex-shrink-0 text-xs px-2 py-0.5 bg-amber-200 text-amber-800 rounded-full">
+                          {includeUpdates ? 'update' : 'exists'}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
 
               {/* Rescan Option */}
               <button
@@ -442,24 +570,41 @@ const PantryScanner: React.FC<PantryScannerProps> = ({ onItemsScanned, onClose, 
             </button>
           ) : (
             <div className="space-y-2">
-              {newItemsInSelection > 0 || duplicatesInSelection === 0 ? (
+              {/* Main action button */}
+              {(newItemsInSelection > 0 || (includeUpdates && duplicatesInSelection > 0)) ? (
                 <button
                   onClick={handleAddSelected}
-                  disabled={newItemsInSelection === 0}
+                  disabled={newItemsInSelection === 0 && (!includeUpdates || duplicatesInSelection === 0)}
                   className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 text-white rounded-xl font-semibold flex items-center justify-center gap-2 transition-colors"
                 >
-                  <Plus size={20} />
-                  Add {newItemsInSelection} New Item{newItemsInSelection !== 1 ? 's' : ''} to Pantry
+                  {includeUpdates && duplicatesInSelection > 0 ? (
+                    <>
+                      <RefreshCw size={20} />
+                      {newItemsInSelection > 0
+                        ? `Add ${newItemsInSelection} & Update ${duplicatesInSelection} Item${newItemsInSelection + duplicatesInSelection !== 1 ? 's' : ''}`
+                        : `Update ${duplicatesInSelection} Item${duplicatesInSelection !== 1 ? 's' : ''}`
+                      }
+                    </>
+                  ) : (
+                    <>
+                      <Plus size={20} />
+                      Add {newItemsInSelection} New Item{newItemsInSelection !== 1 ? 's' : ''} to Pantry
+                    </>
+                  )}
                 </button>
               ) : (
                 <div className="text-center py-3 text-amber-700 bg-amber-50 rounded-xl">
                   <AlertTriangle size={18} className="inline mr-2" />
-                  All selected items are already in your pantry
+                  {duplicatesInSelection > 0
+                    ? 'Enable "Update quantities" above to update existing items'
+                    : 'Select items to add to your pantry'
+                  }
                 </div>
               )}
-              {duplicatesInSelection > 0 && newItemsInSelection > 0 && (
+              {/* Info text */}
+              {duplicatesInSelection > 0 && !includeUpdates && newItemsInSelection > 0 && (
                 <p className="text-xs text-center text-slate-500">
-                  {duplicatesInSelection} duplicate{duplicatesInSelection !== 1 ? 's' : ''} will be skipped
+                  {duplicatesInSelection} existing item{duplicatesInSelection !== 1 ? 's' : ''} will be skipped
                 </p>
               )}
             </div>

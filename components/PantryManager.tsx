@@ -102,11 +102,38 @@ const PantryManager: React.FC<PantryManagerProps> = ({ items, setItems, onNext, 
     if (mode === 'replace') {
       // Replace all existing items with new scanned items
       setItems(scannedItems);
+    } else if (mode === 'update_existing') {
+      // Update existing items with new quantities/names AND add new items
+      const updatedItems = [...items];
+      const newItems: PantryItem[] = [];
+
+      scannedItems.forEach(scanned => {
+        // Check if item exists by ID (for updates) or by base name
+        const existingIndex = updatedItems.findIndex(existing =>
+          existing.id === scanned.id ||
+          existing.name.replace(/\s*\([^)]*\)\s*$/, '').trim().toLowerCase() ===
+          scanned.name.replace(/\s*\([^)]*\)\s*$/, '').trim().toLowerCase()
+        );
+
+        if (existingIndex >= 0) {
+          // Update existing item's name (which includes quantity)
+          updatedItems[existingIndex] = {
+            ...updatedItems[existingIndex],
+            name: scanned.name,
+          };
+        } else {
+          // Add as new item
+          newItems.push(scanned);
+        }
+      });
+
+      setItems([...updatedItems, ...newItems]);
     } else {
       // Add only new items that don't exist yet (add_new mode)
       const newItems = scannedItems.filter(
         scanned => !items.some(existing =>
-          existing.name.toLowerCase() === scanned.name.toLowerCase()
+          existing.name.replace(/\s*\([^)]*\)\s*$/, '').trim().toLowerCase() ===
+          scanned.name.replace(/\s*\([^)]*\)\s*$/, '').trim().toLowerCase()
         )
       );
       setItems([...items, ...newItems]);
