@@ -5,7 +5,7 @@
  */
 
 import { GoogleGenerativeAI } from 'https://esm.sh/@google/generative-ai@0.21.0';
-import { corsHeaders, handleCors, getCorsHeaders } from '../_shared/cors.ts';
+import { handleCors, getCorsHeaders } from '../_shared/cors.ts';
 import { verifyAuth } from '../_shared/auth.ts';
 import { mealSchema } from '../_shared/schemas.ts';
 import { checkRateLimit, RATE_LIMITS, rateLimitExceededResponse, getClientIP } from '../_shared/rateLimit.ts';
@@ -108,14 +108,14 @@ Deno.serve(async (req) => {
     if (!recipeDescription || typeof recipeDescription !== 'string') {
       return new Response(
         JSON.stringify({ error: 'Invalid input: recipeDescription is required' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 400, headers: { ...responseHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
     if (typeof peopleCount !== 'number' || peopleCount < 1 || peopleCount > 12) {
       return new Response(
         JSON.stringify({ error: 'Invalid input: peopleCount must be between 1 and 12' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 400, headers: { ...responseHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -125,7 +125,7 @@ Deno.serve(async (req) => {
       console.error('generate-recipe: GEMINI_API_KEY not configured');
       return new Response(
         JSON.stringify({ error: 'API key not configured' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 500, headers: { ...responseHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -206,7 +206,7 @@ Return a single recipe object with:
     if (!text) {
       return new Response(
         JSON.stringify({ error: 'Empty response from AI model' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 500, headers: { ...responseHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -216,7 +216,7 @@ Return a single recipe object with:
     if (!parsed.name || !parsed.description || !parsed.ingredients || !parsed.instructions) {
       return new Response(
         JSON.stringify({ error: 'Invalid recipe structure from AI' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 500, headers: { ...responseHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -229,7 +229,7 @@ Return a single recipe object with:
 
     return new Response(
       JSON.stringify(parsed),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { headers: { ...responseHeaders, 'Content-Type': 'application/json' } }
     );
   } catch (error) {
     console.error('Error generating recipe:', error);
