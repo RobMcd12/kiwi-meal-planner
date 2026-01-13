@@ -408,20 +408,40 @@ const PantryScanner: React.FC<PantryScannerProps> = ({ onItemsScanned, onClose, 
                 </div>
               </div>
 
-              {/* Duplicate info */}
-              {duplicatesInSelection > 0 && (
-                <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
-                  <div className="flex items-start gap-2">
-                    <AlertTriangle size={18} className="text-amber-500 mt-0.5 flex-shrink-0" />
-                    <div>
-                      <p className="text-sm font-medium text-amber-800">
-                        {duplicatesInSelection} item{duplicatesInSelection !== 1 ? 's' : ''} already in your pantry
-                      </p>
-                      <p className="text-xs text-amber-600 mt-0.5">
-                        Items marked with yellow will have their quantities updated.
-                      </p>
-                    </div>
+              {/* Color Key / Legend */}
+              <div className="bg-slate-100 border border-slate-200 rounded-xl p-3">
+                <p className="text-xs font-medium text-slate-600 mb-2">Color Key:</p>
+                <div className="flex flex-wrap gap-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 rounded bg-emerald-400 border-2 border-emerald-500"></div>
+                    <span className="text-xs text-slate-600">New item (will be added)</span>
                   </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 rounded bg-amber-400 border-2 border-amber-500"></div>
+                    <span className="text-xs text-slate-600">Existing item (quantity will be updated)</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-4 h-4 rounded bg-slate-200 border border-slate-300"></div>
+                    <span className="text-xs text-slate-600">Deselected (will be skipped)</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Summary info */}
+              {(newItemsInSelection > 0 || duplicatesInSelection > 0) && (
+                <div className="flex gap-3 text-sm">
+                  {newItemsInSelection > 0 && (
+                    <div className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-100 text-emerald-700 rounded-lg">
+                      <Plus size={14} />
+                      <span>{newItemsInSelection} new</span>
+                    </div>
+                  )}
+                  {duplicatesInSelection > 0 && (
+                    <div className="flex items-center gap-1.5 px-3 py-1.5 bg-amber-100 text-amber-700 rounded-lg">
+                      <RefreshCw size={14} />
+                      <span>{duplicatesInSelection} to update</span>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -429,7 +449,7 @@ const PantryScanner: React.FC<PantryScannerProps> = ({ onItemsScanned, onClose, 
               <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 flex items-start gap-2">
                 <Edit3 size={18} className="text-blue-500 mt-0.5 flex-shrink-0" />
                 <p className="text-sm text-blue-700">
-                  Click the <Edit3 size={12} className="inline" /> icon on any item to edit its name or quantity before adding.
+                  Tap the <Edit3 size={12} className="inline" /> icon to edit name or quantity before saving.
                 </p>
               </div>
 
@@ -442,12 +462,12 @@ const PantryScanner: React.FC<PantryScannerProps> = ({ onItemsScanned, onClose, 
                   return (
                     <div
                       key={itemId}
-                      className={`flex items-center gap-2 p-2 rounded-lg transition-colors ${
+                      className={`flex items-center gap-2 p-2 rounded-lg transition-colors border-l-4 ${
                         item.selected
                           ? isExisting
-                            ? 'bg-amber-100 border-2 border-amber-400'
-                            : 'bg-emerald-100 border-2 border-emerald-400'
-                          : 'bg-slate-50 border border-slate-200'
+                            ? 'bg-amber-50 border-amber-500 border-y border-r border-y-amber-200 border-r-amber-200'
+                            : 'bg-emerald-50 border-emerald-500 border-y border-r border-y-emerald-200 border-r-emerald-200'
+                          : 'bg-slate-50 border-slate-300 border-y border-r border-y-slate-200 border-r-slate-200'
                       }`}
                     >
                       {/* Checkbox */}
@@ -485,10 +505,9 @@ const PantryScanner: React.FC<PantryScannerProps> = ({ onItemsScanned, onClose, 
                       ) : (
                         <span
                           className={`flex-1 text-sm ${
-                            item.selected ? 'text-slate-800 font-medium' : 'text-slate-600'
+                            item.selected ? 'text-slate-800 font-medium' : 'text-slate-500'
                           }`}
                         >
-                          {isExisting && <AlertTriangle size={12} className="inline mr-1 text-amber-500" />}
                           {item.editedName}
                           {item.editedName !== item.originalName && (
                             <span className="text-xs text-slate-400 ml-1">(edited)</span>
@@ -508,9 +527,13 @@ const PantryScanner: React.FC<PantryScannerProps> = ({ onItemsScanned, onClose, 
                       )}
 
                       {/* Status badge */}
-                      {isExisting && (
-                        <span className="flex-shrink-0 text-xs px-2 py-0.5 bg-amber-200 text-amber-800 rounded-full">
-                          will update
+                      {item.selected && (
+                        <span className={`flex-shrink-0 text-xs px-2 py-0.5 rounded-full font-medium ${
+                          isExisting
+                            ? 'bg-amber-200 text-amber-800'
+                            : 'bg-emerald-200 text-emerald-800'
+                        }`}>
+                          {isExisting ? 'UPDATE' : 'NEW'}
                         </span>
                       )}
                     </div>
