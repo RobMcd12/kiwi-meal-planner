@@ -92,3 +92,28 @@ verify_jwt = false
 
 [functions.manage-instructions]
 verify_jwt = false
+
+# Admin and scanning functions do their own auth verification
+[functions.check-super-admin]
+verify_jwt = false
+
+[functions.scan-pantry]
+verify_jwt = false
+
+[functions.record-login]
+verify_jwt = false
+
+[functions.send-admin-notification]
+verify_jwt = false
+
+[functions.validate-subscription]
+verify_jwt = false
+
+[functions.google-drive-auth]
+verify_jwt = false
+
+[functions.send-email]
+verify_jwt = false
+
+[functions.hyper-action]
+verify_jwt = false
