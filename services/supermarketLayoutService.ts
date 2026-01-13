@@ -12,6 +12,14 @@ export interface SupermarketLayout {
 
 const STORAGE_KEY = 'kiwi_supermarket_layouts';
 const DEFAULT_LAYOUT_KEY = 'kiwi_default_layout_id';
+const CUSTOM_CATEGORIES_KEY = 'kiwi_custom_categories';
+
+// User's custom categories interface
+export interface UserCustomCategory {
+  id: string;
+  name: string;
+  createdAt: string;
+}
 
 // Default category order (common grocery store layout)
 export const DEFAULT_CATEGORIES = [
@@ -76,6 +84,30 @@ const setDefaultLayoutIdLocal = (id: string | null): void => {
     }
   } catch (e) {
     console.error('Failed to save default layout id:', e);
+  }
+};
+
+// ============================================
+// CUSTOM CATEGORIES LOCAL STORAGE
+// ============================================
+
+const getCustomCategoriesLocal = (): UserCustomCategory[] => {
+  try {
+    const saved = localStorage.getItem(CUSTOM_CATEGORIES_KEY);
+    if (saved) {
+      return JSON.parse(saved);
+    }
+  } catch (e) {
+    console.error('Failed to load local custom categories:', e);
+  }
+  return [];
+};
+
+const saveCustomCategoriesLocal = (categories: UserCustomCategory[]): void => {
+  try {
+    localStorage.setItem(CUSTOM_CATEGORIES_KEY, JSON.stringify(categories));
+  } catch (e) {
+    console.error('Failed to save local custom categories:', e);
   }
 };
 
@@ -458,4 +490,183 @@ export const suggestCategory = (ingredientName: string): string => {
 
   // Default
   return 'Other';
+};
+
+// ============================================
+// CUSTOM CATEGORY OPERATIONS
+// ============================================
+
+/**
+ * Get all custom categories for the current user (combines default + user custom)
+ */
+export const getAllCategories = async (): Promise<string[]> => {
+  const customCategories = await getCustomCategories();
+  const customNames = customCategories.map(c => c.name);
+
+  // Return default categories + user's custom ones (avoiding duplicates)
+  const allCategories = [...DEFAULT_CATEGORIES];
+  customNames.forEach(name => {
+    if (!allCategories.some(cat => cat.toLowerCase() === name.toLowerCase())) {
+      allCategories.push(name);
+    }
+  });
+
+  return allCategories;
+};
+
+/**
+ * Get user's custom categories only
+ */
+export const getCustomCategories = async (): Promise<UserCustomCategory[]> => {
+  if (!isSupabaseConfigured()) {
+    return getCustomCategoriesLocal();
+  }
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return getCustomCategoriesLocal();
+  }
+
+  const { data, error } = await supabase
+    .from('user_custom_categories')
+    .select('*')
+    .eq('user_id', user.id)
+    .order('name');
+
+  if (error) {
+    console.error('Error fetching custom categories:', error);
+    return getCustomCategoriesLocal();
+  }
+
+  return data.map(row => ({
+    id: row.id,
+    name: row.name,
+    createdAt: row.created_at
+  }));
+};
+
+/**
+ * Create a new custom category
+ */
+export const createCustomCategory = async (name: string): Promise<UserCustomCategory | null> => {
+  const trimmedName = name.trim();
+  if (!trimmedName) return null;
+
+  // Check for duplicates against defaults and existing custom
+  const existingCategories = await getAllCategories();
+  if (existingCategories.some(cat => cat.toLowerCase() === trimmedName.toLowerCase())) {
+    console.warn('Category already exists:', trimmedName);
+    return null;
+  }
+
+  const now = new Date().toISOString();
+
+  if (!isSupabaseConfigured()) {
+    const categories = getCustomCategoriesLocal();
+    const newCategory: UserCustomCategory = {
+      id: crypto.randomUUID(),
+      name: trimmedName,
+      createdAt: now
+    };
+    categories.push(newCategory);
+    saveCustomCategoriesLocal(categories);
+    return newCategory;
+  }
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    const categories = getCustomCategoriesLocal();
+    const newCategory: UserCustomCategory = {
+      id: crypto.randomUUID(),
+      name: trimmedName,
+      createdAt: now
+    };
+    categories.push(newCategory);
+    saveCustomCategoriesLocal(categories);
+    return newCategory;
+  }
+
+  const { data, error } = await supabase
+    .from('user_custom_categories')
+    .insert({
+      user_id: user.id,
+      name: trimmedName
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error('Error creating custom category:', error);
+    return null;
+  }
+
+  return {
+    id: data.id,
+    name: data.name,
+    createdAt: data.created_at
+  };
+};
+
+/**
+ * Update a custom category name
+ */
+export const updateCustomCategory = async (
+  categoryId: string,
+  newName: string
+): Promise<boolean> => {
+  const trimmedName = newName.trim();
+  if (!trimmedName) return false;
+
+  if (!isSupabaseConfigured()) {
+    const categories = getCustomCategoriesLocal();
+    const index = categories.findIndex(c => c.id === categoryId);
+    if (index === -1) return false;
+    categories[index].name = trimmedName;
+    saveCustomCategoriesLocal(categories);
+    return true;
+  }
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return false;
+
+  const { error } = await supabase
+    .from('user_custom_categories')
+    .update({ name: trimmedName })
+    .eq('id', categoryId)
+    .eq('user_id', user.id);
+
+  if (error) {
+    console.error('Error updating custom category:', error);
+    return false;
+  }
+
+  return true;
+};
+
+/**
+ * Delete a custom category
+ */
+export const deleteCustomCategory = async (categoryId: string): Promise<boolean> => {
+  if (!isSupabaseConfigured()) {
+    const categories = getCustomCategoriesLocal();
+    const filtered = categories.filter(c => c.id !== categoryId);
+    saveCustomCategoriesLocal(filtered);
+    return true;
+  }
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return false;
+
+  const { error } = await supabase
+    .from('user_custom_categories')
+    .delete()
+    .eq('id', categoryId)
+    .eq('user_id', user.id);
+
+  if (error) {
+    console.error('Error deleting custom category:', error);
+    return false;
+  }
+
+  return true;
 };

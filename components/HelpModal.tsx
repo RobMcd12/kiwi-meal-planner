@@ -239,19 +239,35 @@ const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
       id: 'pantry-scanner',
       title: 'AI Pantry Scanner',
       icon: <Camera size={20} />,
-      keywords: ['pantry', 'scanner', 'photo', 'camera', 'fridge', 'ingredients', 'scan', 'detect', 'image'],
+      keywords: ['pantry', 'scanner', 'photo', 'camera', 'fridge', 'ingredients', 'scan', 'detect', 'image', 'quantity', 'video', 'voice', 'dictation'],
       content: (
         <>
-          <p>Quickly add ingredients by photographing your fridge, freezer, or pantry:</p>
-          <ol className="list-decimal list-inside space-y-2 ml-2 mt-2">
-            <li>Go to <strong>Pantry Settings</strong></li>
-            <li>Click the purple <strong>"Scan Pantry with AI"</strong> button</li>
-            <li>Take photos or upload images of your pantry/fridge</li>
-            <li>Click <strong>Analyze Images</strong></li>
-            <li>Review detected items and select which to add</li>
-          </ol>
-          <p className="mt-3 text-slate-500">
-            <strong>Tips:</strong> Take clear, well-lit photos. Multiple images help detect more items. The AI recognizes both packaged products and fresh ingredients.
+          <p>Quickly add ingredients using photos, video, or voice:</p>
+          <div className="space-y-3 mt-2">
+            <div className="flex items-start gap-2">
+              <Camera size={16} className="text-purple-600 mt-0.5" />
+              <div>
+                <strong>Photo Scan</strong> - Take photos of your fridge, pantry, or freezer. AI identifies all visible items.
+              </div>
+            </div>
+            <div className="flex items-start gap-2">
+              <Play size={16} className="text-blue-600 mt-0.5" />
+              <div>
+                <strong>Video Scan</strong> - Record or upload a video walking through your kitchen for comprehensive scanning.
+              </div>
+            </div>
+            <div className="flex items-start gap-2">
+              <Mic size={16} className="text-emerald-600 mt-0.5" />
+              <div>
+                <strong>Voice Dictation</strong> - Simply say what you have: "I have milk, eggs, bread, and chicken."
+              </div>
+            </div>
+          </div>
+          <p className="mt-3">
+            <strong>Smart Quantity Detection:</strong> AI estimates remaining quantities for items like "olive oil (~500ml remaining)" or "eggs (6)".
+          </p>
+          <p className="mt-2 text-slate-500">
+            <strong>Tip:</strong> Click any pantry item to edit its quantity and unit after adding.
           </p>
         </>
       )
@@ -260,7 +276,7 @@ const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
       id: 'shopping-list',
       title: 'Shopping List',
       icon: <ShoppingCart size={20} />,
-      keywords: ['shopping', 'list', 'grocery', 'buy', 'restock', 'staples', 'ingredients', 'shop'],
+      keywords: ['shopping', 'list', 'grocery', 'buy', 'restock', 'staples', 'ingredients', 'shop', 'category', 'layout', 'supermarket', 'custom'],
       content: (
         <>
           <p>Build a unified shopping list from multiple sources:</p>
@@ -284,12 +300,14 @@ const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
               </div>
             </div>
           </div>
-          <p className="mt-3">
-            Access the Shopping List from the home screen. Check off items as you shop - staples are automatically marked as restocked when checked.
+          <p className="mt-3 text-amber-600 text-sm">
+            ⭐ <strong>Pro Features:</strong>
           </p>
-          <p className="mt-2 text-amber-600 text-sm">
-            ⭐ <strong>Pro Feature:</strong> Custom supermarket layouts let you organize items by your store's aisle order.
-          </p>
+          <ul className="list-disc list-inside ml-2 text-slate-600 text-sm">
+            <li><strong>Custom Layouts</strong> - Create store layouts with drag-and-drop category ordering</li>
+            <li><strong>Custom Categories</strong> - Add your own categories (shown in purple) beyond the 18 defaults</li>
+            <li><strong>Multiple Stores</strong> - Save different layouts for each store you shop at</li>
+          </ul>
         </>
       )
     },

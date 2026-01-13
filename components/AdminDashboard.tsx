@@ -72,6 +72,7 @@ import { getVideoCount } from '../services/recipeVideoService';
 import { Crown, BookOpen, HardDrive, Calendar, ArrowUpDown } from 'lucide-react';
 import ResponsiveTabs from './ResponsiveTabs';
 import SecurityComplianceViewer from './SecurityComplianceViewer';
+import ConfirmModal, { useConfirmModal } from './ConfirmModal';
 
 interface AdminDashboardProps {
   onBack: () => void;
@@ -149,6 +150,7 @@ const getSubscriptionDisplay = (subscription: UserSubscription | null): { label:
 
 const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
   const { user, isAdmin, refreshAdminStatus, startImpersonation } = useAuth();
+  const { state: confirmState, confirm, alert: showAlert } = useConfirmModal();
   const [stats, setStats] = useState<Stats>({ totalUsers: 0, totalMealPlans: 0, totalFavorites: 0, totalVideos: 0 });
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'overview' | 'feedback' | 'data' | 'users' | 'instructions' | 'subscriptions' | 'videos' | 'security'>('overview');
@@ -332,7 +334,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
   };
 
   const handleDeleteInstruction = async (id: string) => {
-    if (!confirm('Are you sure you want to delete this instruction?')) return;
+    const confirmed = await confirm({
+      title: 'Delete Instruction',
+      message: 'Are you sure you want to delete this instruction?',
+      type: 'warning',
+      confirmText: 'Delete',
+      destructive: true,
+    });
+    if (!confirmed) return;
 
     setDeletingInstructionId(id);
     try {
@@ -381,13 +390,25 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
     const category = categoriesList.find(c => c.id === id);
     const instructionsInCategory = instructionsList.filter(i => i.categoryId === id).length;
 
+    let confirmed: boolean;
     if (instructionsInCategory > 0) {
-      if (!confirm(`This category has ${instructionsInCategory} instruction(s). Deleting it will also delete all instructions in this category. Continue?`)) {
-        return;
-      }
-    } else if (!confirm('Are you sure you want to delete this category?')) {
-      return;
+      confirmed = await confirm({
+        title: 'Delete Category',
+        message: `This category has ${instructionsInCategory} instruction(s). Deleting it will also delete all instructions in this category. Continue?`,
+        type: 'warning',
+        confirmText: 'Delete All',
+        destructive: true,
+      });
+    } else {
+      confirmed = await confirm({
+        title: 'Delete Category',
+        message: 'Are you sure you want to delete this category?',
+        type: 'warning',
+        confirmText: 'Delete',
+        destructive: true,
+      });
     }
+    if (!confirmed) return;
 
     setDeletingCategoryId(id);
     try {
@@ -493,7 +514,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
   };
 
   const handleRevokePro = async (userId: string, email: string) => {
-    if (!confirm(`Revoke Pro access from ${email}?`)) return;
+    const confirmed = await confirm({
+      title: 'Revoke Pro Access',
+      message: `Are you sure you want to revoke Pro access from ${email}?`,
+      type: 'warning',
+      confirmText: 'Revoke',
+      destructive: true,
+    });
+    if (!confirmed) return;
 
     setGrantingProUserId(userId);
     try {
@@ -573,9 +601,13 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
   };
 
   const handleResetPassword = async (userEmail: string, userId: string) => {
-    if (!confirm(`Send password reset email to ${userEmail}?`)) {
-      return;
-    }
+    const confirmed = await confirm({
+      title: 'Reset Password',
+      message: `Send password reset email to ${userEmail}?`,
+      type: 'confirm',
+      confirmText: 'Send Email',
+    });
+    if (!confirmed) return;
 
     setResettingPasswordUserId(userId);
     try {
@@ -593,9 +625,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
   };
 
   const handleDeleteUser = async (userId: string, userEmail: string) => {
-    if (!confirm(`Are you sure you want to delete user ${userEmail}? This cannot be undone.`)) {
-      return;
-    }
+    const confirmed = await confirm({
+      title: 'Delete User',
+      message: `Are you sure you want to delete user ${userEmail}? This action cannot be undone.`,
+      type: 'warning',
+      confirmText: 'Delete',
+      destructive: true,
+    });
+    if (!confirmed) return;
 
     setDeletingUserId(userId);
     try {
@@ -859,9 +896,14 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
   };
 
   const handleClearData = async () => {
-    if (!confirm('Are you sure you want to clear ALL local data? This cannot be undone.')) {
-      return;
-    }
+    const confirmed = await confirm({
+      title: 'Clear All Data',
+      message: 'Are you sure you want to clear ALL local data? This action cannot be undone.',
+      type: 'warning',
+      confirmText: 'Clear All',
+      destructive: true,
+    });
+    if (!confirmed) return;
 
     try {
       await clearAllData();
@@ -869,6 +911,33 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
     } catch (err) {
       setMessage({ type: 'error', text: 'Failed to clear data.' });
     }
+  };
+
+  const handleHardReload = async () => {
+    const confirmed = await confirm({
+      title: 'Hard Reload App',
+      message: 'This will clear the cache and reload the app. Continue?',
+      type: 'confirm',
+      confirmText: 'Reload',
+    });
+    if (!confirmed) return;
+
+    // Clear service worker cache
+    if ('caches' in window) {
+      caches.keys().then(names => {
+        names.forEach(name => caches.delete(name));
+      });
+    }
+    // Unregister service workers
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(registrations => {
+        registrations.forEach(registration => registration.unregister());
+      });
+    }
+    // Clear local storage cache flags
+    localStorage.removeItem('app-version');
+    // Force hard reload
+    window.location.reload();
   };
 
   if (!isAdmin) {
@@ -1907,26 +1976,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
               Clear cache and reload the application. Useful after updates or to fix display issues.
             </p>
             <button
-              onClick={() => {
-                if (confirm('This will clear the cache and reload the app. Continue?')) {
-                  // Clear service worker cache
-                  if ('caches' in window) {
-                    caches.keys().then(names => {
-                      names.forEach(name => caches.delete(name));
-                    });
-                  }
-                  // Unregister service workers
-                  if ('serviceWorker' in navigator) {
-                    navigator.serviceWorker.getRegistrations().then(registrations => {
-                      registrations.forEach(registration => registration.unregister());
-                    });
-                  }
-                  // Clear local storage cache flags
-                  localStorage.removeItem('app-version');
-                  // Force hard reload
-                  window.location.reload();
-                }
-              }}
+              onClick={handleHardReload}
               className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors"
             >
               <RefreshCw size={18} />
@@ -2563,6 +2613,20 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
           onClose={() => setCounterModalType(null)}
         />
       )}
+
+      {/* Confirm Modal */}
+      <ConfirmModal
+        isOpen={confirmState.isOpen}
+        title={confirmState.title}
+        message={confirmState.message}
+        type={confirmState.type}
+        confirmText={confirmState.confirmText}
+        cancelText={confirmState.cancelText}
+        onConfirm={confirmState.onConfirm}
+        onCancel={confirmState.onCancel}
+        showCancel={confirmState.showCancel}
+        destructive={confirmState.destructive}
+      />
     </div>
   );
 };

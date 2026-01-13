@@ -231,6 +231,26 @@ After AI analysis:
 - Use **Select All** or **Clear All** for quick selection
 - Click **Add Items to Pantry**
 
+### Smart Quantity Detection
+
+The AI scanner automatically estimates quantities for your pantry items:
+
+- **Specific item types** - AI identifies exact types like "balsamic vinegar" instead of just "vinegar"
+- **Quantity estimates** - For visible items, AI estimates remaining amounts:
+  - Countable items: "eggs (6)", "apples (3)"
+  - Containers: "olive oil (~500ml remaining)", "milk (~1L remaining)"
+  - Packaged items: "pasta (~400g)", "rice (~1kg)"
+- **Edit quantities** - After adding items, click any item to adjust its quantity and unit
+
+### Managing Quantities
+
+For each pantry item, you can:
+1. **Click the item** to open the quantity editor
+2. **Enter the amount** (numeric value)
+3. **Select or type a unit** (g, kg, ml, L, pieces, etc.)
+4. **Preview** your changes before saving
+5. **Clear** to remove quantity information
+
 ### Upload Mode Options
 
 When adding scanned items to an existing pantry, you can choose:
@@ -344,6 +364,23 @@ To remove an item from staples (not delete it):
 4. Go shopping, buy olive oil and pasta
 5. Click "Shopping Completed" to clear the list
 6. Ready for next week!
+
+### Clearing Your Pantry
+
+Need to start fresh? Use the clear buttons at the bottom of each tab:
+
+#### Empty My Pantry
+- Removes **all regular pantry items** (non-staples)
+- Useful when moving, doing a kitchen reset, or starting over
+- Your staples remain untouched
+- Click "Empty My Pantry" at the bottom of the Pantry Items tab
+
+#### Empty My Staples
+- Removes **all staple items**
+- Your regular pantry items remain untouched
+- Click "Empty My Staples" at the bottom of the Staples tab
+
+**Warning**: Both actions require confirmation and cannot be undone. Items are permanently deleted from your account.
 
 ---
 
@@ -730,6 +767,36 @@ Create custom layouts that match how your local store is organized:
 3. Items are now grouped by your custom aisle order
 4. Shop efficiently by following your store's layout
 
+### Custom Categories
+
+Create your own categories beyond the 18 default ones:
+
+#### Creating Custom Categories
+1. Open **Manage Layouts** in the shopping list
+2. Scroll down to **Create Custom Category**
+3. Enter your category name (e.g., "Pet Supplies", "Organic", "Bulk Foods")
+4. Click **Add** or press Enter
+5. Your custom category appears in purple and can be used in any layout
+
+#### Using Custom Categories
+- Custom categories appear in **purple** to distinguish them from defaults
+- Add them to any layout by clicking the purple + button
+- Drag them to reorder within your layout
+- They persist across all your layouts
+
+#### Deleting Custom Categories
+- Click the **trash icon** next to any custom category to remove it
+- The category will be removed from all layouts using it
+- Default categories cannot be deleted
+
+#### Default Categories
+The app includes 18 default categories:
+- Produce, Bakery, Dairy, Meat & Seafood
+- Deli, Frozen, Pantry, Canned Goods
+- Condiments & Sauces, Snacks, Beverages
+- Breakfast, Baking, Spices & Seasonings
+- International, Health & Beauty, Household, Other
+
 ### Selecting Recipes for Shopping
 1. Go to **My Cookbook**
 2. Click the circle on each recipe card to select it
@@ -1012,7 +1079,15 @@ Note: Generating new meal plans requires an internet connection.
 
 ## Version History
 
-### v2.5.0 (Current)
+### v2.6.0 (Current)
+- **Custom Shopping Categories** - Create your own shopping list categories beyond the 18 defaults
+- **Smart Quantity Detection** - AI scanner now estimates remaining quantities for pantry items
+- **Quantity Editor** - Click any pantry item to set or edit its quantity and unit
+- **Empty Pantry/Staples** - One-click buttons to clear all pantry items or staples
+- **App-Styled Confirmations** - All confirmation dialogs now use consistent app styling
+- **Enhanced Pantry Scanning** - AI identifies specific item types (e.g., "balsamic vinegar" not just "vinegar")
+
+### v2.5.0
 - **Recipe Categories** - Create custom categories to organize your cookbook
 - **Category Filtering** - Filter recipes by your custom categories
 - **Improved Meal Plan Flow** - Settings/Pantry/Preferences now shown as step-by-step flow below navigation

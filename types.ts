@@ -231,6 +231,7 @@ export enum AppStep {
   SINGLE_RECIPE = 'SINGLE_RECIPE',
   SHOPPING_LIST = 'SHOPPING_LIST',
   FEATURES = 'FEATURES',
+  VERSION_HISTORY = 'VERSION_HISTORY',
 }
 
 // ============================================

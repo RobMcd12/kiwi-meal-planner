@@ -8,6 +8,7 @@ import LiveDictation from './LiveDictation';
 import AudioRecorder from './AudioRecorder';
 import PantryItemEditModal from './PantryItemEditModal';
 import PantryCategorizedList from './PantryCategorizedList';
+import ConfirmModal, { useConfirmModal } from './ConfirmModal';
 import { savePantryItem, savePantryItems, updatePantryItemStaple, togglePantryItemRestock, clearStaplesRestock, updatePantryItemQuantity, removePantryItem, clearPantryItems, loadPantry } from '../services/storageService';
 
 interface PantryManagerProps {
@@ -29,6 +30,7 @@ const COMMON_STAPLE_ITEMS = [
 ];
 
 const PantryManager: React.FC<PantryManagerProps> = ({ items, setItems, onNext, isSettingsMode = false, hasPro = false, onUpgradeClick, unitSystem = 'metric' }) => {
+  const { state: confirmState, confirm } = useConfirmModal();
   const [newItem, setNewItem] = useState('');
   const [newStapleItem, setNewStapleItem] = useState('');
   const [showScanner, setShowScanner] = useState(false);
@@ -143,17 +145,27 @@ const PantryManager: React.FC<PantryManagerProps> = ({ items, setItems, onNext, 
   };
 
   const handleEmptyPantry = async () => {
-    if (!window.confirm('Are you sure you want to remove all items from your pantry? This cannot be undone.')) {
-      return;
-    }
+    const confirmed = await confirm({
+      title: 'Empty Pantry',
+      message: 'Are you sure you want to remove all items from your pantry? This cannot be undone.',
+      type: 'warning',
+      confirmText: 'Empty Pantry',
+      destructive: true,
+    });
+    if (!confirmed) return;
     await clearPantryItems(false);
     setItems(items.filter(item => item.isStaple));
   };
 
   const handleEmptyStaples = async () => {
-    if (!window.confirm('Are you sure you want to remove all staple items? This cannot be undone.')) {
-      return;
-    }
+    const confirmed = await confirm({
+      title: 'Empty Staples',
+      message: 'Are you sure you want to remove all staple items? This cannot be undone.',
+      type: 'warning',
+      confirmText: 'Empty Staples',
+      destructive: true,
+    });
+    if (!confirmed) return;
     await clearPantryItems(true);
     setItems(items.filter(item => !item.isStaple));
   };
@@ -530,6 +542,20 @@ const PantryManager: React.FC<PantryManagerProps> = ({ items, setItems, onNext, 
           onClose={() => setEditingItem(null)}
         />
       )}
+
+      {/* Confirm Modal */}
+      <ConfirmModal
+        isOpen={confirmState.isOpen}
+        title={confirmState.title}
+        message={confirmState.message}
+        type={confirmState.type}
+        confirmText={confirmState.confirmText}
+        cancelText={confirmState.cancelText}
+        onConfirm={confirmState.onConfirm}
+        onCancel={confirmState.onCancel}
+        showCancel={confirmState.showCancel}
+        destructive={confirmState.destructive}
+      />
     </div>
   );
 };

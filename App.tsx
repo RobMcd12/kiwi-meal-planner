@@ -46,8 +46,9 @@ import { getSubscriptionState } from './services/subscriptionService';
 import { getUserProfile } from './services/profileService';
 import { getUserMacroTargets } from './services/macroTargetService';
 import type { SubscriptionState } from './types';
-import { ChefHat, Settings, LogOut, User, Shield, MessageSquare, Bell, HelpCircle, Menu, X, CalendarPlus, BookHeart, FolderHeart, Sparkles, UserCircle, RefreshCw, List, ShoppingCart, Apple } from 'lucide-react';
+import { ChefHat, Settings, LogOut, User, Shield, MessageSquare, Bell, HelpCircle, Menu, X, CalendarPlus, BookHeart, FolderHeart, Sparkles, UserCircle, RefreshCw, List, ShoppingCart, Apple, History } from 'lucide-react';
 import HelpModal from './components/HelpModal';
+import VersionHistory from './components/VersionHistory';
 
 // --- Default States ---
 const DEFAULT_CONFIG: MealConfig = {
@@ -565,6 +566,13 @@ const AppContent: React.FC = () => {
           />
         );
 
+      case AppStep.VERSION_HISTORY:
+        return (
+          <VersionHistory
+            onBack={() => setStep(AppStep.WELCOME)}
+          />
+        );
+
       default:
         return null;
     }
@@ -880,6 +888,13 @@ const AppContent: React.FC = () => {
                 >
                   <List size={20} className="text-emerald-600" />
                   All Features
+                </button>
+                <button
+                  onClick={() => { setStep(AppStep.VERSION_HISTORY); setShowMobileMenu(false); }}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 text-slate-700 hover:bg-slate-100 rounded-lg transition-colors"
+                >
+                  <History size={20} className="text-purple-600" />
+                  Version History
                 </button>
                 <button
                   onClick={() => { setShowHelpModal(true); setShowMobileMenu(false); }}

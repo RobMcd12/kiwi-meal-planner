@@ -19,6 +19,7 @@ import {
   Sliders
 } from 'lucide-react';
 import ResponsiveTabs from '../ResponsiveTabs';
+import ConfirmModal, { useConfirmModal } from '../ConfirmModal';
 import {
   getSubscriptionConfig,
   updateSubscriptionConfig,
@@ -37,6 +38,9 @@ interface SubscriptionSettingsProps {
 type TabId = 'pricing' | 'access' | 'tiers';
 
 const SubscriptionSettings: React.FC<SubscriptionSettingsProps> = ({ onMessage }) => {
+  // Confirm modal
+  const { state: confirmState, confirm } = useConfirmModal();
+
   // Tab state
   const [activeTab, setActiveTab] = useState<TabId>('pricing');
 
@@ -160,7 +164,14 @@ const SubscriptionSettings: React.FC<SubscriptionSettingsProps> = ({ onMessage }
   };
 
   const handleRevokePro = async (userId: string) => {
-    if (!confirm('Are you sure you want to revoke Pro access for this user?')) return;
+    const confirmed = await confirm({
+      title: 'Revoke Pro Access',
+      message: 'Are you sure you want to revoke Pro access for this user?',
+      type: 'warning',
+      confirmText: 'Revoke',
+      destructive: true,
+    });
+    if (!confirmed) return;
 
     setRevoking(userId);
     try {
@@ -906,6 +917,20 @@ const SubscriptionSettings: React.FC<SubscriptionSettingsProps> = ({ onMessage }
       {activeTab === 'pricing' && renderPricingTab()}
       {activeTab === 'access' && renderAccessTab()}
       {activeTab === 'tiers' && renderTiersTab()}
+
+      {/* Confirm Modal */}
+      <ConfirmModal
+        isOpen={confirmState.isOpen}
+        title={confirmState.title}
+        message={confirmState.message}
+        type={confirmState.type}
+        confirmText={confirmState.confirmText}
+        cancelText={confirmState.cancelText}
+        onConfirm={confirmState.onConfirm}
+        onCancel={confirmState.onCancel}
+        showCancel={confirmState.showCancel}
+        destructive={confirmState.destructive}
+      />
     </div>
   );
 };

@@ -18,7 +18,12 @@ import {
   setDefaultLayout,
   suggestCategory,
   DEFAULT_CATEGORIES,
-  type SupermarketLayout
+  getAllCategories,
+  getCustomCategories,
+  createCustomCategory,
+  deleteCustomCategory,
+  type SupermarketLayout,
+  type UserCustomCategory
 } from '../services/supermarketLayoutService';
 
 interface MasterShoppingListProps {
@@ -79,6 +84,11 @@ const MasterShoppingList: React.FC<MasterShoppingListProps> = ({
   const [newLayoutName, setNewLayoutName] = useState('');
   const [editingCategories, setEditingCategories] = useState<string[]>([]);
   const [draggedCategoryIndex, setDraggedCategoryIndex] = useState<number | null>(null);
+
+  // Custom categories
+  const [customCategories, setCustomCategories] = useState<UserCustomCategory[]>([]);
+  const [allAvailableCategories, setAllAvailableCategories] = useState<string[]>(DEFAULT_CATEGORIES);
+  const [newCategoryName, setNewCategoryName] = useState('');
 
   // Drag-and-drop for items in list mode
   const [draggedItemIndex, setDraggedItemIndex] = useState<number | null>(null);
@@ -145,6 +155,12 @@ const MasterShoppingList: React.FC<MasterShoppingListProps> = ({
       if (defaultLayout) {
         setSelectedLayoutId(defaultLayout.id);
       }
+
+      // Load custom categories
+      const userCustomCategories = await getCustomCategories();
+      setCustomCategories(userCustomCategories);
+      const allCategories = await getAllCategories();
+      setAllAvailableCategories(allCategories);
 
       // Build shopping list
       buildShoppingList(pantry, plans, favorites, validPlanIds, validRecipeIds);
@@ -554,6 +570,34 @@ const MasterShoppingList: React.FC<MasterShoppingListProps> = ({
 
   const removeCategoryFromLayout = (index: number) => {
     setEditingCategories(editingCategories.filter((_, i) => i !== index));
+  };
+
+  // Custom category handlers
+  const handleCreateCustomCategory = async () => {
+    if (!newCategoryName.trim()) return;
+    const created = await createCustomCategory(newCategoryName.trim());
+    if (created) {
+      setCustomCategories([...customCategories, created]);
+      setAllAvailableCategories([...allAvailableCategories, created.name]);
+      // Also add to current editing layout if editing
+      if (editingLayout || newLayoutName) {
+        addCategoryToLayout(created.name);
+      }
+      setNewCategoryName('');
+    }
+  };
+
+  const handleDeleteCustomCategory = async (categoryId: string) => {
+    const success = await deleteCustomCategory(categoryId);
+    if (success) {
+      const deleted = customCategories.find(c => c.id === categoryId);
+      setCustomCategories(customCategories.filter(c => c.id !== categoryId));
+      if (deleted) {
+        setAllAvailableCategories(allAvailableCategories.filter(c => c !== deleted.name));
+        // Remove from editing categories if present
+        setEditingCategories(editingCategories.filter(c => c !== deleted.name));
+      }
+    }
   };
 
   // Item drag handlers for list mode
@@ -1651,43 +1695,95 @@ const MasterShoppingList: React.FC<MasterShoppingListProps> = ({
 
                   {/* Category list */}
                   <div className="space-y-1 mb-3 max-h-64 overflow-y-auto border border-slate-200 rounded-lg p-2">
-                    {(editingCategories.length > 0 ? editingCategories : (editingLayout ? editingLayout.categoryOrder : DEFAULT_CATEGORIES)).map((cat, idx) => (
-                      <div
-                        key={`${cat}-${idx}`}
-                        draggable
-                        onDragStart={(e) => handleCategoryDragStart(e, idx)}
-                        onDragOver={(e) => handleCategoryDragOver(e, idx)}
-                        onDragEnd={handleCategoryDragEnd}
-                        className={`flex items-center gap-2 px-3 py-2 bg-white border border-slate-100 rounded cursor-move ${
-                          draggedCategoryIndex === idx ? 'opacity-50' : ''
-                        }`}
-                      >
-                        <GripVertical size={14} className="text-slate-300" />
-                        <span className="flex-1 text-sm text-slate-700">{cat}</span>
-                        <span className="text-xs text-slate-400">{idx + 1}</span>
-                        <button
-                          onClick={() => removeCategoryFromLayout(idx)}
-                          className="p-1 text-slate-300 hover:text-red-500"
+                    {(editingCategories.length > 0 ? editingCategories : (editingLayout ? editingLayout.categoryOrder : DEFAULT_CATEGORIES)).map((cat, idx) => {
+                      const isCustom = customCategories.some(c => c.name === cat);
+                      return (
+                        <div
+                          key={`${cat}-${idx}`}
+                          draggable
+                          onDragStart={(e) => handleCategoryDragStart(e, idx)}
+                          onDragOver={(e) => handleCategoryDragOver(e, idx)}
+                          onDragEnd={handleCategoryDragEnd}
+                          className={`flex items-center gap-2 px-3 py-2 bg-white border rounded cursor-move ${
+                            draggedCategoryIndex === idx ? 'opacity-50' : ''
+                          } ${isCustom ? 'border-purple-200 bg-purple-50' : 'border-slate-100'}`}
                         >
-                          <X size={14} />
-                        </button>
-                      </div>
-                    ))}
+                          <GripVertical size={14} className="text-slate-300" />
+                          <span className={`flex-1 text-sm ${isCustom ? 'text-purple-700' : 'text-slate-700'}`}>
+                            {cat}
+                            {isCustom && <span className="ml-1 text-xs text-purple-400">(custom)</span>}
+                          </span>
+                          <span className="text-xs text-slate-400">{idx + 1}</span>
+                          <button
+                            onClick={() => removeCategoryFromLayout(idx)}
+                            className="p-1 text-slate-300 hover:text-red-500"
+                          >
+                            <X size={14} />
+                          </button>
+                        </div>
+                      );
+                    })}
                   </div>
 
-                  {/* Add category */}
+                  {/* Add existing category */}
                   <div className="flex flex-wrap gap-1">
-                    {DEFAULT_CATEGORIES.filter(cat =>
+                    {allAvailableCategories.filter(cat =>
                       !(editingCategories.length > 0 ? editingCategories : (editingLayout?.categoryOrder || DEFAULT_CATEGORIES)).includes(cat)
-                    ).map(cat => (
+                    ).map(cat => {
+                      const isCustom = customCategories.some(c => c.name === cat);
+                      return (
+                        <div key={cat} className="inline-flex items-center gap-1">
+                          <button
+                            onClick={() => addCategoryToLayout(cat)}
+                            className={`text-xs px-2 py-1 rounded ${
+                              isCustom
+                                ? 'bg-purple-100 hover:bg-purple-200 text-purple-700'
+                                : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
+                            }`}
+                          >
+                            + {cat}
+                          </button>
+                          {isCustom && (
+                            <button
+                              onClick={() => {
+                                const customCat = customCategories.find(c => c.name === cat);
+                                if (customCat) handleDeleteCustomCategory(customCat.id);
+                              }}
+                              className="p-0.5 text-purple-400 hover:text-red-500"
+                              title="Delete custom category"
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  {/* Create custom category */}
+                  <div className="mt-3 pt-3 border-t border-slate-200">
+                    <label className="block text-sm text-slate-600 mb-1">Create Custom Category</label>
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={newCategoryName}
+                        onChange={(e) => setNewCategoryName(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && handleCreateCustomCategory()}
+                        placeholder="e.g., Pet Supplies, Organic..."
+                        className="flex-1 px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-sm"
+                      />
                       <button
-                        key={cat}
-                        onClick={() => addCategoryToLayout(cat)}
-                        className="text-xs px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded"
+                        onClick={handleCreateCustomCategory}
+                        disabled={!newCategoryName.trim()}
+                        className="px-3 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-slate-300 text-white rounded-lg text-sm flex items-center gap-1"
                       >
-                        + {cat}
+                        <Plus size={14} />
+                        Add
                       </button>
-                    ))}
+                    </div>
+                    <p className="text-xs text-slate-400 mt-1">
+                      Custom categories appear in purple and can be used in any layout
+                    </p>
                   </div>
                 </div>
 
