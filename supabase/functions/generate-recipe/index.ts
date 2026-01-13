@@ -67,6 +67,14 @@ Deno.serve(async (req) => {
 
   try {
     console.log('generate-recipe: Starting authentication');
+
+    // First check if Authorization header exists at all
+    const authHeader = req.headers.get('Authorization');
+    console.log('generate-recipe: Authorization header exists:', !!authHeader);
+    if (authHeader) {
+      console.log('generate-recipe: Auth header preview:', authHeader.substring(0, 50) + '...');
+    }
+
     // Verify authentication
     const auth = await verifyAuth(req);
     console.log('generate-recipe: Auth result:', auth ? 'authenticated' : 'failed');
