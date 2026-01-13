@@ -17,6 +17,7 @@ interface LiveDictationProps {
   onItemsScanned: (items: PantryItem[], mode: PantryUploadMode) => void;
   onClose: () => void;
   existingItemCount: number;
+  existingItems?: PantryItem[];
 }
 
 // Type for Web Speech API
@@ -32,7 +33,7 @@ interface SpeechRecognitionErrorEvent extends Event {
 
 type DictationState = 'idle' | 'listening' | 'processing' | 'results';
 
-const LiveDictation: React.FC<LiveDictationProps> = ({ onItemsScanned, onClose, existingItemCount }) => {
+const LiveDictation: React.FC<LiveDictationProps> = ({ onItemsScanned, onClose, existingItemCount, existingItems = [] }) => {
   const [dictationState, setDictationState] = useState<DictationState>('idle');
   const [transcription, setTranscription] = useState('');
   const [interimTranscription, setInterimTranscription] = useState('');

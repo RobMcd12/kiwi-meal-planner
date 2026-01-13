@@ -119,6 +119,26 @@ const generateShoppingListViaEdge = async (
   return data as MealPlanResponse;
 };
 
+// Edge Function for pantry scanning (images, video, audio, dictation)
+const scanPantryViaEdge = async (
+  type: 'images' | 'video' | 'audio' | 'dictation',
+  payload: {
+    images?: { base64: string; mimeType: string }[];
+    video?: { base64: string; mimeType: string };
+    audio?: { base64: string; mimeType: string };
+    dictationText?: string;
+  }
+): Promise<ScannedPantryResult> => {
+  const { data, error } = await supabase.functions.invoke('scan-pantry', {
+    body: { type, ...payload },
+  });
+
+  if (error) throw error;
+  if (!data) throw new Error('No data returned from Edge Function');
+
+  return data as ScannedPantryResult;
+};
+
 // --- Client-Side API Calls (Development) ---
 
 export const generateMealPlan = async (
@@ -896,6 +916,12 @@ const pantryItemsSchema: Schema = {
 export const scanPantryFromImages = async (
   images: { base64: string; mimeType: string }[]
 ): Promise<ScannedPantryResult> => {
+  // Use Edge Functions in production when configured
+  if (USE_EDGE_FUNCTIONS && isSupabaseConfigured()) {
+    return scanPantryViaEdge('images', { images });
+  }
+
+  // Fall back to client-side API call (development only)
   const apiKey = process.env.API_KEY;
   if (!apiKey) throw new Error("API Key is missing.");
 
@@ -969,6 +995,14 @@ Return all identified items as a flat list in "items" and categorized in "catego
 export const scanPantryFromVideo = async (
   videoBlob: Blob
 ): Promise<ScannedPantryResult> => {
+  // Use Edge Functions in production when configured
+  if (USE_EDGE_FUNCTIONS && isSupabaseConfigured()) {
+    const base64Video = await blobToBase64(videoBlob);
+    const mimeType = videoBlob.type || 'video/webm';
+    return scanPantryViaEdge('video', { video: { base64: base64Video, mimeType } });
+  }
+
+  // Fall back to client-side API call (development only)
   const apiKey = process.env.API_KEY;
   if (!apiKey) throw new Error("API Key is missing.");
 
@@ -1046,6 +1080,14 @@ Return all identified items as a flat list in "items" and categorized in "catego
 export const scanPantryFromAudio = async (
   audioBlob: Blob
 ): Promise<ScannedPantryResult> => {
+  // Use Edge Functions in production when configured
+  if (USE_EDGE_FUNCTIONS && isSupabaseConfigured()) {
+    const base64Audio = await blobToBase64(audioBlob);
+    const mimeType = audioBlob.type || 'audio/webm';
+    return scanPantryViaEdge('audio', { audio: { base64: base64Audio, mimeType } });
+  }
+
+  // Fall back to client-side API call (development only)
   const apiKey = process.env.API_KEY;
   if (!apiKey) throw new Error("API Key is missing.");
 
@@ -1123,6 +1165,12 @@ Return all identified items as a flat list in "items" and categorized in "catego
 export const parseDictationForPantryItems = async (
   transcriptionText: string
 ): Promise<ScannedPantryResult> => {
+  // Use Edge Functions in production when configured
+  if (USE_EDGE_FUNCTIONS && isSupabaseConfigured()) {
+    return scanPantryViaEdge('dictation', { dictationText: transcriptionText });
+  }
+
+  // Fall back to client-side API call (development only)
   const apiKey = process.env.API_KEY;
   if (!apiKey) throw new Error("API Key is missing.");
 

@@ -21,11 +21,12 @@ interface VideoRecorderProps {
   onItemsScanned: (items: PantryItem[], mode: PantryUploadMode) => void;
   onClose: () => void;
   existingItemCount: number;
+  existingItems?: PantryItem[];
 }
 
 type RecordingState = 'idle' | 'recording' | 'preview' | 'uploading' | 'processing' | 'results';
 
-const VideoRecorder: React.FC<VideoRecorderProps> = ({ onItemsScanned, onClose, existingItemCount }) => {
+const VideoRecorder: React.FC<VideoRecorderProps> = ({ onItemsScanned, onClose, existingItemCount, existingItems = [] }) => {
   const [recordingState, setRecordingState] = useState<RecordingState>('idle');
   const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);

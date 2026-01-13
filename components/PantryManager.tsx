@@ -450,6 +450,7 @@ const PantryManager: React.FC<PantryManagerProps> = ({ items, setItems, onNext, 
           onItemsScanned={handleScannedItems}
           onClose={() => setShowScanner(false)}
           existingItemCount={items.length}
+          existingItems={items}
         />
       )}
 
@@ -459,6 +460,7 @@ const PantryManager: React.FC<PantryManagerProps> = ({ items, setItems, onNext, 
           onItemsScanned={handleScannedItems}
           onClose={() => setShowVideoRecorder(false)}
           existingItemCount={items.length}
+          existingItems={items}
         />
       )}
 
@@ -468,6 +470,7 @@ const PantryManager: React.FC<PantryManagerProps> = ({ items, setItems, onNext, 
           onItemsScanned={handleScannedItems}
           onClose={() => setShowLiveDictation(false)}
           existingItemCount={items.length}
+          existingItems={items}
         />
       )}
 
@@ -477,6 +480,7 @@ const PantryManager: React.FC<PantryManagerProps> = ({ items, setItems, onNext, 
           onItemsScanned={handleScannedItems}
           onClose={() => setShowAudioRecorder(false)}
           existingItemCount={items.length}
+          existingItems={items}
         />
       )}
 

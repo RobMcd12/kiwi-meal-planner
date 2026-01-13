@@ -20,11 +20,12 @@ interface AudioRecorderProps {
   onItemsScanned: (items: PantryItem[], mode: PantryUploadMode) => void;
   onClose: () => void;
   existingItemCount: number;
+  existingItems?: PantryItem[];
 }
 
 type RecordingState = 'idle' | 'recording' | 'preview' | 'uploading' | 'processing' | 'results';
 
-const AudioRecorder: React.FC<AudioRecorderProps> = ({ onItemsScanned, onClose, existingItemCount }) => {
+const AudioRecorder: React.FC<AudioRecorderProps> = ({ onItemsScanned, onClose, existingItemCount, existingItems = [] }) => {
   const [recordingState, setRecordingState] = useState<RecordingState>('idle');
   const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
