@@ -97,10 +97,16 @@ const invokeWithAuth = async (functionName: string, body: Record<string, unknown
   const session = await getSession();
   const accessToken = session?.access_token;
 
+  console.log(`[invokeWithAuth] Function: ${functionName}`);
+  console.log(`[invokeWithAuth] Session exists: ${!!session}`);
+  console.log(`[invokeWithAuth] Access token exists: ${!!accessToken}`);
+
   if (!accessToken) {
     console.warn(`No access token available for ${functionName} call`);
     throw new Error('Not authenticated');
   }
+
+  console.log(`[invokeWithAuth] Token preview: ${accessToken.substring(0, 30)}...`);
 
   return supabase.functions.invoke(functionName, {
     body,
