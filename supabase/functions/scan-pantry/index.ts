@@ -60,14 +60,18 @@ Deno.serve(async (req) => {
   }
 
   try {
+    console.log('scan-pantry: Starting request processing');
+
     // Verify authentication
     const auth = await verifyAuth(req);
     if (!auth) {
+      console.error('scan-pantry: Auth verification failed');
       return new Response(
         JSON.stringify({ error: 'Unauthorized' }),
         { status: 401, headers: { ...responseHeaders, 'Content-Type': 'application/json' } }
       );
     }
+    console.log('scan-pantry: Auth verified for user:', auth.userId);
 
     // Check rate limit for AI generation endpoints
     const clientIP = getClientIP(req);
@@ -79,9 +83,11 @@ Deno.serve(async (req) => {
 
     // Parse request body
     const body: ScanRequest = await req.json();
+    console.log('scan-pantry: Request type:', body.type);
 
     // Validate input
     if (!body.type) {
+      console.error('scan-pantry: Missing type field');
       return new Response(
         JSON.stringify({ error: 'Missing type field (images, video, audio, or dictation)' }),
         { status: 400, headers: { ...responseHeaders, 'Content-Type': 'application/json' } }
@@ -91,11 +97,13 @@ Deno.serve(async (req) => {
     // Get API key from environment
     const apiKey = Deno.env.get('GEMINI_API_KEY');
     if (!apiKey) {
+      console.error('scan-pantry: GEMINI_API_KEY not configured');
       return new Response(
         JSON.stringify({ error: 'API key not configured' }),
         { status: 500, headers: { ...responseHeaders, 'Content-Type': 'application/json' } }
       );
     }
+    console.log('scan-pantry: GEMINI_API_KEY found');
 
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({
