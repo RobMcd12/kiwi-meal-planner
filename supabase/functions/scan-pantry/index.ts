@@ -140,11 +140,17 @@ Deno.serve(async (req) => {
 
 Identify ALL visible food items, ingredients, and cooking supplies. Be thorough and specific.
 
+IMPORTANT - For EVERY item, you MUST estimate quantities:
+- Count individual items (e.g., "6 eggs", "3 apples", "2 onions")
+- Estimate container sizes from packaging (e.g., "1L milk", "500g butter", "400g canned tomatoes")
+- For bulk items, estimate amounts (e.g., "~500g chicken breast", "~1kg potatoes")
+- Include the quantity directly in the item name (e.g., "milk (1L)" not just "milk")
+
 For each item:
-- Use common names (e.g., "eggs" not "chicken eggs")
-- Include quantities if clearly visible (e.g., "milk (1 gallon)")
-- Note if items appear fresh, frozen, or packaged
-- Include brand names if visible to help identify specific products
+- Use common names (e.g., "eggs (6)" not "chicken eggs")
+- ALWAYS include quantity estimates - this is critical for meal planning
+- Note package sizes when visible on labels
+- Include brand names if visible
 
 Group items into categories:
 - Produce (fruits, vegetables)
@@ -156,7 +162,7 @@ Group items into categories:
 - Condiments & Sauces
 - Other
 
-Return all identified items as a flat list in "items" and categorized in "categories".`;
+Return all identified items as a flat list in "items" and categorized in "categories". Every item MUST include a quantity estimate.`;
         break;
 
       case 'video':
@@ -178,11 +184,17 @@ Return all identified items as a flat list in "items" and categorized in "catego
 
 Identify ALL visible food items, ingredients, and cooking supplies throughout the video. Be thorough and specific.
 
+IMPORTANT - For EVERY item, you MUST estimate quantities:
+- Count individual items (e.g., "6 eggs", "3 apples", "2 onions")
+- Estimate container sizes from packaging (e.g., "1L milk", "500g butter", "400g canned tomatoes")
+- For bulk items, estimate amounts (e.g., "~500g chicken breast", "~1kg potatoes")
+- Include the quantity directly in the item name (e.g., "milk (1L)" not just "milk")
+
 For each item:
-- Use common names (e.g., "eggs" not "chicken eggs")
-- Include quantities if clearly visible (e.g., "milk (1 gallon)")
-- Note if items appear fresh, frozen, or packaged
-- Include brand names if visible to help identify specific products
+- Use common names (e.g., "eggs (6)" not "chicken eggs")
+- ALWAYS include quantity estimates - this is critical for meal planning
+- Note package sizes when visible on labels
+- Include brand names if visible
 
 Group items into categories:
 - Produce (fruits, vegetables)
@@ -194,7 +206,7 @@ Group items into categories:
 - Condiments & Sauces
 - Other
 
-Return all identified items as a flat list in "items" and categorized in "categories".`;
+Return all identified items as a flat list in "items" and categorized in "categories". Every item MUST include a quantity estimate.`;
         break;
 
       case 'audio':
