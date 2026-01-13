@@ -2,7 +2,6 @@ import React, { useState, useRef } from 'react';
 import { Camera, Upload, X, Loader2, Check, Plus, Trash2, Image as ImageIcon, Sparkles, AlertCircle, AlertTriangle, Edit3, RefreshCw } from 'lucide-react';
 import { scanPantryFromImages } from '../services/geminiService';
 import type { PantryItem, ScannedPantryResult, PantryUploadMode } from '../types';
-import PantryUploadModeModal from './PantryUploadModeModal';
 
 interface PantryScannerProps {
   onItemsScanned: (items: PantryItem[], mode: PantryUploadMode) => void;
@@ -32,8 +31,6 @@ const PantryScanner: React.FC<PantryScannerProps> = ({ onItemsScanned, onClose, 
   const [editableItems, setEditableItems] = useState<Map<string, EditableItem>>(new Map());
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [showUploadModeModal, setShowUploadModeModal] = useState(false);
-  const [includeUpdates, setIncludeUpdates] = useState(true); // Option to update existing items
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -191,17 +188,24 @@ const PantryScanner: React.FC<PantryScannerProps> = ({ onItemsScanned, onClose, 
     return undefined;
   };
 
-  const handleAddSelected = () => {
-    // If there are existing items and user wants to update them, show the upload mode modal
-    if (existingItemCount > 0) {
-      setShowUploadModeModal(true);
-    } else {
-      // No existing items, just add the new ones
-      finalizeAddItems('add_new');
-    }
+  // Replace all pantry items with scanned items
+  const handleReplaceAll = () => {
+    const items: PantryItem[] = [];
+
+    // Get all selected items as new items
+    editableItems.forEach((item) => {
+      if (!item.selected) return;
+      items.push({
+        id: `scanned-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        name: item.editedName,
+      });
+    });
+
+    onItemsScanned(items, 'replace');
   };
 
-  const finalizeAddItems = (mode: PantryUploadMode) => {
+  // Add new items and update existing items with new quantities
+  const handleAddAndUpdate = () => {
     const items: PantryItem[] = [];
 
     // Get all selected items
@@ -210,17 +214,16 @@ const PantryScanner: React.FC<PantryScannerProps> = ({ onItemsScanned, onClose, 
 
       const isExisting = isDuplicate(item.editedName);
 
-      if (isExisting && includeUpdates) {
-        // Update existing item - use the existing item's ID but new name
+      if (isExisting) {
+        // Update existing item - use the existing item's ID but new name (with updated quantity)
         const existingItem = findExistingItem(item.editedName);
         if (existingItem) {
           items.push({
             id: existingItem.id,
             name: item.editedName,
-            // Preserve other fields from existing item
           });
         }
-      } else if (!isExisting) {
+      } else {
         // New item
         items.push({
           id: `scanned-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
@@ -229,14 +232,9 @@ const PantryScanner: React.FC<PantryScannerProps> = ({ onItemsScanned, onClose, 
       }
     });
 
-    // Use 'update_existing' mode when includeUpdates is true and we have duplicates
-    const finalMode = includeUpdates && duplicatesInSelection > 0 ? 'update_existing' : mode;
-    onItemsScanned(items, finalMode as PantryUploadMode);
-  };
-
-  const handleUploadModeSelect = (mode: PantryUploadMode) => {
-    setShowUploadModeModal(false);
-    finalizeAddItems(mode);
+    // Use 'update_existing' mode when we have duplicates, otherwise 'add_new'
+    const mode = duplicatesInSelection > 0 ? 'update_existing' : 'add_new';
+    onItemsScanned(items, mode);
   };
 
   const categoryLabels: Record<string, string> = {
@@ -410,9 +408,9 @@ const PantryScanner: React.FC<PantryScannerProps> = ({ onItemsScanned, onClose, 
                 </div>
               </div>
 
-              {/* Duplicate warning and update toggle */}
+              {/* Duplicate info */}
               {duplicatesInSelection > 0 && (
-                <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 space-y-3">
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-3">
                   <div className="flex items-start gap-2">
                     <AlertTriangle size={18} className="text-amber-500 mt-0.5 flex-shrink-0" />
                     <div>
@@ -420,23 +418,10 @@ const PantryScanner: React.FC<PantryScannerProps> = ({ onItemsScanned, onClose, 
                         {duplicatesInSelection} item{duplicatesInSelection !== 1 ? 's' : ''} already in your pantry
                       </p>
                       <p className="text-xs text-amber-600 mt-0.5">
-                        Items marked with a yellow border are already in your pantry.
+                        Items marked with yellow will have their quantities updated.
                       </p>
                     </div>
                   </div>
-                  {/* Toggle for updating existing items */}
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={includeUpdates}
-                      onChange={(e) => setIncludeUpdates(e.target.checked)}
-                      className="w-4 h-4 rounded border-amber-300 text-amber-600 focus:ring-amber-500"
-                    />
-                    <span className="text-sm text-amber-800">
-                      <RefreshCw size={14} className="inline mr-1" />
-                      Update quantities for existing items
-                    </span>
-                  </label>
                 </div>
               )}
 
@@ -525,7 +510,7 @@ const PantryScanner: React.FC<PantryScannerProps> = ({ onItemsScanned, onClose, 
                       {/* Status badge */}
                       {isExisting && (
                         <span className="flex-shrink-0 text-xs px-2 py-0.5 bg-amber-200 text-amber-800 rounded-full">
-                          {includeUpdates ? 'update' : 'exists'}
+                          will update
                         </span>
                       )}
                     </div>
@@ -569,58 +554,51 @@ const PantryScanner: React.FC<PantryScannerProps> = ({ onItemsScanned, onClose, 
               )}
             </button>
           ) : (
-            <div className="space-y-2">
-              {/* Main action button */}
-              {(newItemsInSelection > 0 || (includeUpdates && duplicatesInSelection > 0)) ? (
-                <button
-                  onClick={handleAddSelected}
-                  disabled={newItemsInSelection === 0 && (!includeUpdates || duplicatesInSelection === 0)}
-                  className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 disabled:bg-slate-300 text-white rounded-xl font-semibold flex items-center justify-center gap-2 transition-colors"
-                >
-                  {includeUpdates && duplicatesInSelection > 0 ? (
-                    <>
-                      <RefreshCw size={20} />
-                      {newItemsInSelection > 0
-                        ? `Add ${newItemsInSelection} & Update ${duplicatesInSelection} Item${newItemsInSelection + duplicatesInSelection !== 1 ? 's' : ''}`
-                        : `Update ${duplicatesInSelection} Item${duplicatesInSelection !== 1 ? 's' : ''}`
-                      }
-                    </>
-                  ) : (
-                    <>
-                      <Plus size={20} />
-                      Add {newItemsInSelection} New Item{newItemsInSelection !== 1 ? 's' : ''} to Pantry
-                    </>
-                  )}
-                </button>
-              ) : (
+            <div className="space-y-3">
+              {selectedItems.size === 0 ? (
                 <div className="text-center py-3 text-amber-700 bg-amber-50 rounded-xl">
                   <AlertTriangle size={18} className="inline mr-2" />
-                  {duplicatesInSelection > 0
-                    ? 'Enable "Update quantities" above to update existing items'
-                    : 'Select items to add to your pantry'
-                  }
+                  Select items to add to your pantry
                 </div>
-              )}
-              {/* Info text */}
-              {duplicatesInSelection > 0 && !includeUpdates && newItemsInSelection > 0 && (
-                <p className="text-xs text-center text-slate-500">
-                  {duplicatesInSelection} existing item{duplicatesInSelection !== 1 ? 's' : ''} will be skipped
-                </p>
+              ) : (
+                <>
+                  {/* Primary button - Add New & Update Existing */}
+                  <button
+                    onClick={handleAddAndUpdate}
+                    className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-semibold flex items-center justify-center gap-2 transition-colors"
+                  >
+                    <Plus size={20} />
+                    {duplicatesInSelection > 0 && newItemsInSelection > 0
+                      ? `Add ${newItemsInSelection} New & Update ${duplicatesInSelection} Existing`
+                      : duplicatesInSelection > 0
+                        ? `Update ${duplicatesInSelection} Existing Item${duplicatesInSelection !== 1 ? 's' : ''}`
+                        : `Add ${newItemsInSelection} Item${newItemsInSelection !== 1 ? 's' : ''} to Pantry`
+                    }
+                  </button>
+
+                  {/* Secondary button - Replace All (only show if there are existing items) */}
+                  {existingItemCount > 0 && (
+                    <button
+                      onClick={handleReplaceAll}
+                      className="w-full py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-medium flex items-center justify-center gap-2 transition-colors border border-slate-300"
+                    >
+                      <Trash2 size={18} />
+                      Replace All Pantry Items ({existingItemCount}) with Scanned Items
+                    </button>
+                  )}
+
+                  {/* Info text */}
+                  {duplicatesInSelection > 0 && newItemsInSelection > 0 && (
+                    <p className="text-xs text-center text-slate-500">
+                      {duplicatesInSelection} existing item{duplicatesInSelection !== 1 ? 's' : ''} will have quantities updated
+                    </p>
+                  )}
+                </>
               )}
             </div>
           )}
         </div>
       </div>
-
-      {/* Upload Mode Modal */}
-      {showUploadModeModal && (
-        <PantryUploadModeModal
-          onSelect={handleUploadModeSelect}
-          onClose={() => setShowUploadModeModal(false)}
-          existingItemCount={existingItemCount}
-          newItemCount={selectedItems.size}
-        />
-      )}
     </div>
   );
 };
