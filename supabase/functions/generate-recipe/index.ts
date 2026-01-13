@@ -42,23 +42,15 @@ interface GenerateRecipeRequest {
 }
 
 Deno.serve(async (req) => {
-  console.log('generate-recipe: Request received');
-  console.log('generate-recipe: Method:', req.method);
-  console.log('generate-recipe: Headers:', JSON.stringify(Object.fromEntries(req.headers.entries())));
-
   // Handle CORS preflight
   const corsResponse = handleCors(req);
-  if (corsResponse) {
-    console.log('generate-recipe: Returning CORS preflight response');
-    return corsResponse;
-  }
+  if (corsResponse) return corsResponse;
 
   const origin = req.headers.get('origin');
   const responseHeaders = getCorsHeaders(origin);
 
   // Check for POST method
   if (req.method !== 'POST') {
-    console.log('generate-recipe: Method not allowed:', req.method);
     return new Response('Method not allowed', {
       status: 405,
       headers: responseHeaders,
@@ -66,18 +58,8 @@ Deno.serve(async (req) => {
   }
 
   try {
-    console.log('generate-recipe: Starting authentication');
-
-    // First check if Authorization header exists at all
-    const authHeader = req.headers.get('Authorization');
-    console.log('generate-recipe: Authorization header exists:', !!authHeader);
-    if (authHeader) {
-      console.log('generate-recipe: Auth header preview:', authHeader.substring(0, 50) + '...');
-    }
-
     // Verify authentication
     const auth = await verifyAuth(req);
-    console.log('generate-recipe: Auth result:', auth ? 'authenticated' : 'failed');
     if (!auth) {
       return new Response(
         JSON.stringify({ error: 'Unauthorized' }),
@@ -122,14 +104,11 @@ Deno.serve(async (req) => {
     // Get API key from environment
     const apiKey = Deno.env.get('GEMINI_API_KEY');
     if (!apiKey) {
-      console.error('generate-recipe: GEMINI_API_KEY not configured');
       return new Response(
         JSON.stringify({ error: 'API key not configured' }),
         { status: 500, headers: { ...responseHeaders, 'Content-Type': 'application/json' } }
       );
     }
-
-    console.log('generate-recipe: GEMINI_API_KEY found');
 
     const genAI = new GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({
@@ -198,7 +177,6 @@ Return a single recipe object with:
 - ingredients: Array of ingredient strings (with quantities)
 - instructions: Step-by-step cooking instructions`;
 
-    console.log('generate-recipe: Calling Gemini API');
     const result = await model.generateContent(prompt);
     const response = result.response;
     const text = response.text();
@@ -224,8 +202,6 @@ Return a single recipe object with:
     const timestamp = Date.now();
     parsed.id = `recipe-${timestamp}-${Math.random().toString(36).substr(2, 9)}`;
     parsed.servings = peopleCount;
-
-    console.log('generate-recipe: Successfully generated recipe:', parsed.name);
 
     return new Response(
       JSON.stringify(parsed),
