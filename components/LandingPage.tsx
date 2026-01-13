@@ -86,6 +86,14 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin, onView
                 I have an account
               </button>
             </div>
+
+            <button
+              onClick={onViewFeatures}
+              className="flex items-center justify-center gap-2 text-emerald-600 hover:text-emerald-700 font-medium transition-colors"
+            >
+              View All Features
+              <ArrowRight size={16} />
+            </button>
           </div>
 
           {/* Food Image Grid */}
@@ -261,6 +269,16 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted, onLogin, onView
                   </div>
                 </div>
               </div>
+            </div>
+
+            <div className="text-center mt-8">
+              <button
+                onClick={onViewFeatures}
+                className="inline-flex items-center gap-2 px-6 py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-medium transition-colors"
+              >
+                View All Features
+                <ArrowRight size={18} />
+              </button>
             </div>
           </div>
         </div>
