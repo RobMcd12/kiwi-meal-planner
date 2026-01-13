@@ -134,14 +134,17 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({
             >
               <ArrowLeft size={20} />
             </button>
-            <div className="flex items-center gap-2">
+            <button
+              onClick={onBack}
+              className="flex items-center gap-2 cursor-pointer"
+            >
               <div className="bg-emerald-600 p-2 rounded-xl text-white">
                 <ChefHat size={24} />
               </div>
               <span className="text-xl font-bold text-slate-800">
                 Kiwi<span className="text-emerald-600">MealPlanner</span>
               </span>
-            </div>
+            </button>
           </div>
           {!isAuthenticated && (
             <button
