@@ -798,21 +798,14 @@ const generateSingleRecipeViaEdge = async (
   macroTargets?: { calories: number; protein: number; carbohydrates: number; fat: number },
   meatServingGrams?: number
 ): Promise<Meal> => {
-  const session = await getSession();
-  if (!session) {
-    throw new Error('Authentication required');
-  }
-
-  const { data, error } = await supabase.functions.invoke('generate-recipe', {
-    body: {
-      recipeDescription,
-      preferences,
-      pantryItems,
-      peopleCount,
-      useWhatIHave,
-      macroTargets,
-      meatServingGrams
-    }
+  const { data, error } = await invokeWithAuth('generate-recipe', {
+    recipeDescription,
+    preferences,
+    pantryItems,
+    peopleCount,
+    useWhatIHave,
+    macroTargets,
+    meatServingGrams
   });
 
   if (error) {
