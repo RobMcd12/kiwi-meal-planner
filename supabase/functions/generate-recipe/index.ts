@@ -42,16 +42,34 @@ interface GenerateRecipeRequest {
 }
 
 Deno.serve(async (req) => {
+  console.log('generate-recipe: Request received');
+  console.log('generate-recipe: Method:', req.method);
+  console.log('generate-recipe: Headers:', JSON.stringify(Object.fromEntries(req.headers.entries())));
+
   // Handle CORS preflight
   const corsResponse = handleCors(req);
-  if (corsResponse) return corsResponse;
+  if (corsResponse) {
+    console.log('generate-recipe: Returning CORS preflight response');
+    return corsResponse;
+  }
 
   const origin = req.headers.get('origin');
   const responseHeaders = getCorsHeaders(origin);
 
+  // Check for POST method
+  if (req.method !== 'POST') {
+    console.log('generate-recipe: Method not allowed:', req.method);
+    return new Response('Method not allowed', {
+      status: 405,
+      headers: responseHeaders,
+    });
+  }
+
   try {
+    console.log('generate-recipe: Starting authentication');
     // Verify authentication
     const auth = await verifyAuth(req);
+    console.log('generate-recipe: Auth result:', auth ? 'authenticated' : 'failed');
     if (!auth) {
       return new Response(
         JSON.stringify({ error: 'Unauthorized' }),
