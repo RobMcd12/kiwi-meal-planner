@@ -235,7 +235,7 @@ Return a single recipe object with:
     console.error('Error generating recipe:', error);
     return new Response(
       JSON.stringify({ error: error.message || 'Failed to generate recipe' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      { status: 500, headers: { ...responseHeaders, 'Content-Type': 'application/json' } }
     );
   }
 });
