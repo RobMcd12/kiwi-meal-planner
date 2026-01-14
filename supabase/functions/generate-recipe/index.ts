@@ -161,21 +161,19 @@ ${exclusionsInstruction}
 ${meatPortionInstruction}
 ${macroInstruction}
 
-CRITICAL INSTRUCTION:
-- Create a COMPLETE meal, not just a main dish. Include appropriate side dishes.
-- For example, instead of just "Steak", create "Grilled Ribeye with Garlic Mashed Potatoes and Asparagus".
-- The name should describe the full meal.
-- The description should explain what makes this meal special.
-- Include ALL ingredients for ALL components of the meal.
-- Instructions must cover preparing all parts of the meal.
-- Use ${preferences?.unitSystem || 'metric'} units for ALL ingredient quantities.
-- Use ${preferences?.temperatureScale || 'celsius'} for ALL cooking temperatures.
+CRITICAL INSTRUCTIONS:
+1. STAY TRUE TO THE REQUEST: Create exactly what the user asked for. If they ask for "cheese on toast", make cheese on toast - do NOT add unrelated proteins, meats, or entirely different dishes.
+2. You MAY enhance the dish with complementary toppings, seasonings, or simple accompaniments that fit the dish (e.g., adding herbs, a sauce, or a side salad to cheese on toast is fine).
+3. Do NOT add major protein sources (meat, fish, eggs) unless the user specifically requested them or they are a natural part of the dish.
+4. The recipe name, description, ingredients, and instructions must ALL be consistent with each other - no orphaned ingredients or instructions for items not in the dish.
+5. Use ${preferences?.unitSystem || 'metric'} units for ALL ingredient quantities.
+6. Use ${preferences?.temperatureScale || 'celsius'} for ALL cooking temperatures.
 
 Return a single recipe object with:
-- name: The full meal name
-- description: What makes this meal delicious
-- ingredients: Array of ingredient strings (with quantities)
-- instructions: Step-by-step cooking instructions`;
+- name: A descriptive name for the dish
+- description: What makes this dish delicious
+- ingredients: Array of ingredient strings (with quantities) - ONLY ingredients actually used in the recipe
+- instructions: Step-by-step cooking instructions - ONLY for the actual dish being made`;
 
     const result = await model.generateContent(prompt);
     const response = result.response;
