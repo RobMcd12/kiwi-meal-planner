@@ -5,7 +5,7 @@ import {
   Sparkles, Bell, MessageSquare, User, ChevronRight, ChevronDown,
   Star, ImagePlus, Edit2, Camera, Apple, Utensils, SlidersHorizontal,
   Beef, Flame, Printer, Mic, Timer, Volume2, Play, Pause, UtensilsCrossed,
-  UserCircle, ShieldAlert, Target, Package, RefreshCw, Cake
+  UserCircle, ShieldAlert, Target, Package, RefreshCw, Cake, History
 } from 'lucide-react';
 import { version } from '../package.json';
 
@@ -797,6 +797,31 @@ const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
           </ul>
           <p className="mt-3 text-slate-500">
             The app works offline for viewing saved recipes!
+          </p>
+        </>
+      )
+    },
+    {
+      id: 'version-history',
+      title: 'Version History',
+      icon: <History size={20} />,
+      keywords: ['version', 'history', 'update', 'changelog', 'new', 'features', 'release'],
+      content: (
+        <>
+          <p className="font-medium text-emerald-600 mb-2">Current Version: {version}</p>
+          <p>See what's new in Kiwi Meal Planner:</p>
+          <div className="mt-3 space-y-2">
+            <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3">
+              <p className="font-medium text-slate-700">Version 2.7 Highlights:</p>
+              <ul className="list-disc list-inside text-sm text-slate-600 mt-1 space-y-1">
+                <li><strong>Sides & Dessert Generation (Pro)</strong> — Complete meals with sides and dessert</li>
+                <li><strong>Regenerate with Variations</strong> — Customize each component</li>
+                <li><strong>Full Meal PDF Export</strong> — Print entire meals</li>
+              </ul>
+            </div>
+          </div>
+          <p className="mt-3 text-slate-500 text-sm">
+            To view the full version history with all past updates, tap the <strong>menu (☰)</strong> and select <strong>"Version History"</strong>.
           </p>
         </>
       )
