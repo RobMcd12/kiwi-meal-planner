@@ -1,10 +1,9 @@
 /**
  * Generate Dish Image Edge Function
  *
- * Generates a food photograph for a meal using Imagen 3 via Gemini API.
+ * Generates a food photograph for a meal using Gemini 2.0 Flash with image output.
  */
 
-import { GoogleGenAI } from 'https://esm.sh/@google/genai@0.14.1';
 import { handleCors, getCorsHeaders } from '../_shared/cors.ts';
 import { verifyAuth } from '../_shared/auth.ts';
 import { checkRateLimit, RATE_LIMITS, rateLimitExceededResponse, getClientIP } from '../_shared/rateLimit.ts';
@@ -69,38 +68,58 @@ Deno.serve(async (req) => {
       );
     }
 
-    const ai = new GoogleGenAI({ apiKey });
-
     // Build the prompt based on whether this is an edit or new generation
     let prompt: string;
     if (editInstructions) {
-      prompt = `A high-end food magazine photo of: ${mealName}. ${description}. ${editInstructions}. Professional food photography, appetizing, warm lighting. Only show the exact ingredients described - no extra garnishes.`;
+      prompt = `Generate a high-end food magazine photo of: ${mealName}. ${description}. ${editInstructions}. Professional food photography, appetizing, warm lighting. Only show the exact ingredients described - no extra garnishes.`;
     } else {
-      prompt = `A high-end food magazine photo of: ${mealName}. ${description}. Professional food photography, appetizing, warm lighting, table setting. Only show the exact ingredients described - no extra garnishes.`;
+      prompt = `Generate a high-end food magazine photo of: ${mealName}. ${description}. Professional food photography, appetizing, warm lighting, table setting. Only show the exact ingredients described - no extra garnishes.`;
     }
 
-    // Use Imagen 3 for image generation
-    const response = await ai.models.generateImages({
-      model: 'imagen-3.0-generate-002',
-      prompt: prompt,
-      config: {
-        numberOfImages: 1,
-        aspectRatio: '16:9',
-      },
-    });
+    // Use Gemini REST API directly for image generation
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          contents: [{
+            parts: [{ text: prompt }]
+          }],
+          generationConfig: {
+            responseModalities: ['TEXT', 'IMAGE'],
+          }
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Gemini API error:', errorText);
+      throw new Error(`Gemini API error: ${response.status}`);
+    }
+
+    const result = await response.json();
 
     // Extract image data from response
-    const generatedImages = response.generatedImages;
-    if (!generatedImages || generatedImages.length === 0 || !generatedImages[0].image?.imageBytes) {
+    let imageData: string | null = null;
+    const parts = result.candidates?.[0]?.content?.parts || [];
+    for (const part of parts) {
+      if (part.inlineData) {
+        imageData = `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
+        break;
+      }
+    }
+
+    if (!imageData) {
+      console.error('No image in response:', JSON.stringify(result, null, 2));
       return new Response(
         JSON.stringify({ error: 'No image generated' }),
         { status: 500, headers: { ...responseHeaders, 'Content-Type': 'application/json' } }
       );
     }
-
-    // Convert to base64 data URL
-    const imageBytes = generatedImages[0].image.imageBytes;
-    const imageData = `data:image/png;base64,${imageBytes}`;
 
     return new Response(
       JSON.stringify({ imageData }),
