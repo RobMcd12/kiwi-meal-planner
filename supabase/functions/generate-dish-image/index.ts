@@ -72,14 +72,18 @@ Deno.serve(async (req) => {
     let prompt: string;
     const basePrompt = `Professional food photography of ${mealName}. ${description}.
 
+IMAGE FORMAT: Wide landscape orientation (16:9 aspect ratio)
+
 COMPOSITION REQUIREMENTS:
-- The dish must be FULLY VISIBLE and CENTERED in the frame
-- Leave adequate margins around the food (no cropping of the dish)
-- Shot from a 45-degree angle showing the full plate/dish
-- Clean, simple background (wooden table or neutral surface)
-- Soft, warm natural lighting from the side
-- The entire meal should fit comfortably within the frame with space around it
-- Focus on making the food look appetizing and professionally plated`;
+- CRITICAL: Generate a WIDE LANDSCAPE image, wider than it is tall
+- The dish must be CENTERED both horizontally and vertically in the frame
+- The food should occupy approximately 50-60% of the frame, leaving generous space around it
+- Overhead or 30-degree angle shot showing the full dish
+- Clean, simple background (wooden table, marble surface, or neutral backdrop)
+- Soft, warm natural lighting
+- The entire meal must fit comfortably within the frame with ample margins on all sides
+- Professional food styling with garnishes arranged neatly
+- Shallow depth of field focusing on the food`;
 
     if (editInstructions) {
       prompt = `${basePrompt}

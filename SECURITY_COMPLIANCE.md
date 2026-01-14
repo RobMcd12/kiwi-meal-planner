@@ -93,8 +93,8 @@ This document covers:
 
 | Environment | URL | Purpose |
 |-------------|-----|---------|
-| Production | kiwimealplanner.co.nz | Live user traffic |
-| Staging | kiwi-meal-planner-production.up.railway.app | Pre-release testing |
+| Production | www.kiwimealplanner.co.nz | Live user traffic |
+| Staging | staging.kiwimealplanner.co.nz | Pre-release testing |
 | Development | localhost:3000 | Local development |
 
 ---
@@ -245,7 +245,6 @@ Implemented via meta tag in `index.html`:
 **Allowed Origins:**
 - `https://kiwimealplanner.co.nz`
 - `https://www.kiwimealplanner.co.nz`
-- `https://kiwi-meal-planner-production.up.railway.app`
 - `http://localhost:3000` (development only)
 - `http://localhost:5173` (development only)
 

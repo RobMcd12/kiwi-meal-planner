@@ -27,7 +27,7 @@ const RecipeModal: React.FC<RecipeModalProps> = ({ meal, isOpen, onClose, imageU
             <img
               src={imageUrl}
               alt={meal.name}
-              className="w-full h-full object-contain"
+              className="w-full h-full object-cover"
             />
           ) : (
             <div className="w-full h-full flex flex-col items-center justify-center text-slate-400">

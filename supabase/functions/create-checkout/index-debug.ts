@@ -177,7 +177,7 @@ Deno.serve(async (req) => {
     }
 
     // Create checkout session
-    const origin = req.headers.get('origin') || 'https://kiwi-meal-planner-production.up.railway.app';
+    const origin = req.headers.get('origin') || 'https://www.kiwimealplanner.co.nz';
     console.log('Using origin:', origin);
 
     const sessionParams: Record<string, string> = {

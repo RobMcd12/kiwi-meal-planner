@@ -180,8 +180,8 @@ const SecurityComplianceViewer: React.FC<SecurityComplianceViewerProps> = ({ onC
           <DataTable
             headers={['Environment', 'URL', 'Purpose']}
             rows={[
-              ['Production', 'kiwimealplanner.co.nz', 'Live user traffic'],
-              ['Staging', 'kiwi-meal-planner-production.up.railway.app', 'Pre-release testing'],
+              ['Production', 'www.kiwimealplanner.co.nz', 'Live user traffic'],
+              ['Staging', 'staging.kiwimealplanner.co.nz', 'Pre-release testing'],
               ['Development', 'localhost:3000', 'Local development'],
             ]}
           />
@@ -304,7 +304,6 @@ frame-src 'self' https://js.stripe.com;`}</pre>
           <ul className="list-disc list-inside text-slate-600 space-y-1">
             <li>https://kiwimealplanner.co.nz</li>
             <li>https://www.kiwimealplanner.co.nz</li>
-            <li>https://kiwi-meal-planner-production.up.railway.app</li>
             <li>localhost:3000 (development only)</li>
           </ul>
           <h4 className="font-semibold text-slate-800 mt-6">Rate Limiting</h4>
@@ -785,8 +784,8 @@ frame-src 'self' https://js.stripe.com;`}</pre>
       addTable(
         ['Environment', 'URL', 'Purpose'],
         [
-          ['Production', 'kiwimealplanner.co.nz', 'Live user traffic'],
-          ['Staging', 'kiwi-meal-planner-production.up.railway.app', 'Pre-release testing'],
+          ['Production', 'www.kiwimealplanner.co.nz', 'Live user traffic'],
+          ['Staging', 'staging.kiwimealplanner.co.nz', 'Pre-release testing'],
           ['Development', 'localhost:3000', 'Local development'],
         ]
       );
@@ -916,7 +915,6 @@ frame-src 'self' https://js.stripe.com;`}</pre>
       addWrappedText('Allowed Origins:', margin, contentWidth, 5, 10);
       addBullet('https://kiwimealplanner.co.nz');
       addBullet('https://www.kiwimealplanner.co.nz');
-      addBullet('https://kiwi-meal-planner-production.up.railway.app');
       addBullet('localhost:3000 (development only)');
 
       addSubHeader('Rate Limiting');

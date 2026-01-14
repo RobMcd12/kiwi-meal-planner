@@ -514,6 +514,25 @@ const extractedRecipeSchema: Schema = {
 };
 
 /**
+ * Auto-tag a recipe using AI via Edge Function
+ */
+const autoTagRecipeViaEdge = async (recipe: { name: string; description: string; ingredients: string[] }): Promise<{
+  tags: string[];
+  cuisineType: string;
+  difficulty: string;
+}> => {
+  const { data, error } = await invokeWithAuth('auto-tag-recipe', { recipe });
+
+  if (error) {
+    console.error('Edge Function error:', error);
+    // Return empty tags on error - don't block the save
+    return { tags: [], cuisineType: 'Other', difficulty: 'Medium' };
+  }
+
+  return data as { tags: string[]; cuisineType: string; difficulty: string };
+};
+
+/**
  * Auto-tag a recipe using AI
  * Called for ALL recipes (both generated and uploaded)
  */
@@ -522,6 +541,12 @@ export const autoTagRecipe = async (recipe: { name: string; description: string;
   cuisineType: string;
   difficulty: string;
 }> => {
+  // Use Edge Function in production
+  if (USE_EDGE_FUNCTIONS && isSupabaseConfigured()) {
+    return await autoTagRecipeViaEdge(recipe);
+  }
+
+  // Fall back to client-side for development only
   const apiKey = process.env.API_KEY;
   if (!apiKey) throw new Error("API Key is missing.");
 
@@ -575,9 +600,48 @@ Select 3-6 most relevant tags. Determine the primary cuisine type and difficulty
 };
 
 /**
+ * Extract recipe via Edge Function - handles text, image, PDF, and URL
+ */
+const extractRecipeViaEdge = async (
+  type: 'text' | 'image' | 'pdf' | 'url',
+  payload: {
+    textContent?: string;
+    images?: { base64: string; mimeType: string }[];
+    pdfBase64?: string;
+    url?: string;
+  }
+): Promise<ExtractedRecipe> => {
+  // Get admin instructions to pass to Edge Function
+  const adminInstructions = await getInstructionsByTag('recipe_generation');
+
+  const { data, error } = await invokeWithAuth('extract-recipe', {
+    type,
+    ...payload,
+    adminInstructions,
+  });
+
+  if (error) {
+    console.error('Edge Function error:', error);
+    throw new Error(error.message || 'Failed to extract recipe');
+  }
+
+  if (!data) {
+    throw new Error('No data returned from Edge Function');
+  }
+
+  return data as ExtractedRecipe;
+};
+
+/**
  * Extract recipe from pasted text using AI
  */
 export const extractRecipeFromText = async (textContent: string): Promise<ExtractedRecipe> => {
+  // Use Edge Function in production
+  if (USE_EDGE_FUNCTIONS && isSupabaseConfigured()) {
+    return await extractRecipeViaEdge('text', { textContent });
+  }
+
+  // Fall back to client-side for development only
   const apiKey = process.env.API_KEY;
   if (!apiKey) throw new Error("API Key is missing.");
 
@@ -624,6 +688,12 @@ Extract the recipe name, a brief description, ingredients (with quantities), and
 export const extractRecipeFromImage = async (
   images: { base64: string; mimeType: string }[]
 ): Promise<ExtractedRecipe> => {
+  // Use Edge Function in production
+  if (USE_EDGE_FUNCTIONS && isSupabaseConfigured()) {
+    return await extractRecipeViaEdge('image', { images });
+  }
+
+  // Fall back to client-side for development only
   const apiKey = process.env.API_KEY;
   if (!apiKey) throw new Error("API Key is missing.");
 
@@ -677,6 +747,12 @@ Return as JSON with fields: name, description, ingredients (array of strings), i
  * Uses Gemini's vision capabilities to read PDF pages
  */
 export const extractRecipeFromPDF = async (base64Data: string): Promise<ExtractedRecipe> => {
+  // Use Edge Function in production
+  if (USE_EDGE_FUNCTIONS && isSupabaseConfigured()) {
+    return await extractRecipeViaEdge('pdf', { pdfBase64: base64Data });
+  }
+
+  // Fall back to client-side for development only
   const apiKey = process.env.API_KEY;
   if (!apiKey) throw new Error("API Key is missing.");
 
@@ -726,17 +802,23 @@ Return as JSON with fields: name, description, ingredients (array of strings), i
  * Uses a CORS proxy or server-side fetch to get the HTML content
  */
 export const extractRecipeFromURL = async (url: string): Promise<ExtractedRecipe> => {
-  const apiKey = process.env.API_KEY;
-  if (!apiKey) throw new Error("API Key is missing.");
-
-  const ai = new GoogleGenAI({ apiKey });
-
-  // Validate URL
+  // Validate URL first
   try {
     new URL(url);
   } catch {
     throw new Error("Invalid URL provided");
   }
+
+  // Use Edge Function in production
+  if (USE_EDGE_FUNCTIONS && isSupabaseConfigured()) {
+    return await extractRecipeViaEdge('url', { url });
+  }
+
+  // Fall back to client-side for development only
+  const apiKey = process.env.API_KEY;
+  if (!apiKey) throw new Error("API Key is missing.");
+
+  const ai = new GoogleGenAI({ apiKey });
 
   // Fetch the webpage content using a CORS proxy
   // Using allorigins.win as a public CORS proxy
@@ -1467,6 +1549,32 @@ export type RecipeAdjustmentType =
   | { type: 'custom'; instructions: string };
 
 /**
+ * Adjust recipe via Edge Function
+ */
+const adjustRecipeViaEdge = async (
+  recipe: Meal,
+  adjustment: RecipeAdjustmentType,
+  preferences?: UserPreferences
+): Promise<AdjustedRecipe> => {
+  const { data, error } = await invokeWithAuth('adjust-recipe', {
+    recipe,
+    adjustment,
+    preferences,
+  });
+
+  if (error) {
+    console.error('Edge Function error:', error);
+    throw new Error(error.message || 'Failed to adjust recipe');
+  }
+
+  if (!data) {
+    throw new Error('No data returned from Edge Function');
+  }
+
+  return data as AdjustedRecipe;
+};
+
+/**
  * Adjust a recipe based on user requirements
  * Can modify servings, protein content, or retarget macros
  */
@@ -1475,6 +1583,12 @@ export const adjustRecipe = async (
   adjustment: RecipeAdjustmentType,
   preferences?: UserPreferences
 ): Promise<AdjustedRecipe> => {
+  // Use Edge Function in production
+  if (USE_EDGE_FUNCTIONS && isSupabaseConfigured()) {
+    return await adjustRecipeViaEdge(recipe, adjustment, preferences);
+  }
+
+  // Fall back to client-side for development only
   const apiKey = process.env.API_KEY;
   if (!apiKey) throw new Error("API Key is missing.");
 
@@ -1573,6 +1687,32 @@ Return the fully adjusted recipe.`;
 };
 
 /**
+ * Calculate nutritional information for a recipe via Edge Function
+ */
+const calculateNutritionViaEdge = async (
+  recipeName: string,
+  ingredients: string[],
+  servings: number = 1
+): Promise<NutritionInfo> => {
+  const { data, error } = await invokeWithAuth('calculate-nutrition', {
+    recipeName,
+    ingredients,
+    servings,
+  });
+
+  if (error) {
+    console.error('Edge Function error:', error);
+    throw new Error(error.message || 'Failed to calculate nutrition');
+  }
+
+  if (!data) {
+    throw new Error('No data returned from Edge Function');
+  }
+
+  return data as NutritionInfo;
+};
+
+/**
  * Calculate nutritional information for a recipe
  * Analyzes ingredients to estimate macros and other nutritional data
  */
@@ -1581,6 +1721,12 @@ export const calculateNutrition = async (
   ingredients: string[],
   servings: number = 1
 ): Promise<NutritionInfo> => {
+  // Always use Edge Function in production
+  if (USE_EDGE_FUNCTIONS && isSupabaseConfigured()) {
+    return await calculateNutritionViaEdge(recipeName, ingredients, servings);
+  }
+
+  // Fall back to client-side for development only
   const apiKey = process.env.API_KEY;
   if (!apiKey) throw new Error("API Key is missing.");
 

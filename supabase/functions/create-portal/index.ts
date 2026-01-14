@@ -117,7 +117,7 @@ Deno.serve(async (req) => {
     }
 
     // Get the origin for redirect URL
-    const origin = req.headers.get('origin') || 'https://kiwi-meal-planner-production.up.railway.app';
+    const origin = req.headers.get('origin') || 'https://www.kiwimealplanner.co.nz';
 
     // Create customer portal session using REST API
     const sessionParams: Record<string, string> = {
