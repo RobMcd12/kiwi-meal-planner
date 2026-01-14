@@ -542,7 +542,10 @@ export const VERSION_HISTORY: VersionEntry[] = [
 ];
 
 const VersionHistory: React.FC<VersionHistoryProps> = ({ onBack }) => {
-  const [expandedVersions, setExpandedVersions] = useState<Set<string>>(new Set([VERSION_HISTORY[0].version]));
+  // Default all versions to expanded so users can see all changes
+  const [expandedVersions, setExpandedVersions] = useState<Set<string>>(
+    new Set(VERSION_HISTORY.map(v => v.version))
+  );
 
   const toggleVersion = (ver: string) => {
     setExpandedVersions(prev => {
