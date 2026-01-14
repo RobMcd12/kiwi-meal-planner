@@ -177,12 +177,39 @@ Don't need a full meal plan? Generate individual recipes on demand.
 - Nutrition information (click the Nutrition button)
 - Save to your cookbook for later
 
+### Include Sides & Dessert
+
+Generate a complete meal experience with complementary sides and dessert:
+
+1. **Check the "Include Sides & Dessert" box** before generating
+2. AI creates:
+   - **Main dish** - Your requested recipe
+   - **1-2 Side dishes** - Complementary sides (salads, vegetables, starches)
+   - **Dessert** - A fitting dessert to round out the meal
+3. Use the **tabs** to switch between Main, Sides, and Dessert sections
+4. Each component has its own ingredients and instructions
+5. All items are included in the **PDF export**
+
+### Regenerating Recipes
+
+After generating a recipe, you can customize and regenerate it with variations:
+
+1. Click the **"Regenerate"** button (amber color)
+2. A modal opens with options:
+   - **Main Dish Variation** - Describe changes to the main dish (e.g., "make it spicier", "use chicken instead")
+   - **Include Side Dishes** - Toggle on/off with optional preferences (e.g., "simple salad", "roasted vegetables")
+   - **Include Dessert** - Toggle on/off with optional preferences (e.g., "chocolate", "no baking required")
+3. Each section has its own text box for specific variation requests
+4. Click **"Regenerate"** to create a new version
+5. The checkboxes remember if you had sides/dessert from the previous generation
+
 ### Tips for Better Results
 
 - Be specific: "A creamy Italian pasta with mushrooms" works better than "pasta"
 - Mention cooking style: "one-pot", "air fryer", "slow cooker"
 - Include dietary needs: "vegan", "low-carb", "high-protein"
 - The AI uses your saved preferences and pantry items automatically
+- When regenerating, leave variation fields empty to get a fresh take while keeping the same general dish
 
 ---
 
@@ -1079,91 +1106,128 @@ Note: Generating new meal plans requires an internet connection.
 
 ## Version History
 
-### v2.6.0 (Current)
-- **Custom Shopping Categories** - Create your own shopping list categories beyond the 18 defaults
-- **Smart Quantity Detection** - AI scanner now estimates remaining quantities for pantry items
-- **Quantity Editor** - Click any pantry item to set or edit its quantity and unit
-- **Empty Pantry/Staples** - One-click buttons to clear all pantry items or staples
-- **App-Styled Confirmations** - All confirmation dialogs now use consistent app styling
-- **Enhanced Pantry Scanning** - AI identifies specific item types (e.g., "balsamic vinegar" not just "vinegar")
+Below is a summary of the features and improvements added to Kiwi Meal Planner over time. Each release builds on the previous to make your meal planning experience better!
 
-### v2.5.0
-- **Recipe Categories** - Create custom categories to organize your cookbook
-- **Category Filtering** - Filter recipes by your custom categories
-- **Improved Meal Plan Flow** - Settings/Pantry/Preferences now shown as step-by-step flow below navigation
-- **UI Improvements** - Better navigation and layout consistency
+---
 
-### v2.3.0
-- **Custom Macro Targets** - Pro users can set personalized daily nutrition targets
-- **Fit My Macros** - Pro feature to automatically adjust any recipe to match your macro goals
-- **Nutrition Comparison** - See how recipes compare to your daily targets
-- **Preference Sub-tabs** - Reorganized preferences into Meal Prefs, Allergies, and Macros tabs
+### Version 2.7 — Complete Meals & Recipe Variations
+*Current Version*
 
-### v2.2.0
-- **Master Shopping List** - Consolidated shopping list from meal plans, recipes, staples, and pantry
-- **Supermarket Layouts** - Save custom store layouts with drag-and-drop category ordering
-- **Multiple Sort Modes** - Sort by source, category, or store layout
-- **Export to iOS Reminders** - Share shopping list to Reminders app
-- **Export to PDF** - Generate branded PDF shopping lists
-- **Print Preview** - Print-friendly shopping list view
+**New Features:**
+- **Sides & Dessert Generation (Pro)** — Generate complete meals with complementary side dishes and dessert alongside your main dish
+- **Recipe Tabs** — Easily switch between Main, Sides, and Dessert sections using intuitive tabs
+- **Regenerate with Variations** — Don't like something? Customize and regenerate with specific preferences for each component
+- **Full Meal PDF Export** — Print or save your entire meal (main, sides, and dessert) in a beautifully formatted PDF
 
-### v2.1.0
-- **Shopping List Selections** - Persist selected plans and recipes for shopping lists
-- **Checked Items Sync** - Remember checked-off items across sessions
-- **Database Integration** - Shopping list selections saved to cloud
+---
 
-### v2.0.0
-- **Video Pantry Scanning** - Record or upload videos to scan your kitchen
-- **Voice Dictation** - Talk to the app to add pantry items in real-time
-- **Audio Upload** - Upload pre-recorded audio files for AI transcription
-- **Upload Mode Options** - Choose to replace all pantry items or add only new ones
-- **Media File Management** - View and manage uploaded video/audio with 10-day auto-cleanup
-- **Admin AI Instructions** - Behind-the-scenes AI rules for better scanning results
-- Updated landing page with video and voice scanning features
+### Version 2.6 — Smart Quantities & Categories
+**New Features:**
+- **Custom Shopping Categories** — Create your own shopping list categories beyond the built-in defaults
+- **Smart Quantity Detection** — AI pantry scanner now estimates remaining quantities for items
+- **Quantity Editor** — Click any pantry item to set or edit its quantity and unit
+- **Quick Clear Options** — One-click buttons to empty your pantry or staples list
+- **Enhanced AI Scanning** — Better item recognition (e.g., "balsamic vinegar" instead of just "vinegar")
 
-### v1.0.9
-- **Pantry Staples** - Track essential items you always keep in stock
-- Mark pantry items as staples with the star icon
-- Checkbox system to add staples to shopping list for restocking
-- "Shopping Completed" button to clear restock list after shopping
-- Badge notifications showing items needing restock
+---
 
-### v1.0.8
-- **Use What I Have mode** - AI prioritizes your pantry ingredients to minimize shopping
-- Smart mode toggle in meal plan configuration and single recipe generator
-- Featured "Use What I Have" button on welcome screen for quick access
-- Updated landing page with kitchen scanning and recipe upload feature highlights
+### Version 2.5 — Recipe Organization
+**New Features:**
+- **Recipe Categories** — Create custom categories to organize your cookbook your way
+- **Category Filtering** — Quickly find recipes by filtering through your categories
+- **Improved Workflow** — Step-by-step flow for settings, pantry, and preferences
 
-### v1.0.7
-- Single recipe generator - create individual recipes on demand
-- AI Pantry Scanner - photograph your fridge/pantry to add ingredients
-- Nutritional information - view macros and nutrition for any recipe
-- Multi-image pantry scanning with categorized results
+---
 
-### v1.0.6
-- Automatic AI image generation for all recipes
-- AI-powered image editing with custom instructions
-- Image regeneration option
-- Separate private and shared notes per recipe
-- Comments and 5-star ratings on public recipes
-- Collapsible comments section
+### Version 2.3 — Macro Tracking
+**New Features:**
+- **Custom Macro Targets (Pro)** — Set personalized daily nutrition targets for calories, protein, carbs, and fat
+- **Fit My Macros (Pro)** — Automatically adjust any recipe to match your nutrition goals
+- **Nutrition Comparison** — See at a glance how recipes compare to your daily targets
 
-### v1.0.5
-- Added URL recipe upload
-- Moved cookbook buttons to header
-- Sticky search bar on scroll
-- Added in-app help guide
+---
 
-### v1.0.4
-- Cookbook enhancements (tags, search, filters)
-- Recipe upload (image, PDF, text)
-- Public recipe sharing
-- Notes on recipes
+### Version 2.2 — Shopping Made Easy
+**New Features:**
+- **Master Shopping List** — One unified list from meal plans, recipes, staples, and pantry needs
+- **Store Layouts** — Save custom supermarket layouts with drag-and-drop category ordering
+- **Multiple Sort Options** — Sort by source, category, or your store's layout
+- **iOS Reminders Export** — Share your list directly to the Reminders app
+- **PDF & Print** — Generate branded PDF shopping lists or print directly
 
-### v1.0.3
+---
+
+### Version 2.1 — Cloud Sync
+**Improvements:**
+- Shopping list selections now persist across sessions
+- Checked items remember their state
+- All shopping data synced to the cloud
+
+---
+
+### Version 2.0 — AI Pantry Scanning (Pro)
+**New Features:**
+- **Video Scanning (Pro)** — Record or upload videos to scan your entire kitchen
+- **Voice Dictation (Pro)** — Talk to add pantry items hands-free
+- **Audio Upload (Pro)** — Upload recordings for AI transcription
+- **Upload Modes** — Choose to replace all items or add only new ones
+- **Media Management** — View and manage uploaded files with automatic cleanup
+
+---
+
+### Version 1.0.9 — Pantry Staples
+**New Features:**
+- **Staples Tracking** — Mark essential items you always keep in stock
+- **Restock Reminders** — Checkbox system to add staples to your shopping list
+- **Badge Notifications** — See at a glance what needs restocking
+
+---
+
+### Version 1.0.8 — Use What I Have
+**New Features:**
+- **Smart Ingredient Mode** — AI prioritizes your pantry ingredients to minimize shopping
+- **Quick Access** — "Use What I Have" button on the home screen
+
+---
+
+### Version 1.0.7 — Single Recipes & Nutrition
+**New Features:**
+- **Single Recipe Generator** — Create individual recipes on demand
+- **AI Pantry Scanner (Pro)** — Photograph your fridge or pantry to add ingredients
+- **Nutritional Info** — View detailed macros and nutrition for any recipe
+
+---
+
+### Version 1.0.6 — Images & Community
+**New Features:**
+- **Automatic AI Images** — Every recipe gets a beautiful AI-generated image
+- **Image Editing** — Customize images with AI-powered instructions
+- **Community Features** — Comments and 5-star ratings on public recipes
+- **Private & Shared Notes** — Keep personal notes or share with others
+
+---
+
+### Version 1.0.5 — URL Import
+**New Features:**
+- **Recipe URL Import** — Paste a link to import recipes from any website
+- **Improved Navigation** — Sticky search bar and better button placement
+- **In-App Help** — Access this guide from within the app
+
+---
+
+### Version 1.0.4 — Cookbook Launch
+**New Features:**
+- **Full Cookbook** — Tags, search, and filters to find any recipe
+- **Multiple Upload Options** — Import via image, PDF, or text
+- **Public Sharing** — Share your recipes with the community
+- **Recipe Notes** — Add personal notes to any recipe
+
+---
+
+### Version 1.0.3 — Foundation
 - User feedback system
 - Admin dashboard
-- PWA improvements
+- PWA (Progressive Web App) support
 
 ---
 

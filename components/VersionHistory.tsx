@@ -22,9 +22,50 @@ interface VersionEntry {
 // Version history data - update this when adding new features
 export const VERSION_HISTORY: VersionEntry[] = [
   {
-    version: '2.6.0',
+    version: '2.7.0',
     date: 'January 2025',
     isCurrent: true,
+    highlights: [
+      'Generate sides & dessert with recipes',
+      'Regenerate with variations',
+      'Full meal PDF export'
+    ],
+    changes: [
+      {
+        category: 'feature',
+        title: 'Sides & Dessert Generation',
+        description: 'Generate complete meals with complementary side dishes and dessert alongside the main dish.'
+      },
+      {
+        category: 'feature',
+        title: 'Recipe Tabs',
+        description: 'Switch between Main, Sides, and Dessert sections using tabs when viewing generated meals.'
+      },
+      {
+        category: 'feature',
+        title: 'Regenerate with Variations',
+        description: 'Customize and regenerate recipes with specific variation requests for each component (main, sides, dessert).'
+      },
+      {
+        category: 'feature',
+        title: 'Separate Variation Inputs',
+        description: 'Specify different preferences for main dish, side dishes, and dessert when regenerating.'
+      },
+      {
+        category: 'feature',
+        title: 'Toggle Sides/Dessert',
+        description: 'Choose to include or exclude sides and dessert when regenerating recipes.'
+      },
+      {
+        category: 'improvement',
+        title: 'Full Meal PDF Export',
+        description: 'Print/PDF export now includes all generated sides and desserts with styled sections.'
+      }
+    ]
+  },
+  {
+    version: '2.6.0',
+    date: 'January 2025',
     highlights: [
       'Custom shopping list categories',
       'Smart quantity detection for pantry',

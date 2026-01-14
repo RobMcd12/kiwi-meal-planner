@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Sparkles, ChefHat, Loader2, Heart, Printer, Users, Check, Apple, SlidersHorizontal, AlertCircle, Package, ShoppingCart, Beef, Target, ChevronDown, ChevronUp, Settings, Flame, Wheat, Droplets, Info } from 'lucide-react';
-import type { Meal, UserPreferences, PantryItem, CountryCode, MacroTargets } from '../types';
+import { ArrowLeft, Sparkles, ChefHat, Loader2, Heart, Printer, Users, Check, Apple, SlidersHorizontal, AlertCircle, Package, ShoppingCart, Beef, Target, ChevronDown, ChevronUp, Settings, Flame, Wheat, Droplets, Info, UtensilsCrossed, Cake, RefreshCw, X, Crown } from 'lucide-react';
+import type { Meal, MealWithSides, UserPreferences, PantryItem, CountryCode, MacroTargets, SideDish, Dessert } from '../types';
 import { DEFAULT_MACRO_TARGETS } from '../types';
 import { generateSingleRecipe, generateDishImage } from '../services/geminiService';
 import { saveFavoriteMeal } from '../services/storageService';
@@ -11,6 +11,8 @@ import RecipePrintView from './RecipePrintView';
 import NutritionInfo from './NutritionInfo';
 import RecipeAdjuster from './RecipeAdjuster';
 
+type RecipeTab = 'main' | 'sides' | 'dessert';
+
 interface SingleRecipeGeneratorProps {
   onBack: () => void;
   preferences: UserPreferences;
@@ -20,6 +22,7 @@ interface SingleRecipeGeneratorProps {
   onManagePantry?: () => void;
   userCountry?: CountryCode | null;
   hasPro?: boolean;
+  onUpgradeClick?: () => void;
 }
 
 const SingleRecipeGenerator: React.FC<SingleRecipeGeneratorProps> = ({
@@ -31,13 +34,14 @@ const SingleRecipeGenerator: React.FC<SingleRecipeGeneratorProps> = ({
   onManagePantry,
   userCountry,
   hasPro = false,
+  onUpgradeClick,
 }) => {
   const { user } = useAuth();
   const [description, setDescription] = useState('');
   const [servings, setServings] = useState(peopleCount);
   const [useWhatIHave, setUseWhatIHave] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [generatedRecipe, setGeneratedRecipe] = useState<Meal | null>(null);
+  const [generatedRecipe, setGeneratedRecipe] = useState<MealWithSides | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
@@ -47,6 +51,18 @@ const SingleRecipeGenerator: React.FC<SingleRecipeGeneratorProps> = ({
   const [showPrintView, setShowPrintView] = useState(false);
   const [showNutrition, setShowNutrition] = useState(false);
   const [showAdjuster, setShowAdjuster] = useState(false);
+
+  // Sides and dessert options
+  const [includeSidesAndDessert, setIncludeSidesAndDessert] = useState(false);
+  const [activeRecipeTab, setActiveRecipeTab] = useState<RecipeTab>('main');
+
+  // Regeneration state
+  const [showRegenerateModal, setShowRegenerateModal] = useState(false);
+  const [regenerateMainVariation, setRegenerateMainVariation] = useState('');
+  const [regenerateSidesVariation, setRegenerateSidesVariation] = useState('');
+  const [regenerateDessertVariation, setRegenerateDessertVariation] = useState('');
+  const [regenerateIncludeSides, setRegenerateIncludeSides] = useState(false);
+  const [regenerateIncludeDessert, setRegenerateIncludeDessert] = useState(false);
 
   // Advanced options state
   const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
@@ -126,9 +142,11 @@ const SingleRecipeGenerator: React.FC<SingleRecipeGeneratorProps> = ({
         useWhatIHave,
         userCountry,
         useMacroTargets ? mealMacros : undefined,
-        meatServingGrams
+        meatServingGrams,
+        includeSidesAndDessert
       );
       setGeneratedRecipe(recipe);
+      setActiveRecipeTab('main'); // Reset to main tab when new recipe generated
 
       // Automatically generate image in the background
       setIsGeneratingImage(true);
@@ -202,26 +220,122 @@ const SingleRecipeGenerator: React.FC<SingleRecipeGeneratorProps> = ({
     setSavedRecipeId(null);
     setIsAddedToList(false);
     setError(null);
+    setActiveRecipeTab('main');
+  };
+
+  const handleOpenRegenerateModal = () => {
+    // Initialize with current state
+    const hasSides = generatedRecipe?.sides && generatedRecipe.sides.length > 0;
+    const hasDessert = generatedRecipe?.desserts && generatedRecipe.desserts.length > 0;
+    setRegenerateIncludeSides(!!hasSides);
+    setRegenerateIncludeDessert(!!hasDessert);
+    setRegenerateMainVariation('');
+    setRegenerateSidesVariation('');
+    setRegenerateDessertVariation('');
+    setShowRegenerateModal(true);
+  };
+
+  const handleRegenerate = async () => {
+    if (!generatedRecipe) return;
+
+    setShowRegenerateModal(false);
+    setIsGenerating(true);
+    setError(null);
+    setIsSaved(false);
+
+    // Build the regeneration prompt with variations
+    let regenerationPrompt = `Create a variation of "${generatedRecipe.name}"`;
+
+    if (regenerateMainVariation.trim()) {
+      regenerationPrompt += `. Main dish changes: ${regenerateMainVariation}`;
+    }
+
+    if (regenerateIncludeSides && regenerateSidesVariation.trim()) {
+      regenerationPrompt += `. Side dishes should: ${regenerateSidesVariation}`;
+    }
+
+    if (regenerateIncludeDessert && regenerateDessertVariation.trim()) {
+      regenerationPrompt += `. Dessert should: ${regenerateDessertVariation}`;
+    }
+
+    // Build effective preferences with local overrides
+    const effectivePreferences: UserPreferences = {
+      ...preferences,
+      dietaryRestrictions: localDiet,
+      likes: localLikes,
+      dislikes: localDislikes,
+      meatServingGrams,
+    };
+
+    try {
+      const shouldIncludeSidesAndDessert = regenerateIncludeSides || regenerateIncludeDessert;
+      const recipe = await generateSingleRecipe(
+        regenerationPrompt,
+        effectivePreferences,
+        pantryItems,
+        servings,
+        useWhatIHave,
+        userCountry,
+        useMacroTargets ? mealMacros : undefined,
+        meatServingGrams,
+        shouldIncludeSidesAndDessert
+      );
+
+      // If user only wanted sides or only wanted dessert, filter accordingly
+      const filteredRecipe: MealWithSides = {
+        ...recipe,
+        sides: regenerateIncludeSides ? recipe.sides : [],
+        desserts: regenerateIncludeDessert ? recipe.desserts : [],
+      };
+
+      setGeneratedRecipe(filteredRecipe);
+      setActiveRecipeTab('main');
+
+      // Automatically generate image in the background
+      setIsGeneratingImage(true);
+      try {
+        const imageUrl = await generateDishImage(filteredRecipe.name, filteredRecipe.description);
+        if (imageUrl) {
+          setGeneratedRecipe(prev => prev ? { ...prev, imageUrl } : null);
+        }
+      } catch (imgErr) {
+        console.error('Image generation error:', imgErr);
+      } finally {
+        setIsGeneratingImage(false);
+      }
+    } catch (err) {
+      console.error('Recipe regeneration error:', err);
+      setError('Failed to regenerate recipe. Please try again.');
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   const handleApplyAdjustment = async (adjustedMeal: Meal, saveAsNew: boolean) => {
+    // Preserve sides and desserts from the original recipe when applying adjustments
+    const adjustedWithExtras: MealWithSides = {
+      ...adjustedMeal,
+      sides: generatedRecipe?.sides || [],
+      desserts: generatedRecipe?.desserts || [],
+    };
+
     if (saveAsNew) {
       // For single recipe generator, we save as new and update the display
       try {
-        await saveFavoriteMeal(adjustedMeal);
-        setGeneratedRecipe(adjustedMeal);
+        await saveFavoriteMeal(adjustedWithExtras);
+        setGeneratedRecipe(adjustedWithExtras);
         setServings(adjustedMeal.servings || servings);
         setIsSaved(true); // Mark as saved since we just saved it
       } catch (error) {
         console.error('Failed to save adjusted recipe:', error);
         // Still update the display even if save failed
-        setGeneratedRecipe(adjustedMeal);
+        setGeneratedRecipe(adjustedWithExtras);
         setServings(adjustedMeal.servings || servings);
         setIsSaved(false);
       }
     } else {
       // Legacy: just update the display
-      setGeneratedRecipe(adjustedMeal);
+      setGeneratedRecipe(adjustedWithExtras);
       setServings(adjustedMeal.servings || servings);
       setIsSaved(false); // Reset saved state since recipe changed
     }
@@ -372,6 +486,51 @@ const SingleRecipeGenerator: React.FC<SingleRecipeGeneratorProps> = ({
               <p className="text-xs text-blue-600 mt-2">
                 Recipe will prioritize your {pantryItems.length} pantry items
               </p>
+            )}
+          </div>
+
+          {/* Include Sides & Dessert Toggle - Pro Feature */}
+          <div>
+            {hasPro ? (
+              <label className="flex items-center gap-3 p-4 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl cursor-pointer hover:from-amber-100 hover:to-orange-100 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={includeSidesAndDessert}
+                  onChange={(e) => setIncludeSidesAndDessert(e.target.checked)}
+                  disabled={isGenerating}
+                  className="w-5 h-5 text-amber-500 border-slate-300 rounded focus:ring-amber-500"
+                />
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <UtensilsCrossed size={18} className="text-amber-600" />
+                    <span className="font-medium text-slate-700">Include Sides & Dessert</span>
+                    <span className="text-xs px-1.5 py-0.5 bg-gradient-to-r from-amber-400 to-orange-400 text-white rounded font-semibold">PRO</span>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Generate complementary side dishes and a dessert along with the main dish
+                  </p>
+                </div>
+              </label>
+            ) : (
+              <button
+                type="button"
+                onClick={onUpgradeClick}
+                className="w-full flex items-center gap-3 p-4 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl hover:from-amber-100 hover:to-orange-100 transition-colors text-left"
+              >
+                <div className="w-5 h-5 flex items-center justify-center">
+                  <Crown size={18} className="text-amber-500" />
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <UtensilsCrossed size={18} className="text-amber-600" />
+                    <span className="font-medium text-slate-700">Include Sides & Dessert</span>
+                    <span className="text-xs px-1.5 py-0.5 bg-gradient-to-r from-amber-400 to-orange-400 text-white rounded font-semibold">PRO</span>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Upgrade to Pro to generate complementary side dishes and a dessert
+                  </p>
+                </div>
+              </button>
             )}
           </div>
 
@@ -635,29 +794,153 @@ const SingleRecipeGenerator: React.FC<SingleRecipeGeneratorProps> = ({
                 </div>
               )}
 
-              {/* Ingredients */}
-              <div className="mb-6">
-                <h4 className="font-semibold text-slate-700 mb-3 flex items-center gap-2">
-                  <ChefHat size={18} />
-                  Ingredients
-                </h4>
-                <ul className="space-y-2">
-                  {generatedRecipe.ingredients.map((ingredient, idx) => (
-                    <li key={idx} className="flex items-start gap-2 text-slate-600">
-                      <span className="text-amber-500 mt-1">•</span>
-                      {ingredient}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-
-              {/* Instructions */}
-              <div>
-                <h4 className="font-semibold text-slate-700 mb-3">Instructions</h4>
-                <div className="text-slate-600 whitespace-pre-wrap leading-relaxed">
-                  {generatedRecipe.instructions}
+              {/* Tabs for Main/Sides/Dessert */}
+              {((generatedRecipe.sides && generatedRecipe.sides.length > 0) || (generatedRecipe.desserts && generatedRecipe.desserts.length > 0)) && (
+                <div className="flex gap-2 mb-6 border-b border-slate-200 pb-3">
+                  <button
+                    onClick={() => setActiveRecipeTab('main')}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+                      activeRecipeTab === 'main'
+                        ? 'bg-amber-100 text-amber-700'
+                        : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                    }`}
+                  >
+                    <ChefHat size={16} />
+                    Main Dish
+                  </button>
+                  {generatedRecipe.sides && generatedRecipe.sides.length > 0 && (
+                    <button
+                      onClick={() => setActiveRecipeTab('sides')}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+                        activeRecipeTab === 'sides'
+                          ? 'bg-emerald-100 text-emerald-700'
+                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                      }`}
+                    >
+                      <UtensilsCrossed size={16} />
+                      Sides ({generatedRecipe.sides.length})
+                    </button>
+                  )}
+                  {generatedRecipe.desserts && generatedRecipe.desserts.length > 0 && (
+                    <button
+                      onClick={() => setActiveRecipeTab('dessert')}
+                      className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${
+                        activeRecipeTab === 'dessert'
+                          ? 'bg-pink-100 text-pink-700'
+                          : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                      }`}
+                    >
+                      <Cake size={16} />
+                      Dessert
+                    </button>
+                  )}
                 </div>
-              </div>
+              )}
+
+              {/* Main Dish Content */}
+              {activeRecipeTab === 'main' && (
+                <>
+                  {/* Ingredients */}
+                  <div className="mb-6">
+                    <h4 className="font-semibold text-slate-700 mb-3 flex items-center gap-2">
+                      <ChefHat size={18} />
+                      Ingredients
+                    </h4>
+                    <ul className="space-y-2">
+                      {generatedRecipe.ingredients.map((ingredient, idx) => (
+                        <li key={idx} className="flex items-start gap-2 text-slate-600">
+                          <span className="text-amber-500 mt-1">•</span>
+                          {ingredient}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  {/* Instructions */}
+                  <div>
+                    <h4 className="font-semibold text-slate-700 mb-3">Instructions</h4>
+                    <div className="text-slate-600 whitespace-pre-wrap leading-relaxed">
+                      {generatedRecipe.instructions}
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Sides Content */}
+              {activeRecipeTab === 'sides' && generatedRecipe.sides && (
+                <div className="space-y-6">
+                  {generatedRecipe.sides.map((side, sideIdx) => (
+                    <div key={side.id || sideIdx} className="bg-emerald-50 rounded-xl p-4 border border-emerald-200">
+                      <div className="flex items-start justify-between mb-3">
+                        <div>
+                          <h4 className="font-bold text-slate-800">{side.name}</h4>
+                          <p className="text-sm text-slate-500">{side.description}</p>
+                        </div>
+                        {side.prepTime && (
+                          <span className="text-xs text-emerald-600 bg-emerald-100 px-2 py-1 rounded-full">
+                            {side.prepTime}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="mb-4">
+                        <h5 className="font-medium text-slate-700 mb-2 text-sm">Ingredients</h5>
+                        <ul className="space-y-1">
+                          {side.ingredients.map((ing, idx) => (
+                            <li key={idx} className="flex items-start gap-2 text-sm text-slate-600">
+                              <span className="text-emerald-500 mt-0.5">•</span>
+                              {ing}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+
+                      <div>
+                        <h5 className="font-medium text-slate-700 mb-2 text-sm">Instructions</h5>
+                        <div className="text-sm text-slate-600 whitespace-pre-wrap leading-relaxed">
+                          {side.instructions}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Dessert Content */}
+              {activeRecipeTab === 'dessert' && generatedRecipe.desserts && generatedRecipe.desserts[0] && (
+                <div className="bg-pink-50 rounded-xl p-4 border border-pink-200">
+                  <div className="flex items-start justify-between mb-3">
+                    <div>
+                      <h4 className="font-bold text-slate-800">{generatedRecipe.desserts[0].name}</h4>
+                      <p className="text-sm text-slate-500">{generatedRecipe.desserts[0].description}</p>
+                    </div>
+                    {generatedRecipe.desserts[0].prepTime && (
+                      <span className="text-xs text-pink-600 bg-pink-100 px-2 py-1 rounded-full">
+                        {generatedRecipe.desserts[0].prepTime}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="mb-4">
+                    <h5 className="font-medium text-slate-700 mb-2 text-sm">Ingredients</h5>
+                    <ul className="space-y-1">
+                      {generatedRecipe.desserts[0].ingredients.map((ing, idx) => (
+                        <li key={idx} className="flex items-start gap-2 text-sm text-slate-600">
+                          <span className="text-pink-500 mt-0.5">•</span>
+                          {ing}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <div>
+                    <h5 className="font-medium text-slate-700 mb-2 text-sm">Instructions</h5>
+                    <div className="text-sm text-slate-600 whitespace-pre-wrap leading-relaxed">
+                      {generatedRecipe.desserts[0].instructions}
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* AI Disclaimer */}
               <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mt-4">
@@ -733,14 +1016,33 @@ const SingleRecipeGenerator: React.FC<SingleRecipeGeneratorProps> = ({
               </button>
 
               <button
+                onClick={handleOpenRegenerateModal}
+                className="flex items-center gap-2 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-lg font-medium transition-colors"
+              >
+                <RefreshCw size={18} />
+                Regenerate
+              </button>
+
+              <button
                 onClick={handleNewRecipe}
                 className="flex items-center gap-2 px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg font-medium transition-colors ml-auto"
               >
                 <Sparkles size={18} />
-                Generate Another
+                New Recipe
               </button>
             </div>
           </div>
+
+          {/* Regeneration Loading Overlay */}
+          {isGenerating && (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+              <div className="bg-white rounded-2xl p-8 flex flex-col items-center gap-4 shadow-xl">
+                <Loader2 size={40} className="animate-spin text-amber-500" />
+                <p className="text-lg font-medium text-slate-700">Regenerating your recipe...</p>
+                <p className="text-sm text-slate-500">This may take a moment</p>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -770,6 +1072,126 @@ const SingleRecipeGenerator: React.FC<SingleRecipeGeneratorProps> = ({
           onApply={handleApplyAdjustment}
           currentServings={servings}
         />
+      )}
+
+      {/* Regenerate Modal */}
+      {showRegenerateModal && generatedRecipe && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-lg w-full shadow-xl animate-fadeIn max-h-[90vh] overflow-y-auto">
+            {/* Header */}
+            <div className="flex items-center justify-between p-4 border-b border-slate-200">
+              <div className="flex items-center gap-2">
+                <RefreshCw size={20} className="text-amber-500" />
+                <h2 className="text-lg font-bold text-slate-800">Regenerate Recipe</h2>
+              </div>
+              <button
+                onClick={() => setShowRegenerateModal(false)}
+                className="p-2 hover:bg-slate-100 rounded-full transition-colors"
+              >
+                <X size={20} className="text-slate-400" />
+              </button>
+            </div>
+
+            <div className="p-4 space-y-5">
+              {/* Current Recipe Info */}
+              <div className="bg-slate-50 rounded-xl p-3">
+                <p className="text-sm text-slate-500">Current recipe:</p>
+                <p className="font-medium text-slate-700">{generatedRecipe.name}</p>
+              </div>
+
+              {/* Main Dish Variation */}
+              <div>
+                <label className="flex items-center gap-2 text-sm font-medium text-slate-700 mb-2">
+                  <ChefHat size={16} className="text-amber-500" />
+                  Main Dish Variation
+                </label>
+                <textarea
+                  value={regenerateMainVariation}
+                  onChange={(e) => setRegenerateMainVariation(e.target.value)}
+                  placeholder="e.g., Make it spicier, use chicken instead of beef, add more vegetables..."
+                  className="w-full px-3 py-2 text-sm border border-slate-200 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-amber-500 outline-none resize-none"
+                  rows={2}
+                />
+                <p className="text-xs text-slate-400 mt-1">Leave empty to generate a fresh variation</p>
+              </div>
+
+              {/* Include Sides Toggle */}
+              <div className="border border-slate-200 rounded-xl p-4">
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={regenerateIncludeSides}
+                    onChange={(e) => setRegenerateIncludeSides(e.target.checked)}
+                    className="w-5 h-5 text-emerald-500 border-slate-300 rounded focus:ring-emerald-500"
+                  />
+                  <div className="flex items-center gap-2">
+                    <UtensilsCrossed size={18} className="text-emerald-600" />
+                    <span className="font-medium text-slate-700">Include Side Dishes</span>
+                  </div>
+                </label>
+
+                {regenerateIncludeSides && (
+                  <div className="mt-3 pl-8">
+                    <textarea
+                      value={regenerateSidesVariation}
+                      onChange={(e) => setRegenerateSidesVariation(e.target.value)}
+                      placeholder="e.g., Simple salad, roasted vegetables, something light..."
+                      className="w-full px-3 py-2 text-sm border border-emerald-200 bg-emerald-50 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 outline-none resize-none"
+                      rows={2}
+                    />
+                    <p className="text-xs text-slate-400 mt-1">Optional: describe what kind of sides you want</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Include Dessert Toggle */}
+              <div className="border border-slate-200 rounded-xl p-4">
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={regenerateIncludeDessert}
+                    onChange={(e) => setRegenerateIncludeDessert(e.target.checked)}
+                    className="w-5 h-5 text-pink-500 border-slate-300 rounded focus:ring-pink-500"
+                  />
+                  <div className="flex items-center gap-2">
+                    <Cake size={18} className="text-pink-600" />
+                    <span className="font-medium text-slate-700">Include Dessert</span>
+                  </div>
+                </label>
+
+                {regenerateIncludeDessert && (
+                  <div className="mt-3 pl-8">
+                    <textarea
+                      value={regenerateDessertVariation}
+                      onChange={(e) => setRegenerateDessertVariation(e.target.value)}
+                      placeholder="e.g., Something chocolate, light and fruity, no baking required..."
+                      className="w-full px-3 py-2 text-sm border border-pink-200 bg-pink-50 rounded-lg focus:ring-2 focus:ring-pink-500 focus:border-pink-500 outline-none resize-none"
+                      rows={2}
+                    />
+                    <p className="text-xs text-slate-400 mt-1">Optional: describe what kind of dessert you want</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={() => setShowRegenerateModal(false)}
+                  className="flex-1 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-medium transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleRegenerate}
+                  className="flex-1 py-3 bg-amber-500 hover:bg-amber-600 text-white rounded-xl font-semibold flex items-center justify-center gap-2 transition-colors"
+                >
+                  <RefreshCw size={18} />
+                  Regenerate
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

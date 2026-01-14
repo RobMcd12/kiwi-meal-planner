@@ -1,14 +1,17 @@
 import React, { useRef } from 'react';
 import { X, Printer, Download, ChefHat, Clock, Users } from 'lucide-react';
-import type { Meal } from '../types';
+import type { Meal, MealWithSides, SideDish, Dessert } from '../types';
 
 interface RecipePrintViewProps {
-  meal: Meal;
+  meal: Meal | MealWithSides;
   onClose: () => void;
 }
 
 const RecipePrintView: React.FC<RecipePrintViewProps> = ({ meal, onClose }) => {
   const printRef = useRef<HTMLDivElement>(null);
+
+  // Cast to MealWithSides to access optional sides/desserts properties
+  const mealWithSides = meal as MealWithSides;
 
   const handlePrint = () => {
     const printContent = printRef.current;
@@ -378,6 +381,145 @@ const RecipePrintView: React.FC<RecipePrintViewProps> = ({ meal, onClose }) => {
       yPos = addWrappedText(meal.instructions, margin, yPos, contentWidth, 5.5, 11, 'normal');
       yPos += 10;
 
+      // Side Dishes Section
+      if (mealWithSides.sides && mealWithSides.sides.length > 0) {
+        // Section header
+        pdf.setTextColor(16, 185, 129); // emerald-500
+        pdf.setFontSize(16);
+        pdf.setFont('helvetica', 'bold');
+        if (yPos > pageHeight - 30) {
+          pdf.addPage();
+          yPos = margin;
+        }
+        pdf.text('Side Dishes', margin, yPos);
+        yPos += 3;
+        pdf.setDrawColor(16, 185, 129);
+        pdf.setLineWidth(0.5);
+        pdf.line(margin, yPos, pageWidth - margin, yPos);
+        yPos += 8;
+
+        for (const side of mealWithSides.sides) {
+          if (yPos > pageHeight - 50) {
+            pdf.addPage();
+            yPos = margin;
+          }
+
+          // Side dish name
+          pdf.setTextColor(30, 41, 59);
+          pdf.setFontSize(14);
+          pdf.setFont('helvetica', 'bold');
+          yPos = addWrappedText(side.name, margin, yPos, contentWidth, 6, 14, 'bold');
+
+          // Side dish description
+          pdf.setTextColor(100, 116, 139);
+          pdf.setFontSize(10);
+          pdf.setFont('helvetica', 'italic');
+          yPos = addWrappedText(side.description, margin, yPos, contentWidth, 5, 10, 'italic');
+          yPos += 4;
+
+          // Side ingredients
+          pdf.setTextColor(16, 185, 129);
+          pdf.setFontSize(11);
+          pdf.setFont('helvetica', 'bold');
+          pdf.text('Ingredients:', margin, yPos);
+          yPos += 5;
+
+          pdf.setTextColor(30, 41, 59);
+          pdf.setFontSize(10);
+          pdf.setFont('helvetica', 'normal');
+          for (const ingredient of side.ingredients) {
+            if (yPos > pageHeight - 15) {
+              pdf.addPage();
+              yPos = margin;
+            }
+            pdf.setFillColor(16, 185, 129);
+            pdf.circle(margin + 2, yPos - 1.5, 1, 'F');
+            yPos = addWrappedText(ingredient, margin + 8, yPos, contentWidth - 8, 4.5, 10, 'normal');
+          }
+          yPos += 3;
+
+          // Side instructions
+          pdf.setTextColor(16, 185, 129);
+          pdf.setFontSize(11);
+          pdf.setFont('helvetica', 'bold');
+          pdf.text('Instructions:', margin, yPos);
+          yPos += 5;
+
+          pdf.setTextColor(30, 41, 59);
+          pdf.setFontSize(10);
+          pdf.setFont('helvetica', 'normal');
+          yPos = addWrappedText(side.instructions, margin, yPos, contentWidth, 4.5, 10, 'normal');
+          yPos += 8;
+        }
+      }
+
+      // Dessert Section
+      if (mealWithSides.desserts && mealWithSides.desserts.length > 0 && mealWithSides.desserts[0]) {
+        const dessert = mealWithSides.desserts[0];
+
+        // Section header
+        pdf.setTextColor(236, 72, 153); // pink-500
+        pdf.setFontSize(16);
+        pdf.setFont('helvetica', 'bold');
+        if (yPos > pageHeight - 30) {
+          pdf.addPage();
+          yPos = margin;
+        }
+        pdf.text('Dessert', margin, yPos);
+        yPos += 3;
+        pdf.setDrawColor(236, 72, 153);
+        pdf.setLineWidth(0.5);
+        pdf.line(margin, yPos, pageWidth - margin, yPos);
+        yPos += 8;
+
+        // Dessert name
+        pdf.setTextColor(30, 41, 59);
+        pdf.setFontSize(14);
+        pdf.setFont('helvetica', 'bold');
+        yPos = addWrappedText(dessert.name, margin, yPos, contentWidth, 6, 14, 'bold');
+
+        // Dessert description
+        pdf.setTextColor(100, 116, 139);
+        pdf.setFontSize(10);
+        pdf.setFont('helvetica', 'italic');
+        yPos = addWrappedText(dessert.description, margin, yPos, contentWidth, 5, 10, 'italic');
+        yPos += 4;
+
+        // Dessert ingredients
+        pdf.setTextColor(236, 72, 153);
+        pdf.setFontSize(11);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Ingredients:', margin, yPos);
+        yPos += 5;
+
+        pdf.setTextColor(30, 41, 59);
+        pdf.setFontSize(10);
+        pdf.setFont('helvetica', 'normal');
+        for (const ingredient of dessert.ingredients) {
+          if (yPos > pageHeight - 15) {
+            pdf.addPage();
+            yPos = margin;
+          }
+          pdf.setFillColor(236, 72, 153);
+          pdf.circle(margin + 2, yPos - 1.5, 1, 'F');
+          yPos = addWrappedText(ingredient, margin + 8, yPos, contentWidth - 8, 4.5, 10, 'normal');
+        }
+        yPos += 3;
+
+        // Dessert instructions
+        pdf.setTextColor(236, 72, 153);
+        pdf.setFontSize(11);
+        pdf.setFont('helvetica', 'bold');
+        pdf.text('Instructions:', margin, yPos);
+        yPos += 5;
+
+        pdf.setTextColor(30, 41, 59);
+        pdf.setFontSize(10);
+        pdf.setFont('helvetica', 'normal');
+        yPos = addWrappedText(dessert.instructions, margin, yPos, contentWidth, 4.5, 10, 'normal');
+        yPos += 10;
+      }
+
       // Disclaimer box
       if (yPos > pageHeight - 40) {
         pdf.addPage();
@@ -519,6 +661,56 @@ const RecipePrintView: React.FC<RecipePrintViewProps> = ({ meal, onClose }) => {
               <h2 style={{ fontSize: '18px', fontWeight: 600, color: '#059669', marginBottom: '12px', paddingBottom: '8px', borderBottom: '1px solid #e2e8f0' }}>Instructions</h2>
               <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.8 }}>{meal.instructions}</div>
             </div>
+
+            {/* Side Dishes */}
+            {mealWithSides.sides && mealWithSides.sides.length > 0 && (
+              <div style={{ marginBottom: '24px' }}>
+                <h2 style={{ fontSize: '18px', fontWeight: 600, color: '#10b981', marginBottom: '12px', paddingBottom: '8px', borderBottom: '1px solid #e2e8f0' }}>Side Dishes</h2>
+                {mealWithSides.sides.map((side, idx) => (
+                  <div key={side.id || idx} style={{ marginBottom: '20px', padding: '16px', background: '#f0fdf4', borderRadius: '8px', border: '1px solid #bbf7d0' }}>
+                    <h3 style={{ fontSize: '16px', fontWeight: 600, color: '#1e293b', marginBottom: '4px' }}>{side.name}</h3>
+                    <p style={{ fontSize: '14px', color: '#64748b', fontStyle: 'italic', marginBottom: '12px' }}>{side.description}</p>
+
+                    <h4 style={{ fontSize: '14px', fontWeight: 600, color: '#10b981', marginBottom: '8px' }}>Ingredients</h4>
+                    <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 12px 0' }}>
+                      {side.ingredients.map((ing, ingIdx) => (
+                        <li key={ingIdx} style={{ padding: '4px 0', display: 'flex', alignItems: 'flex-start', gap: '8px', fontSize: '14px' }}>
+                          <span style={{ width: '6px', height: '6px', background: '#10b981', borderRadius: '50%', flexShrink: 0, marginTop: '6px' }}></span>
+                          <span>{ing}</span>
+                        </li>
+                      ))}
+                    </ul>
+
+                    <h4 style={{ fontSize: '14px', fontWeight: 600, color: '#10b981', marginBottom: '8px' }}>Instructions</h4>
+                    <div style={{ fontSize: '14px', whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{side.instructions}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Dessert */}
+            {mealWithSides.desserts && mealWithSides.desserts.length > 0 && mealWithSides.desserts[0] && (
+              <div style={{ marginBottom: '24px' }}>
+                <h2 style={{ fontSize: '18px', fontWeight: 600, color: '#ec4899', marginBottom: '12px', paddingBottom: '8px', borderBottom: '1px solid #e2e8f0' }}>Dessert</h2>
+                <div style={{ padding: '16px', background: '#fdf2f8', borderRadius: '8px', border: '1px solid #fbcfe8' }}>
+                  <h3 style={{ fontSize: '16px', fontWeight: 600, color: '#1e293b', marginBottom: '4px' }}>{mealWithSides.desserts[0].name}</h3>
+                  <p style={{ fontSize: '14px', color: '#64748b', fontStyle: 'italic', marginBottom: '12px' }}>{mealWithSides.desserts[0].description}</p>
+
+                  <h4 style={{ fontSize: '14px', fontWeight: 600, color: '#ec4899', marginBottom: '8px' }}>Ingredients</h4>
+                  <ul style={{ listStyle: 'none', padding: 0, margin: '0 0 12px 0' }}>
+                    {mealWithSides.desserts[0].ingredients.map((ing, ingIdx) => (
+                      <li key={ingIdx} style={{ padding: '4px 0', display: 'flex', alignItems: 'flex-start', gap: '8px', fontSize: '14px' }}>
+                        <span style={{ width: '6px', height: '6px', background: '#ec4899', borderRadius: '50%', flexShrink: 0, marginTop: '6px' }}></span>
+                        <span>{ing}</span>
+                      </li>
+                    ))}
+                  </ul>
+
+                  <h4 style={{ fontSize: '14px', fontWeight: 600, color: '#ec4899', marginBottom: '8px' }}>Instructions</h4>
+                  <div style={{ fontSize: '14px', whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{mealWithSides.desserts[0].instructions}</div>
+                </div>
+              </div>
+            )}
 
             {/* Disclaimer */}
             <div style={{ marginTop: '32px', padding: '12px 16px', background: '#f8fafc', borderRadius: '8px', borderLeft: '3px solid #94a3b8', fontSize: '11px', color: '#64748b', lineHeight: 1.5 }}>

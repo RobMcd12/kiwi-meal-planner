@@ -156,3 +156,47 @@ export const adjustedRecipeSchema = {
   },
   required: ['name', 'description', 'ingredients', 'instructions', 'servings'],
 };
+
+// Schema for side dish or dessert
+export const accompanimentSchema = {
+  type: 'OBJECT',
+  properties: {
+    name: { type: 'STRING', description: 'Name of the side dish or dessert' },
+    description: { type: 'STRING', description: 'Brief description' },
+    ingredients: {
+      type: 'ARRAY',
+      items: { type: 'STRING' },
+      description: 'List of ingredients with quantities',
+    },
+    instructions: { type: 'STRING', description: 'Cooking instructions' },
+    prepTime: { type: 'STRING', description: 'Preparation time' },
+  },
+  required: ['name', 'description', 'ingredients', 'instructions'],
+};
+
+// Schema for full recipe with sides and desserts
+export const fullRecipeSchema = {
+  type: 'OBJECT',
+  properties: {
+    main: {
+      type: 'OBJECT',
+      properties: {
+        name: { type: 'STRING', description: 'Main dish name' },
+        description: { type: 'STRING', description: 'Main dish description' },
+        ingredients: {
+          type: 'ARRAY',
+          items: { type: 'STRING' },
+        },
+        instructions: { type: 'STRING', description: 'Main dish cooking instructions' },
+      },
+      required: ['name', 'description', 'ingredients', 'instructions'],
+    },
+    sides: {
+      type: 'ARRAY',
+      items: accompanimentSchema,
+      description: '1-2 complementary side dishes',
+    },
+    dessert: accompanimentSchema,
+  },
+  required: ['main', 'sides', 'dessert'],
+};

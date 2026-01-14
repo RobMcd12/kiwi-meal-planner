@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type, Schema } from "@google/genai";
-import { UserPreferences, PantryItem, MealPlanResponse, MealConfig, Meal, ExtractedRecipe, ScannedPantryResult, SideDish, CountryCode, MacroTargets, DEFAULT_MACRO_TARGETS } from "../types";
+import { UserPreferences, PantryItem, MealPlanResponse, MealConfig, Meal, MealWithSides, ExtractedRecipe, ScannedPantryResult, SideDish, Dessert, CountryCode, MacroTargets, DEFAULT_MACRO_TARGETS } from "../types";
 import { supabase, isSupabaseConfigured, getSession } from "./authService";
 import { getInstructionsByTag, buildPromptWithInstructions } from "./adminInstructionsService";
 import { getLocalizationInstruction } from "./profileService";
@@ -923,8 +923,9 @@ const generateSingleRecipeViaEdge = async (
   peopleCount: number,
   useWhatIHave: boolean,
   macroTargets?: { calories: number; protein: number; carbohydrates: number; fat: number },
-  meatServingGrams?: number
-): Promise<Meal> => {
+  meatServingGrams?: number,
+  includeSidesAndDessert?: boolean
+): Promise<MealWithSides> => {
   const { data, error } = await invokeWithAuth('generate-recipe', {
     recipeDescription,
     preferences,
@@ -932,7 +933,8 @@ const generateSingleRecipeViaEdge = async (
     peopleCount,
     useWhatIHave,
     macroTargets,
-    meatServingGrams
+    meatServingGrams,
+    includeSidesAndDessert
   });
 
   if (error) {
@@ -945,7 +947,7 @@ const generateSingleRecipeViaEdge = async (
   }
 
   // Ensure the response has the expected structure
-  const meal: Meal = {
+  const meal: MealWithSides = {
     id: data.id || `single-${Date.now()}`,
     name: data.name,
     description: data.description,
@@ -954,6 +956,8 @@ const generateSingleRecipeViaEdge = async (
     tags: data.tags || [],
     source: 'generated',
     servings: data.servings || peopleCount,
+    sides: data.sides || [],
+    desserts: data.desserts || [],
   };
 
   return meal;
@@ -971,8 +975,9 @@ export const generateSingleRecipe = async (
   useWhatIHave: boolean = false,
   userCountry?: CountryCode | null,
   macroTargets?: { calories: number; protein: number; carbohydrates: number; fat: number },
-  meatServingGrams?: number
-): Promise<Meal> => {
+  meatServingGrams?: number,
+  includeSidesAndDessert?: boolean
+): Promise<MealWithSides> => {
   // Use Edge Functions in production when configured
   if (USE_EDGE_FUNCTIONS && isSupabaseConfigured()) {
     return generateSingleRecipeViaEdge(
@@ -982,7 +987,8 @@ export const generateSingleRecipe = async (
       peopleCount,
       useWhatIHave,
       macroTargets,
-      meatServingGrams
+      meatServingGrams,
+      includeSidesAndDessert
     );
   }
 
@@ -1059,8 +1065,8 @@ Also assign 3-5 relevant tags from: ${ALL_TAGS.join(", ")}`;
 
     const parsed = JSON.parse(response.text);
 
-    // Create a Meal object with unique ID and servings
-    const meal: Meal = {
+    // Create a MealWithSides object with unique ID and servings
+    const meal: MealWithSides = {
       id: `single-${Date.now()}`,
       name: parsed.name,
       description: parsed.description,
@@ -1069,6 +1075,8 @@ Also assign 3-5 relevant tags from: ${ALL_TAGS.join(", ")}`;
       tags: parsed.tags || [],
       source: 'generated',
       servings: peopleCount, // Store the servings count
+      sides: [],
+      desserts: [],
     };
 
     return meal;

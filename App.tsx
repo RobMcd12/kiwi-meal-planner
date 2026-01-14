@@ -552,6 +552,8 @@ const AppContent: React.FC = () => {
               setStep(AppStep.SETTINGS);
             }}
             userCountry={userCountry}
+            hasPro={subscriptionState?.hasPro ?? false}
+            onUpgradeClick={() => setStep(AppStep.FEATURES)}
           />
         );
 

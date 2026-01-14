@@ -223,28 +223,24 @@ const PantryManager: React.FC<PantryManagerProps> = ({ items, setItems, onNext, 
       {activeTab === 'pantry' && (
         <>
           <div className="mb-6">
-            {/* Scan Pantry Button */}
-            {/* Main scan button */}
-            <button
-              onClick={() => setShowScanner(true)}
-              className="w-full mb-3 py-3 bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white rounded-xl font-semibold flex items-center justify-center gap-2 transition-all shadow-md hover:shadow-lg"
-            >
-              <Camera size={20} />
-              <span>Scan with Photos</span>
-              <Sparkles size={16} />
-            </button>
-
-            {/* Additional input methods - Pro features */}
+            {/* AI Pantry Scanner - Pro Feature */}
             {!hasPro && (
               <div className="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl p-3 mb-4">
                 <div className="flex items-center gap-2 mb-2">
                   <Crown size={16} className="text-amber-600" />
-                  <span className="text-sm font-semibold text-amber-800">Pro Features</span>
+                  <span className="text-sm font-semibold text-amber-800">AI Pantry Scanner (Pro)</span>
                 </div>
                 <p className="text-xs text-amber-700 mb-3">
-                  Upgrade to Pro to unlock video scanning, voice dictation, and audio upload for faster pantry management.
+                  Upgrade to Pro to unlock AI pantry scanning with photos, video, voice dictation, and audio upload for faster pantry management.
                 </p>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-4 gap-2">
+                  <button
+                    onClick={() => onUpgradeClick?.()}
+                    className="py-2 px-2 rounded-lg bg-white/60 border border-amber-200 text-amber-700 text-xs font-medium flex flex-col items-center gap-1 hover:bg-white transition-colors"
+                  >
+                    <Camera size={16} />
+                    <span>Photo</span>
+                  </button>
                   <button
                     onClick={() => onUpgradeClick?.()}
                     className="py-2 px-2 rounded-lg bg-white/60 border border-amber-200 text-amber-700 text-xs font-medium flex flex-col items-center gap-1 hover:bg-white transition-colors"
@@ -278,46 +274,62 @@ const PantryManager: React.FC<PantryManagerProps> = ({ items, setItems, onNext, 
             )}
 
             {hasPro && (
-              <div className="grid grid-cols-2 gap-2 mb-4">
-                {/* Video Scan - Pro */}
+              <>
+                {/* Main Photo Scan Button - Pro */}
                 <button
-                  onClick={() => setShowVideoRecorder(true)}
-                  className="py-2.5 rounded-xl font-medium flex items-center justify-center gap-2 transition-colors border relative bg-red-50 hover:bg-red-100 text-red-700 border-red-200"
+                  onClick={() => setShowScanner(true)}
+                  className="w-full mb-3 py-3 bg-gradient-to-r from-purple-500 to-indigo-500 hover:from-purple-600 hover:to-indigo-600 text-white rounded-xl font-semibold flex items-center justify-center gap-2 transition-all shadow-md hover:shadow-lg relative"
                 >
-                  <Video size={18} />
-                  <span className="text-sm">Video Scan</span>
-                  <span className="absolute -top-1.5 -right-1.5 px-1 py-0.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[8px] font-bold rounded-full flex items-center gap-0.5">
-                    <Crown size={8} />
+                  <Camera size={20} />
+                  <span>Scan with Photos</span>
+                  <Sparkles size={16} />
+                  <span className="absolute -top-1.5 -right-1.5 px-1.5 py-0.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[9px] font-bold rounded-full flex items-center gap-0.5">
+                    <Crown size={10} />
                     PRO
                   </span>
                 </button>
 
-                {/* Talk to Add - Pro */}
-                <button
-                  onClick={() => setShowLiveDictation(true)}
-                  className="py-2.5 rounded-xl font-medium flex items-center justify-center gap-2 transition-colors border relative bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-200"
-                >
-                  <Mic size={18} />
-                  <span className="text-sm">Talk to Add</span>
-                  <span className="absolute -top-1.5 -right-1.5 px-1 py-0.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[8px] font-bold rounded-full flex items-center gap-0.5">
-                    <Crown size={8} />
-                    PRO
-                  </span>
-                </button>
+                <div className="grid grid-cols-2 gap-2 mb-4">
+                  {/* Video Scan - Pro */}
+                  <button
+                    onClick={() => setShowVideoRecorder(true)}
+                    className="py-2.5 rounded-xl font-medium flex items-center justify-center gap-2 transition-colors border relative bg-red-50 hover:bg-red-100 text-red-700 border-red-200"
+                  >
+                    <Video size={18} />
+                    <span className="text-sm">Video Scan</span>
+                    <span className="absolute -top-1.5 -right-1.5 px-1 py-0.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[8px] font-bold rounded-full flex items-center gap-0.5">
+                      <Crown size={8} />
+                      PRO
+                    </span>
+                  </button>
 
-                {/* Upload Audio - Pro */}
-                <button
-                  onClick={() => setShowAudioRecorder(true)}
-                  className="col-span-2 py-2.5 rounded-xl font-medium flex items-center justify-center gap-2 transition-colors border relative bg-orange-50 hover:bg-orange-100 text-orange-700 border-orange-200"
-                >
-                  <Upload size={18} />
-                  <span className="text-sm">Upload Audio</span>
-                  <span className="absolute -top-1.5 -right-1.5 px-1 py-0.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[8px] font-bold rounded-full flex items-center gap-0.5">
-                    <Crown size={8} />
-                    PRO
-                  </span>
-                </button>
-              </div>
+                  {/* Talk to Add - Pro */}
+                  <button
+                    onClick={() => setShowLiveDictation(true)}
+                    className="py-2.5 rounded-xl font-medium flex items-center justify-center gap-2 transition-colors border relative bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-200"
+                  >
+                    <Mic size={18} />
+                    <span className="text-sm">Talk to Add</span>
+                    <span className="absolute -top-1.5 -right-1.5 px-1 py-0.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[8px] font-bold rounded-full flex items-center gap-0.5">
+                      <Crown size={8} />
+                      PRO
+                    </span>
+                  </button>
+
+                  {/* Upload Audio - Pro */}
+                  <button
+                    onClick={() => setShowAudioRecorder(true)}
+                    className="col-span-2 py-2.5 rounded-xl font-medium flex items-center justify-center gap-2 transition-colors border relative bg-orange-50 hover:bg-orange-100 text-orange-700 border-orange-200"
+                  >
+                    <Upload size={18} />
+                    <span className="text-sm">Upload Audio</span>
+                    <span className="absolute -top-1.5 -right-1.5 px-1 py-0.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white text-[8px] font-bold rounded-full flex items-center gap-0.5">
+                      <Crown size={8} />
+                      PRO
+                    </span>
+                  </button>
+                </div>
+              </>
             )}
 
             <div className="flex gap-2">

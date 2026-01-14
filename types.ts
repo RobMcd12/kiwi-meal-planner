@@ -582,6 +582,17 @@ export interface SideDish {
   servings?: number;
 }
 
+export interface Dessert {
+  id: string;
+  name: string;
+  description: string;
+  ingredients: string[];
+  instructions: string;
+  prepTime?: string;
+  servings?: number;
+}
+
 export interface MealWithSides extends Meal {
   sides?: SideDish[];
+  desserts?: Dessert[];
 }

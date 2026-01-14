@@ -7,7 +7,7 @@
 import { GoogleGenerativeAI } from 'https://esm.sh/@google/generative-ai@0.21.0';
 import { handleCors, getCorsHeaders } from '../_shared/cors.ts';
 import { verifyAuth } from '../_shared/auth.ts';
-import { mealSchema } from '../_shared/schemas.ts';
+import { mealSchema, fullRecipeSchema } from '../_shared/schemas.ts';
 import { checkRateLimit, RATE_LIMITS, rateLimitExceededResponse, getClientIP } from '../_shared/rateLimit.ts';
 
 interface UserPreferences {
@@ -39,6 +39,7 @@ interface GenerateRecipeRequest {
   useWhatIHave: boolean;
   macroTargets?: MacroTargets;
   meatServingGrams?: number;
+  includeSidesAndDessert?: boolean;
 }
 
 Deno.serve(async (req) => {
@@ -83,7 +84,8 @@ Deno.serve(async (req) => {
       peopleCount,
       useWhatIHave,
       macroTargets,
-      meatServingGrams
+      meatServingGrams,
+      includeSidesAndDessert
     } = await req.json() as GenerateRecipeRequest;
 
     // Validate input
@@ -111,13 +113,6 @@ Deno.serve(async (req) => {
     }
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({
-      model: 'gemini-2.0-flash',
-      generationConfig: {
-        responseMimeType: 'application/json',
-        responseSchema: mealSchema,
-      },
-    });
 
     const pantryListString = pantryItems?.map((p) => p.name).join(', ') || '';
 
@@ -147,8 +142,18 @@ Goal: minimize extra shopping and reduce food waste.`
       ? `\nNUTRITION TARGETS (per serving): Aim for approximately ${macroTargets.calories} calories, ${macroTargets.protein}g protein, ${macroTargets.carbohydrates}g carbs, ${macroTargets.fat}g fat. Design the recipe to meet these nutritional goals.`
       : '';
 
-    const prompt = `Create a detailed recipe based on this request: "${recipeDescription}"
+    // Choose schema based on whether sides and dessert are requested
+    const schema = includeSidesAndDessert ? fullRecipeSchema : mealSchema;
 
+    const model = genAI.getGenerativeModel({
+      model: 'gemini-2.0-flash',
+      generationConfig: {
+        responseMimeType: 'application/json',
+        responseSchema: schema,
+      },
+    });
+
+    const baseInstructions = `
 For ${peopleCount} people.
 Dietary requirements: ${preferences?.dietaryRestrictions || "None"}
 Likes: ${preferences?.likes || "Any"}
@@ -163,17 +168,47 @@ ${macroInstruction}
 
 CRITICAL INSTRUCTIONS:
 1. STAY TRUE TO THE REQUEST: Create exactly what the user asked for. If they ask for "cheese on toast", make cheese on toast - do NOT add unrelated proteins, meats, or entirely different dishes.
-2. You MAY enhance the dish with complementary toppings, seasonings, or simple accompaniments that fit the dish (e.g., adding herbs, a sauce, or a side salad to cheese on toast is fine).
+2. You MAY enhance the dish with complementary toppings, seasonings, or simple accompaniments that fit the dish.
 3. Do NOT add major protein sources (meat, fish, eggs) unless the user specifically requested them or they are a natural part of the dish.
-4. The recipe name, description, ingredients, and instructions must ALL be consistent with each other - no orphaned ingredients or instructions for items not in the dish.
+4. The recipe name, description, ingredients, and instructions must ALL be consistent with each other.
 5. Use ${preferences?.unitSystem || 'metric'} units for ALL ingredient quantities.
-6. Use ${preferences?.temperatureScale || 'celsius'} for ALL cooking temperatures.
+6. Use ${preferences?.temperatureScale || 'celsius'} for ALL cooking temperatures.`;
+
+    let prompt: string;
+
+    if (includeSidesAndDessert) {
+      prompt = `Create a complete meal based on this request: "${recipeDescription}"
+
+${baseInstructions}
+
+Return a complete meal with:
+1. MAIN DISH: The primary dish as requested
+2. SIDE DISHES: 1-2 complementary side dishes that pair well with the main dish (e.g., salad, vegetables, rice, bread)
+3. DESSERT: A complementary dessert that rounds out the meal nicely
+
+For each item (main, sides, dessert), provide:
+- name: A descriptive name
+- description: What makes this dish special
+- ingredients: Array of ingredient strings with quantities
+- instructions: Step-by-step cooking instructions
+- prepTime: Estimated preparation time (for sides and dessert)
+
+The sides and dessert should:
+- Complement the main dish's flavor profile
+- Be relatively simple and practical to prepare
+- Match the same dietary requirements and preferences
+- Use the same unit system and temperature scale`;
+    } else {
+      prompt = `Create a detailed recipe based on this request: "${recipeDescription}"
+
+${baseInstructions}
 
 Return a single recipe object with:
 - name: A descriptive name for the dish
 - description: What makes this dish delicious
 - ingredients: Array of ingredient strings (with quantities) - ONLY ingredients actually used in the recipe
 - instructions: Step-by-step cooking instructions - ONLY for the actual dish being made`;
+    }
 
     const result = await model.generateContent(prompt);
     const response = result.response;
@@ -187,24 +222,68 @@ Return a single recipe object with:
     }
 
     const parsed = JSON.parse(text);
+    const timestamp = Date.now();
 
-    // Validate response structure
-    if (!parsed.name || !parsed.description || !parsed.ingredients || !parsed.instructions) {
+    if (includeSidesAndDessert) {
+      // Validate full recipe structure
+      if (!parsed.main || !parsed.main.name || !parsed.sides || !parsed.dessert) {
+        return new Response(
+          JSON.stringify({ error: 'Invalid full recipe structure from AI' }),
+          { status: 500, headers: { ...responseHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Add IDs to all parts
+      const mainId = `recipe-${timestamp}-${Math.random().toString(36).substr(2, 9)}`;
+      const formattedResponse = {
+        id: mainId,
+        name: parsed.main.name,
+        description: parsed.main.description,
+        ingredients: parsed.main.ingredients,
+        instructions: parsed.main.instructions,
+        servings: peopleCount,
+        sides: parsed.sides.map((side: any, idx: number) => ({
+          id: `side-${timestamp}-${idx}-${Math.random().toString(36).substr(2, 9)}`,
+          name: side.name,
+          description: side.description,
+          ingredients: side.ingredients,
+          instructions: side.instructions,
+          prepTime: side.prepTime,
+          servings: peopleCount,
+        })),
+        desserts: [{
+          id: `dessert-${timestamp}-${Math.random().toString(36).substr(2, 9)}`,
+          name: parsed.dessert.name,
+          description: parsed.dessert.description,
+          ingredients: parsed.dessert.ingredients,
+          instructions: parsed.dessert.instructions,
+          prepTime: parsed.dessert.prepTime,
+          servings: peopleCount,
+        }],
+      };
+
       return new Response(
-        JSON.stringify({ error: 'Invalid recipe structure from AI' }),
-        { status: 500, headers: { ...responseHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify(formattedResponse),
+        { headers: { ...responseHeaders, 'Content-Type': 'application/json' } }
+      );
+    } else {
+      // Validate simple recipe structure
+      if (!parsed.name || !parsed.description || !parsed.ingredients || !parsed.instructions) {
+        return new Response(
+          JSON.stringify({ error: 'Invalid recipe structure from AI' }),
+          { status: 500, headers: { ...responseHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      // Add ID for database compatibility
+      parsed.id = `recipe-${timestamp}-${Math.random().toString(36).substr(2, 9)}`;
+      parsed.servings = peopleCount;
+
+      return new Response(
+        JSON.stringify(parsed),
+        { headers: { ...responseHeaders, 'Content-Type': 'application/json' } }
       );
     }
-
-    // Add ID for database compatibility
-    const timestamp = Date.now();
-    parsed.id = `recipe-${timestamp}-${Math.random().toString(36).substr(2, 9)}`;
-    parsed.servings = peopleCount;
-
-    return new Response(
-      JSON.stringify(parsed),
-      { headers: { ...responseHeaders, 'Content-Type': 'application/json' } }
-    );
   } catch (error) {
     console.error('Error generating recipe:', error);
     return new Response(

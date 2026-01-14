@@ -5,7 +5,7 @@ import {
   Sparkles, Bell, MessageSquare, User, ChevronRight, ChevronDown,
   Star, ImagePlus, Edit2, Camera, Apple, Utensils, SlidersHorizontal,
   Beef, Flame, Printer, Mic, Timer, Volume2, Play, Pause, UtensilsCrossed,
-  UserCircle, ShieldAlert, Target, Package
+  UserCircle, ShieldAlert, Target, Package, RefreshCw, Cake
 } from 'lucide-react';
 import { version } from '../package.json';
 
@@ -115,7 +115,7 @@ const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
       id: 'single-recipe',
       title: 'Single Recipe Generator',
       icon: <Utensils size={20} />,
-      keywords: ['single', 'recipe', 'one', 'generate', 'create', 'quick', 'individual'],
+      keywords: ['single', 'recipe', 'one', 'generate', 'create', 'quick', 'individual', 'sides', 'dessert', 'regenerate', 'variation'],
       content: (
         <>
           <p>Generate individual recipes on demand without creating a full meal plan:</p>
@@ -125,8 +125,28 @@ const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
             <li><strong>Describe what you want</strong> - e.g., "A quick weeknight pasta dish"</li>
             <li>Adjust servings and click <strong>Generate Recipe</strong></li>
           </ol>
-          <p className="mt-3">
-            The AI uses your saved preferences and pantry items automatically. You can save the result to your cookbook, generate an image, view nutrition info, or adjust the recipe.
+          <div className="space-y-3 mt-4">
+            <div className="flex items-start gap-2">
+              <UtensilsCrossed size={16} className="text-emerald-600 mt-0.5" />
+              <div>
+                <strong>Include Sides & Dessert</strong> - Check this option to generate a complete meal with 1-2 complementary side dishes and a dessert. Use tabs to switch between Main, Sides, and Dessert.
+              </div>
+            </div>
+            <div className="flex items-start gap-2">
+              <RefreshCw size={16} className="text-amber-600 mt-0.5" />
+              <div>
+                <strong>Regenerate with Variations</strong> - Click "Regenerate" after generating to customize your recipe. Specify different variations for the main dish, sides, and dessert separately.
+              </div>
+            </div>
+            <div className="flex items-start gap-2">
+              <Printer size={16} className="text-indigo-600 mt-0.5" />
+              <div>
+                <strong>PDF Export</strong> - Print or export to PDF includes all generated sides and desserts with styled sections.
+              </div>
+            </div>
+          </div>
+          <p className="mt-3 text-slate-500">
+            The AI uses your saved preferences and pantry items automatically. Save results to your cookbook, generate images, or view nutrition info.
           </p>
         </>
       )
