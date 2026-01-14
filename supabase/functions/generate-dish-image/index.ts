@@ -70,10 +70,23 @@ Deno.serve(async (req) => {
 
     // Build the prompt based on whether this is an edit or new generation
     let prompt: string;
+    const basePrompt = `Professional food photography of ${mealName}. ${description}.
+
+COMPOSITION REQUIREMENTS:
+- The dish must be FULLY VISIBLE and CENTERED in the frame
+- Leave adequate margins around the food (no cropping of the dish)
+- Shot from a 45-degree angle showing the full plate/dish
+- Clean, simple background (wooden table or neutral surface)
+- Soft, warm natural lighting from the side
+- The entire meal should fit comfortably within the frame with space around it
+- Focus on making the food look appetizing and professionally plated`;
+
     if (editInstructions) {
-      prompt = `Generate a high-end food magazine photo of: ${mealName}. ${description}. ${editInstructions}. Professional food photography, appetizing, warm lighting. Only show the exact ingredients described - no extra garnishes.`;
+      prompt = `${basePrompt}
+
+Special instructions: ${editInstructions}`;
     } else {
-      prompt = `Generate a high-end food magazine photo of: ${mealName}. ${description}. Professional food photography, appetizing, warm lighting, table setting. Only show the exact ingredients described - no extra garnishes.`;
+      prompt = basePrompt;
     }
 
     // Use Gemini REST API directly for image generation

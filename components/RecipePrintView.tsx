@@ -100,12 +100,21 @@ const RecipePrintView: React.FC<RecipePrintViewProps> = ({ meal, onClose }) => {
               margin-bottom: 24px;
             }
 
-            .recipe-image {
+            .recipe-image-container {
               width: 100%;
               max-height: 300px;
-              object-fit: cover;
-              border-radius: 12px;
               margin-bottom: 24px;
+              display: flex;
+              justify-content: center;
+              background: #f1f5f9;
+              border-radius: 12px;
+              overflow: hidden;
+            }
+
+            .recipe-image {
+              max-width: 100%;
+              max-height: 300px;
+              object-fit: contain;
             }
 
             .section {
@@ -279,12 +288,34 @@ const RecipePrintView: React.FC<RecipePrintViewProps> = ({ meal, onClose }) => {
         try {
           // For base64 images
           if (meal.imageUrl.startsWith('data:')) {
-            const imgHeight = 60;
+            // Load image to get actual dimensions for proper aspect ratio
+            const img = new Image();
+            img.src = meal.imageUrl;
+            await new Promise((resolve) => {
+              img.onload = resolve;
+              img.onerror = resolve;
+            });
+
+            // Calculate dimensions maintaining aspect ratio
+            const aspectRatio = img.width / img.height;
+            let imgWidth = contentWidth;
+            let imgHeight = contentWidth / aspectRatio;
+
+            // Limit max height to 80mm while maintaining aspect ratio
+            const maxHeight = 80;
+            if (imgHeight > maxHeight) {
+              imgHeight = maxHeight;
+              imgWidth = maxHeight * aspectRatio;
+            }
+
+            // Center the image if it's narrower than content width
+            const imgX = margin + (contentWidth - imgWidth) / 2;
+
             if (yPos + imgHeight > pageHeight - margin) {
               pdf.addPage();
               yPos = margin;
             }
-            pdf.addImage(meal.imageUrl, 'JPEG', margin, yPos, contentWidth, imgHeight);
+            pdf.addImage(meal.imageUrl, 'JPEG', imgX, yPos, imgWidth, imgHeight);
             yPos += imgHeight + 10;
           }
         } catch (imgError) {
@@ -460,12 +491,14 @@ const RecipePrintView: React.FC<RecipePrintViewProps> = ({ meal, onClose }) => {
 
             {/* Recipe Image */}
             {meal.imageUrl && (
-              <img
-                src={meal.imageUrl}
-                alt={meal.name}
-                style={{ width: '100%', maxHeight: '300px', objectFit: 'cover', borderRadius: '12px', marginBottom: '24px' }}
-                crossOrigin="anonymous"
-              />
+              <div style={{ width: '100%', maxHeight: '300px', marginBottom: '24px', display: 'flex', justifyContent: 'center', background: '#f1f5f9', borderRadius: '12px', overflow: 'hidden' }}>
+                <img
+                  src={meal.imageUrl}
+                  alt={meal.name}
+                  style={{ maxWidth: '100%', maxHeight: '300px', objectFit: 'contain' }}
+                  crossOrigin="anonymous"
+                />
+              </div>
             )}
 
             {/* Ingredients */}

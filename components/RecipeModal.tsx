@@ -22,12 +22,12 @@ const RecipeModal: React.FC<RecipeModalProps> = ({ meal, isOpen, onClose, imageU
       <div className="relative w-[90%] md:w-[80%] max-w-5xl bg-white rounded-2xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col animate-fadeIn">
         
         {/* Header / Image Area */}
-        <div className="relative h-64 bg-slate-100 flex-shrink-0">
+        <div className="relative h-72 bg-slate-900 flex-shrink-0">
           {imageUrl ? (
-            <img 
-              src={imageUrl} 
-              alt={meal.name} 
-              className="w-full h-full object-cover"
+            <img
+              src={imageUrl}
+              alt={meal.name}
+              className="w-full h-full object-contain"
             />
           ) : (
             <div className="w-full h-full flex flex-col items-center justify-center text-slate-400">
