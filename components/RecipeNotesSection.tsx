@@ -567,7 +567,7 @@ const RecipeNotesSection: React.FC<RecipeNotesSectionProps> = ({
             <span className="font-semibold text-slate-700">
               Comments{comments.filter(c => c.commentText).length > 0 && ` (${comments.filter(c => c.commentText).length})`}
             </span>
-            {averageRating.count > 0 && (
+            {averageRating.count > 0 && averageRating.average > 0 && (
               <div className="flex items-center gap-1.5 bg-white px-2 py-1 rounded-lg border border-slate-200">
                 <StarRating rating={Math.round(averageRating.average)} readonly size="sm" />
                 <span className="text-sm font-medium text-slate-600">
