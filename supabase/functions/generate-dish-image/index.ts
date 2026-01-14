@@ -1,7 +1,7 @@
 /**
  * Generate Dish Image Edge Function
  *
- * Generates a food photograph for a meal using Gemini AI image generation.
+ * Generates a food photograph for a meal using Imagen 3 via Gemini API.
  */
 
 import { GoogleGenAI } from 'https://esm.sh/@google/genai@0.14.1';
@@ -74,47 +74,33 @@ Deno.serve(async (req) => {
     // Build the prompt based on whether this is an edit or new generation
     let prompt: string;
     if (editInstructions) {
-      prompt = `A high-end food magazine photo of: ${mealName}.
-Description: ${description}
-
-Special instructions for this image: ${editInstructions}
-
-Create an appetizing, professional food photograph following these instructions.
-
-IMPORTANT: Only show ingredients and components that are explicitly part of this specific recipe as described above. Do NOT add garnishes, sides, or ingredients that are not mentioned in the description. The image must accurately represent ONLY what is in the actual recipe - no extra vegetables, sauces, or toppings that weren't specified.`;
+      prompt = `A high-end food magazine photo of: ${mealName}. ${description}. ${editInstructions}. Professional food photography, appetizing, warm lighting. Only show the exact ingredients described - no extra garnishes.`;
     } else {
-      prompt = `A high-end food magazine photo of a complete meal: ${mealName}. The image should show the main dish alongside its side dishes as described: ${description}. Warm, appetizing lighting, table setting.
-
-IMPORTANT: Only show ingredients and components that are explicitly part of this specific recipe. Do NOT add garnishes, sides, or ingredients that are not mentioned in the description. The image must accurately represent ONLY what is in the actual recipe - no extra vegetables, sauces, or toppings that weren't specified.`;
+      prompt = `A high-end food magazine photo of: ${mealName}. ${description}. Professional food photography, appetizing, warm lighting, table setting. Only show the exact ingredients described - no extra garnishes.`;
     }
 
-    // Generate the image using Gemini 2.5 Flash image model
-    const response = await ai.models.generateContent({
-      model: 'gemini-2.5-flash-preview-05-20',
-      contents: {
-        parts: [{ text: prompt }],
-      },
+    // Use Imagen 3 for image generation
+    const response = await ai.models.generateImages({
+      model: 'imagen-3.0-generate-002',
+      prompt: prompt,
       config: {
-        responseModalities: ['image', 'text'],
-        imageSafety: 'block_low_and_above',
-      }
+        numberOfImages: 1,
+        aspectRatio: '16:9',
+      },
     });
 
     // Extract image data from response
-    let imageData: string | null = null;
-    for (const part of response.candidates?.[0]?.content?.parts || []) {
-      if (part.inlineData) {
-        imageData = `data:${part.inlineData.mimeType};base64,${part.inlineData.data}`;
-        break;
-      }
-    }
-
-    if (!imageData) {
+    const generatedImages = response.generatedImages;
+    if (!generatedImages || generatedImages.length === 0 || !generatedImages[0].image?.imageBytes) {
       return new Response(
         JSON.stringify({ error: 'No image generated' }),
         { status: 500, headers: { ...responseHeaders, 'Content-Type': 'application/json' } }
       );
     }
+
+    // Convert to base64 data URL
+    const imageBytes = generatedImages[0].image.imageBytes;
+    const imageData = `data:image/png;base64,${imageBytes}`;
 
     return new Response(
       JSON.stringify({ imageData }),
