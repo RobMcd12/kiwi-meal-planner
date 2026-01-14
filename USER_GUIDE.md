@@ -10,15 +10,16 @@
 2. [Creating a Meal Plan](#creating-a-meal-plan)
 3. [Use What I Have Mode](#use-what-i-have-mode) *(Pro)*
 4. [Single Recipe Generator](#single-recipe-generator)
-5. [AI Pantry Scanner](#ai-pantry-scanner)
-6. [Pantry Staples](#pantry-staples)
-7. [Nutritional Information](#nutritional-information)
-8. [AI Recipe Adjustments](#ai-recipe-adjustments) *(Pro)*
-9. [My Cookbook](#my-cookbook)
-10. [Uploading Recipes](#uploading-recipes) *(Pro)*
-11. [Recipe Images](#recipe-images)
-12. [Recipe Categories](#recipe-categories)
-13. [Tags & Search](#tags--search)
+5. [Voice Cook Mode](#voice-cook-mode) *(Pro)*
+6. [AI Pantry Scanner](#ai-pantry-scanner) *(Pro)*
+7. [Pantry Staples](#pantry-staples)
+8. [Nutritional Information](#nutritional-information)
+9. [AI Recipe Adjustments](#ai-recipe-adjustments) *(Pro)*
+10. [My Cookbook](#my-cookbook)
+11. [Uploading Recipes](#uploading-recipes) *(Pro)*
+12. [Recipe Images](#recipe-images)
+13. [Recipe Categories](#recipe-categories)
+14. [Tags & Search](#tags--search)
 15. [Sharing Recipes](#sharing-recipes)
 16. [Notes & Comments](#notes--comments)
 17. [Shopping Lists](#shopping-lists)
@@ -29,6 +30,7 @@
 19. [Settings & Preferences](#settings--preferences)
 20. [Feedback & Support](#feedback--support)
 21. [Installing as an App](#installing-as-an-app)
+22. [Version History](#version-history)
 
 ---
 
@@ -213,9 +215,58 @@ After generating a recipe, you can customize and regenerate it with variations:
 
 ---
 
-## AI Pantry Scanner
+## Voice Cook Mode *(Pro)*
 
-Quickly add ingredients to your pantry using multiple methods: photos, video, or voice.
+Voice Cook Mode is a hands-free cooking assistant that helps you follow recipes while keeping your hands free for cooking.
+
+### Features
+
+#### Read Aloud
+- Have recipe steps read aloud while you cook
+- Clear text-to-speech guidance
+- Repeat steps as needed
+- Keep your focus on the food, not the screen
+
+#### Ask Questions
+- Get real-time answers to cooking questions
+- Ask about techniques: *"How do I julienne carrots?"*
+- Ask about substitutions: *"Can I substitute butter for oil?"*
+- AI provides helpful answers while you cook
+
+#### Named Timers
+- Set multiple named timers with voice commands
+- Say: *"Set a 10-minute pasta timer"*
+- Run multiple timers simultaneously
+- Audio alerts when timers complete
+- Never lose track of what's cooking
+
+#### Voice Control
+Navigate recipes and control the app entirely hands-free:
+- *"Next step"* - Move to the next instruction
+- *"Go back"* - Return to the previous step
+- *"Read that again"* - Repeat the current step
+- *"Double the servings"* - Adjust recipe quantities
+
+### How to Use
+
+1. Open any recipe from your cookbook or after generating one
+2. Look for the **Voice Cook** or **Start Cooking** button
+3. Grant microphone permission when prompted
+4. Follow the voice prompts to navigate through the recipe
+5. Ask questions or set timers anytime during cooking
+
+### Tips
+
+- Speak clearly when giving commands
+- Use a quiet environment for best voice recognition
+- Keep your device nearby but away from heat/water
+- The AI understands natural language, so speak naturally
+
+---
+
+## AI Pantry Scanner *(Pro)*
+
+Quickly add ingredients to your pantry using multiple methods: photos, video, or voice. This is a Pro feature that unlocks powerful AI-powered scanning capabilities.
 
 ### Input Methods
 
@@ -1190,8 +1241,9 @@ Below is a summary of the features and improvements added to Kiwi Meal Planner o
 
 ---
 
-### Version 1.0.7 — Single Recipes & Nutrition
+### Version 1.0.7 — Voice Cook & Single Recipes
 **New Features:**
+- **Voice Cook Mode (Pro)** — Hands-free cooking assistance with voice commands, smart timers, and recipe read-aloud
 - **Single Recipe Generator** — Create individual recipes on demand
 - **AI Pantry Scanner (Pro)** — Photograph your fridge or pantry to add ingredients
 - **Nutritional Info** — View detailed macros and nutrition for any recipe
