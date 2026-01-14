@@ -808,21 +808,169 @@ const HelpModal: React.FC<HelpModalProps> = ({ isOpen, onClose }) => {
       keywords: ['version', 'history', 'update', 'changelog', 'new', 'features', 'release'],
       content: (
         <>
-          <p className="font-medium text-emerald-600 mb-2">Current Version: {version}</p>
-          <p>See what's new in Kiwi Meal Planner:</p>
-          <div className="mt-3 space-y-2">
+          <p className="font-medium text-emerald-600 mb-3">Current Version: {version}</p>
+          <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
+            {/* Version 2.7 */}
             <div className="bg-emerald-50 border border-emerald-200 rounded-lg p-3">
-              <p className="font-medium text-slate-700">Version 2.7 Highlights:</p>
-              <ul className="list-disc list-inside text-sm text-slate-600 mt-1 space-y-1">
-                <li><strong>Sides & Dessert Generation (Pro)</strong> — Complete meals with sides and dessert</li>
-                <li><strong>Regenerate with Variations</strong> — Customize each component</li>
-                <li><strong>Full Meal PDF Export</strong> — Print entire meals</li>
+              <p className="font-semibold text-slate-700">Version 2.7 — Complete Meals</p>
+              <ul className="list-disc list-inside text-sm text-slate-600 mt-1 space-y-0.5">
+                <li><strong>Sides & Dessert Generation (Pro)</strong></li>
+                <li><strong>Regenerate with Variations</strong></li>
+                <li><strong>Full Meal PDF Export</strong></li>
+              </ul>
+            </div>
+
+            {/* Version 2.6 */}
+            <div className="bg-slate-50 border border-slate-200 rounded-lg p-3">
+              <p className="font-semibold text-slate-700">Version 2.6 — Smart Quantities</p>
+              <ul className="list-disc list-inside text-sm text-slate-600 mt-1 space-y-0.5">
+                <li>Custom Shopping Categories</li>
+                <li>Smart Quantity Detection</li>
+                <li>Quick Clear Options</li>
+              </ul>
+            </div>
+
+            {/* Version 2.5 */}
+            <div className="bg-slate-50 border border-slate-200 rounded-lg p-3">
+              <p className="font-semibold text-slate-700">Version 2.5 — Recipe Organization</p>
+              <ul className="list-disc list-inside text-sm text-slate-600 mt-1 space-y-0.5">
+                <li>Recipe Categories</li>
+                <li>Category Filtering</li>
+                <li>Improved Workflow</li>
+              </ul>
+            </div>
+
+            {/* Version 2.3 */}
+            <div className="bg-slate-50 border border-slate-200 rounded-lg p-3">
+              <p className="font-semibold text-slate-700">Version 2.3 — Macro Tracking</p>
+              <ul className="list-disc list-inside text-sm text-slate-600 mt-1 space-y-0.5">
+                <li>Custom Macro Targets (Pro)</li>
+                <li>Fit My Macros (Pro)</li>
+                <li>Nutrition Comparison</li>
+              </ul>
+            </div>
+
+            {/* Version 2.2 */}
+            <div className="bg-slate-50 border border-slate-200 rounded-lg p-3">
+              <p className="font-semibold text-slate-700">Version 2.2 — Shopping Made Easy</p>
+              <ul className="list-disc list-inside text-sm text-slate-600 mt-1 space-y-0.5">
+                <li>Master Shopping List</li>
+                <li>Store Layouts (Pro)</li>
+                <li>iOS Reminders & PDF Export</li>
+              </ul>
+            </div>
+
+            {/* Version 2.1 */}
+            <div className="bg-slate-50 border border-slate-200 rounded-lg p-3">
+              <p className="font-semibold text-slate-700">Version 2.1 — Cloud Sync</p>
+              <ul className="list-disc list-inside text-sm text-slate-600 mt-1 space-y-0.5">
+                <li>Shopping List Persistence</li>
+                <li>Checked Items Sync</li>
+              </ul>
+            </div>
+
+            {/* Version 2.0 */}
+            <div className="bg-slate-50 border border-slate-200 rounded-lg p-3">
+              <p className="font-semibold text-slate-700">Version 2.0 — AI Pantry Scanning</p>
+              <ul className="list-disc list-inside text-sm text-slate-600 mt-1 space-y-0.5">
+                <li>Video Scanning (Pro)</li>
+                <li>Voice Dictation (Pro)</li>
+                <li>Audio Upload (Pro)</li>
+              </ul>
+            </div>
+
+            {/* Version 1.0.9 */}
+            <div className="bg-slate-50 border border-slate-200 rounded-lg p-3">
+              <p className="font-semibold text-slate-700">Version 1.0.9 — Pantry Staples</p>
+              <ul className="list-disc list-inside text-sm text-slate-600 mt-1 space-y-0.5">
+                <li>Staples Tracking</li>
+                <li>Restock Reminders</li>
+              </ul>
+            </div>
+
+            {/* Version 1.0.8 */}
+            <div className="bg-slate-50 border border-slate-200 rounded-lg p-3">
+              <p className="font-semibold text-slate-700">Version 1.0.8 — Use What I Have</p>
+              <ul className="list-disc list-inside text-sm text-slate-600 mt-1 space-y-0.5">
+                <li>Smart Ingredient Mode (Pro)</li>
+                <li>Pantry Priority</li>
+              </ul>
+            </div>
+
+            {/* Version 1.0.7 */}
+            <div className="bg-slate-50 border border-slate-200 rounded-lg p-3">
+              <p className="font-semibold text-slate-700">Version 1.0.7 — Voice Cook Mode</p>
+              <ul className="list-disc list-inside text-sm text-slate-600 mt-1 space-y-0.5">
+                <li>Voice Cook Mode (Pro)</li>
+                <li>Smart Timers</li>
+                <li>Hands-Free Cooking</li>
+              </ul>
+            </div>
+
+            {/* Version 1.0.6 */}
+            <div className="bg-slate-50 border border-slate-200 rounded-lg p-3">
+              <p className="font-semibold text-slate-700">Version 1.0.6 — Side Dish Suggestions</p>
+              <ul className="list-disc list-inside text-sm text-slate-600 mt-1 space-y-0.5">
+                <li>AI Side Dish Pairing</li>
+                <li>Cookbook Integration</li>
+              </ul>
+            </div>
+
+            {/* Version 1.0.5 */}
+            <div className="bg-slate-50 border border-slate-200 rounded-lg p-3">
+              <p className="font-semibold text-slate-700">Version 1.0.5 — Photo Pantry Scanning</p>
+              <ul className="list-disc list-inside text-sm text-slate-600 mt-1 space-y-0.5">
+                <li>AI Pantry Scanner (Pro)</li>
+                <li>Category Organization</li>
+              </ul>
+            </div>
+
+            {/* Version 1.0.4 */}
+            <div className="bg-slate-50 border border-slate-200 rounded-lg p-3">
+              <p className="font-semibold text-slate-700">Version 1.0.4 — Recipe Adjustments</p>
+              <ul className="list-disc list-inside text-sm text-slate-600 mt-1 space-y-0.5">
+                <li>AI Recipe Adjustments (Pro)</li>
+                <li>Serving Scaling</li>
+              </ul>
+            </div>
+
+            {/* Version 1.0.3 */}
+            <div className="bg-slate-50 border border-slate-200 rounded-lg p-3">
+              <p className="font-semibold text-slate-700">Version 1.0.3 — Feedback System</p>
+              <ul className="list-disc list-inside text-sm text-slate-600 mt-1 space-y-0.5">
+                <li>User Feedback</li>
+                <li>PWA Improvements</li>
+              </ul>
+            </div>
+
+            {/* Version 1.0.2 */}
+            <div className="bg-slate-50 border border-slate-200 rounded-lg p-3">
+              <p className="font-semibold text-slate-700">Version 1.0.2 — Recipe Images</p>
+              <ul className="list-disc list-inside text-sm text-slate-600 mt-1 space-y-0.5">
+                <li>AI Recipe Images</li>
+                <li>Image Editing</li>
+              </ul>
+            </div>
+
+            {/* Version 1.0.1 */}
+            <div className="bg-slate-50 border border-slate-200 rounded-lg p-3">
+              <p className="font-semibold text-slate-700">Version 1.0.1 — Recipe Upload</p>
+              <ul className="list-disc list-inside text-sm text-slate-600 mt-1 space-y-0.5">
+                <li>Recipe Upload (Pro)</li>
+                <li>URL/Image/PDF Import</li>
+              </ul>
+            </div>
+
+            {/* Version 1.0.0 */}
+            <div className="bg-slate-50 border border-slate-200 rounded-lg p-3">
+              <p className="font-semibold text-slate-700">Version 1.0.0 — Initial Release</p>
+              <ul className="list-disc list-inside text-sm text-slate-600 mt-1 space-y-0.5">
+                <li>AI Meal Planning</li>
+                <li>Personal Cookbook</li>
+                <li>Shopping Lists</li>
               </ul>
             </div>
           </div>
-          <p className="mt-3 text-slate-500 text-sm">
-            To view the full version history with all past updates, tap the <strong>menu (☰)</strong> and select <strong>"Version History"</strong>.
-          </p>
         </>
       )
     }
