@@ -352,34 +352,49 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({
     }
   };
 
-  // Auto-generate images for recipes in background
-  const autoGenerateImages = async (recipes: Meal[]) => {
-    // Process up to 3 at a time to avoid rate limits
-    const batchSize = 3;
-    for (let i = 0; i < recipes.length; i += batchSize) {
-      const batch = recipes.slice(i, i + batchSize);
-      await Promise.all(batch.map(async (meal) => {
-        // Skip if already loading or already has image
-        if (loadingImages[meal.name] || mealImages[meal.name]) return;
+  // Auto-generate images for recipes in background (non-blocking)
+  const autoGenerateImages = (recipes: Meal[]) => {
+    // Process one at a time with delays to avoid blocking main thread
+    let index = 0;
 
-        setLoadingImages(prev => ({ ...prev, [meal.name]: true }));
-        try {
-          const imageData = await generateDishImage(meal.name, meal.description);
+    const processNext = () => {
+      if (index >= recipes.length) return;
+
+      const meal = recipes[index];
+      index++;
+
+      // Skip if already has image (check current state)
+      if (meal.imageUrl) {
+        // Small delay then process next
+        setTimeout(processNext, 100);
+        return;
+      }
+
+      setLoadingImages(prev => ({ ...prev, [meal.name]: true }));
+
+      generateDishImage(meal.name, meal.description)
+        .then(async (imageData) => {
           if (imageData) {
             setMealImages(prev => ({ ...prev, [meal.name]: imageData }));
-            await cacheImage(meal.name, meal.description, imageData);
-            // Save to database so image persists
+            // Cache and save in background (don't await)
+            cacheImage(meal.name, meal.description, imageData).catch(console.error);
             if (meal.id) {
-              await updateFavoriteMealImage(meal.id, imageData);
+              updateFavoriteMealImage(meal.id, imageData).catch(console.error);
             }
           }
-        } catch (error) {
+        })
+        .catch((error) => {
           console.error(`Failed to auto-generate image for ${meal.name}:`, error);
-        } finally {
+        })
+        .finally(() => {
           setLoadingImages(prev => ({ ...prev, [meal.name]: false }));
-        }
-      }));
-    }
+          // Delay before next to avoid overwhelming the API and main thread
+          setTimeout(processNext, 500);
+        });
+    };
+
+    // Start processing with initial delay to let page render first
+    setTimeout(processNext, 1000);
   };
 
   // Get current recipes based on tab

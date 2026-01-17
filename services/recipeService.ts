@@ -48,6 +48,39 @@ export const getRecipeTags = async (mealId: string): Promise<string[]> => {
 };
 
 /**
+ * Get tags for multiple recipes in a single query (performance optimization)
+ */
+export const getBatchRecipeTags = async (mealIds: string[]): Promise<Record<string, string[]>> => {
+  if (!isSupabaseConfigured() || mealIds.length === 0) return {};
+
+  try {
+    const { data, error } = await supabase
+      .from('recipe_tag_assignments')
+      .select('meal_id, recipe_tags(name)')
+      .in('meal_id', mealIds);
+
+    if (error) throw error;
+
+    // Group tags by meal_id
+    const result: Record<string, string[]> = {};
+    mealIds.forEach(id => { result[id] = []; });
+
+    data?.forEach((d: any) => {
+      const tagName = d.recipe_tags?.name;
+      if (tagName && d.meal_id) {
+        if (!result[d.meal_id]) result[d.meal_id] = [];
+        result[d.meal_id].push(tagName);
+      }
+    });
+
+    return result;
+  } catch (err) {
+    console.error('Error fetching batch recipe tags:', err);
+    return {};
+  }
+};
+
+/**
  * Assign tags to a recipe
  */
 export const assignTagsToRecipe = async (mealId: string, tagNames: string[]): Promise<boolean> => {
@@ -307,31 +340,33 @@ export const getPublicRecipes = async (): Promise<Meal[]> => {
       .order('created_at', { ascending: false });
 
     if (error) throw error;
+    if (!data || data.length === 0) return [];
 
-    // Fetch tags for each recipe
-    const recipesWithTags = await Promise.all(
-      (data || []).map(async (meal: any) => {
-        const tags = await getRecipeTags(meal.id);
-        const video = meal.recipe_videos?.[0];
-        return {
-          id: meal.id,
-          name: meal.name,
-          description: meal.description,
-          ingredients: meal.ingredients,
-          instructions: meal.instructions,
-          imageUrl: meal.image_url,
-          source: meal.source as 'generated' | 'uploaded',
-          isPublic: meal.is_public,
-          userId: meal.user_id,
-          ownerName: meal.owner_name,
-          createdAt: meal.created_at,
-          tags,
-          isFavorite: false,
-          videoId: video?.id,
-          hasVideo: video?.processing_status === 'complete',
-        };
-      })
-    );
+    // Fetch all tags in a single batch query
+    const mealIds = data.map((m: any) => m.id);
+    const batchTags = await getBatchRecipeTags(mealIds);
+
+    // Map recipes with their tags
+    const recipesWithTags = data.map((meal: any) => {
+      const video = meal.recipe_videos?.[0];
+      return {
+        id: meal.id,
+        name: meal.name,
+        description: meal.description,
+        ingredients: meal.ingredients,
+        instructions: meal.instructions,
+        imageUrl: meal.image_url,
+        source: meal.source as 'generated' | 'uploaded',
+        isPublic: meal.is_public,
+        userId: meal.user_id,
+        ownerName: meal.owner_name,
+        createdAt: meal.created_at,
+        tags: batchTags[meal.id] || [],
+        isFavorite: false,
+        videoId: video?.id,
+        hasVideo: video?.processing_status === 'complete',
+      };
+    });
 
     return recipesWithTags;
   } catch (err) {
@@ -531,31 +566,33 @@ export const getUserUploadedRecipes = async (): Promise<Meal[]> => {
       .order('created_at', { ascending: false });
 
     if (error) throw error;
+    if (!data || data.length === 0) return [];
 
-    // Fetch tags for each recipe
-    const recipesWithTags = await Promise.all(
-      (data || []).map(async (meal: any) => {
-        const tags = await getRecipeTags(meal.id);
-        const video = meal.recipe_videos?.[0];
-        return {
-          id: meal.id,
-          name: meal.name,
-          description: meal.description,
-          ingredients: meal.ingredients,
-          instructions: meal.instructions,
-          imageUrl: meal.image_url,
-          source: 'uploaded' as const,
-          isPublic: meal.is_public,
-          uploadStatus: meal.upload_status,
-          userId: meal.user_id,
-          createdAt: meal.created_at,
-          tags,
-          isFavorite: true,
-          videoId: video?.id,
-          hasVideo: video?.processing_status === 'complete',
-        };
-      })
-    );
+    // Fetch all tags in a single batch query
+    const mealIds = data.map((m: any) => m.id);
+    const batchTags = await getBatchRecipeTags(mealIds);
+
+    // Map recipes with their tags
+    const recipesWithTags = data.map((meal: any) => {
+      const video = meal.recipe_videos?.[0];
+      return {
+        id: meal.id,
+        name: meal.name,
+        description: meal.description,
+        ingredients: meal.ingredients,
+        instructions: meal.instructions,
+        imageUrl: meal.image_url,
+        source: 'uploaded' as const,
+        isPublic: meal.is_public,
+        uploadStatus: meal.upload_status,
+        userId: meal.user_id,
+        createdAt: meal.created_at,
+        tags: batchTags[meal.id] || [],
+        isFavorite: true,
+        videoId: video?.id,
+        hasVideo: video?.processing_status === 'complete',
+      };
+    });
 
     return recipesWithTags;
   } catch (err) {
@@ -585,30 +622,32 @@ export const getUserGeneratedRecipes = async (): Promise<Meal[]> => {
       .order('created_at', { ascending: false });
 
     if (error) throw error;
+    if (!data || data.length === 0) return [];
 
-    // Fetch tags for each recipe
-    const recipesWithTags = await Promise.all(
-      (data || []).map(async (meal: any) => {
-        const tags = await getRecipeTags(meal.id);
-        const video = meal.recipe_videos?.[0];
-        return {
-          id: meal.id,
-          name: meal.name,
-          description: meal.description,
-          ingredients: meal.ingredients,
-          instructions: meal.instructions,
-          imageUrl: meal.image_url,
-          source: 'generated' as const,
-          isPublic: meal.is_public,
-          userId: meal.user_id,
-          createdAt: meal.created_at,
-          tags,
-          isFavorite: true,
-          videoId: video?.id,
-          hasVideo: video?.processing_status === 'complete',
-        };
-      })
-    );
+    // Fetch all tags in a single batch query
+    const mealIds = data.map((m: any) => m.id);
+    const batchTags = await getBatchRecipeTags(mealIds);
+
+    // Map recipes with their tags
+    const recipesWithTags = data.map((meal: any) => {
+      const video = meal.recipe_videos?.[0];
+      return {
+        id: meal.id,
+        name: meal.name,
+        description: meal.description,
+        ingredients: meal.ingredients,
+        instructions: meal.instructions,
+        imageUrl: meal.image_url,
+        source: 'generated' as const,
+        isPublic: meal.is_public,
+        userId: meal.user_id,
+        createdAt: meal.created_at,
+        tags: batchTags[meal.id] || [],
+        isFavorite: true,
+        videoId: video?.id,
+        hasVideo: video?.processing_status === 'complete',
+      };
+    });
 
     return recipesWithTags;
   } catch (err) {
