@@ -342,26 +342,27 @@ const SingleRecipeGenerator: React.FC<SingleRecipeGeneratorProps> = ({
   };
 
   return (
-    <div className="animate-fadeIn">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <button
-          onClick={onBack}
-          className="text-slate-500 hover:text-slate-800 flex items-center gap-1 text-sm"
-        >
-          <ArrowLeft size={16} /> Back
-        </button>
-      </div>
-
-      <div className="flex items-center gap-3 mb-6">
-        <div className="bg-amber-100 p-3 rounded-xl">
-          <Sparkles className="text-amber-600" size={28} />
-        </div>
-        <div>
-          <h2 className="text-2xl font-bold text-slate-800">Generate a Recipe</h2>
-          <p className="text-slate-500 text-sm">
-            Describe what you're in the mood for
-          </p>
+    <div className="max-w-5xl mx-auto animate-fadeIn">
+      {/* Sticky Header */}
+      <div className="sticky top-0 z-10 bg-gradient-to-br from-emerald-50 via-white to-orange-50 pb-4 -mx-4 px-4 pt-4">
+        <div className="flex items-center gap-4">
+          <button
+            onClick={onBack}
+            className="p-2 hover:bg-slate-100 rounded-full transition-colors"
+          >
+            <ArrowLeft size={24} className="text-slate-600" />
+          </button>
+          <div className="flex items-center gap-3">
+            <div className="bg-amber-100 p-3 rounded-xl">
+              <Sparkles className="text-amber-600" size={28} />
+            </div>
+            <div>
+              <h2 className="text-2xl font-bold text-slate-800">Generate a Recipe</h2>
+              <p className="text-slate-500 text-sm">
+                Describe what you're in the mood for
+              </p>
+            </div>
+          </div>
         </div>
       </div>
 

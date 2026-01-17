@@ -960,27 +960,31 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
   }
 
   return (
-    <div className="max-w-6xl mx-auto px-4 py-6 animate-fadeIn">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div className="flex items-center gap-4">
-          <button
-            onClick={onBack}
-            className="p-2 hover:bg-slate-100 rounded-full transition-colors"
-          >
-            <ArrowLeft size={24} className="text-slate-600" />
-          </button>
-          <div>
-            <h1 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-              <Shield className="text-emerald-600" size={28} />
-              Admin Dashboard
-            </h1>
-            <p className="text-slate-500 text-sm">Manage your application</p>
+    <div className="max-w-5xl mx-auto animate-fadeIn">
+      {/* Sticky Header */}
+      <div className="sticky top-0 z-10 bg-gradient-to-br from-emerald-50 via-white to-orange-50 pb-4 -mx-4 px-4 pt-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <button
+              onClick={onBack}
+              className="p-2 hover:bg-slate-100 rounded-full transition-colors"
+            >
+              <ArrowLeft size={24} className="text-slate-600" />
+            </button>
+            <div className="flex items-center gap-3">
+              <div className="bg-emerald-100 p-3 rounded-xl">
+                <Shield className="text-emerald-600" size={28} />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold text-slate-800">Admin Dashboard</h1>
+                <p className="text-slate-500 text-sm">Manage your application</p>
+              </div>
+            </div>
           </div>
-        </div>
-        <div className="flex items-center gap-2 text-sm text-slate-500">
-          <div className="w-2 h-2 bg-emerald-500 rounded-full" />
-          Logged in as {user?.email}
+          <div className="hidden sm:flex items-center gap-2 text-sm text-slate-500">
+            <div className="w-2 h-2 bg-emerald-500 rounded-full" />
+            Logged in as {user?.email}
+          </div>
         </div>
       </div>
 

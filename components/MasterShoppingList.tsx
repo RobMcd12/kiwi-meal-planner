@@ -1017,13 +1017,22 @@ const MasterShoppingList: React.FC<MasterShoppingListProps> = ({
 
   if (loading) {
     return (
-      <div className="animate-fadeIn">
-        <button
-          onClick={onBack}
-          className="mb-6 text-slate-500 hover:text-slate-800 flex items-center gap-1 text-sm"
-        >
-          <ArrowLeft size={16} /> Back
-        </button>
+      <div className="max-w-5xl mx-auto animate-fadeIn">
+        <div className="flex items-center gap-4 mb-6">
+          <button
+            onClick={onBack}
+            className="p-2 hover:bg-slate-100 rounded-full transition-colors"
+          >
+            <ArrowLeft size={24} className="text-slate-600" />
+          </button>
+          <div className="bg-emerald-100 p-3 rounded-xl">
+            <ShoppingCart className="text-emerald-600" size={28} />
+          </div>
+          <div>
+            <h2 className="text-2xl font-bold text-slate-800">Shopping List</h2>
+            <p className="text-slate-500 text-sm">Loading...</p>
+          </div>
+        </div>
         <div className="flex items-center justify-center py-20">
           <div className="w-10 h-10 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin" />
         </div>
@@ -1032,16 +1041,32 @@ const MasterShoppingList: React.FC<MasterShoppingListProps> = ({
   }
 
   return (
-    <div className="animate-fadeIn">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <button
-          onClick={onBack}
-          className="text-slate-500 hover:text-slate-800 flex items-center gap-1 text-sm"
-        >
-          <ArrowLeft size={16} /> Back
-        </button>
-        <div className="flex items-center gap-2">
+    <div className="max-w-5xl mx-auto animate-fadeIn">
+      {/* Sticky Header */}
+      <div className="sticky top-0 z-10 bg-gradient-to-br from-emerald-50 via-white to-orange-50 pb-4 -mx-4 px-4 pt-4">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-4">
+            <button
+              onClick={onBack}
+              className="p-2 hover:bg-slate-100 rounded-full transition-colors"
+            >
+              <ArrowLeft size={24} className="text-slate-600" />
+            </button>
+            <div className="flex items-center gap-3">
+              <div className="bg-emerald-100 p-3 rounded-xl">
+                <ShoppingCart className="text-emerald-600" size={28} />
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold text-slate-800">Shopping List</h2>
+                <p className="text-slate-500 text-sm">
+                  {totalCount === 0
+                    ? 'Add plans or recipes to build your list'
+                    : `${totalCount - checkedCount} items remaining`}
+                </p>
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
           {checkedCount > 0 && (
             <button
               onClick={clearCheckedItems}
@@ -1051,20 +1076,7 @@ const MasterShoppingList: React.FC<MasterShoppingListProps> = ({
               Clear checked
             </button>
           )}
-        </div>
-      </div>
-
-      <div className="flex items-center gap-3 mb-6">
-        <div className="bg-emerald-100 p-3 rounded-xl">
-          <ShoppingCart className="text-emerald-600" size={28} />
-        </div>
-        <div className="flex-1">
-          <h2 className="text-2xl font-bold text-slate-800">Shopping List</h2>
-          <p className="text-slate-500 text-sm">
-            {totalCount === 0
-              ? 'Add plans or recipes to build your list'
-              : `${totalCount - checkedCount} items remaining`}
-          </p>
+          </div>
         </div>
       </div>
 

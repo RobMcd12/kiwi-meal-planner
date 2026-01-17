@@ -191,23 +191,35 @@ const SettingsView: React.FC<SettingsViewProps> = ({
   };
 
   return (
-    <div className="max-w-4xl mx-auto animate-fadeIn pb-20">
-      <div className="flex items-center justify-between mb-8 px-4">
-        <button 
-          onClick={onClose}
-          className="p-2 hover:bg-slate-100 rounded-full transition-colors flex items-center gap-2 text-slate-600"
-        >
-          <ArrowLeft size={24} />
-          <span className="font-medium hidden sm:inline">Back</span>
-        </button>
-        <h2 className="text-2xl font-bold text-slate-800">Overall Preferences</h2>
-        <button 
-          onClick={onClose}
-          className="bg-slate-900 text-white px-6 py-2 rounded-full font-medium hover:bg-slate-800 transition-colors flex items-center gap-2"
-        >
-          <Check size={18} />
-          Done
-        </button>
+    <div className="max-w-5xl mx-auto animate-fadeIn pb-20">
+      {/* Sticky Header */}
+      <div className="sticky top-0 z-10 bg-gradient-to-br from-emerald-50 via-white to-orange-50 pb-4 -mx-4 px-4 pt-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <button
+              onClick={onClose}
+              className="p-2 hover:bg-slate-100 rounded-full transition-colors"
+            >
+              <ArrowLeft size={24} className="text-slate-600" />
+            </button>
+            <div className="flex items-center gap-3">
+              <div className="bg-slate-100 p-3 rounded-xl">
+                <Sliders className="text-slate-600" size={28} />
+              </div>
+              <div>
+                <h2 className="text-2xl font-bold text-slate-800">Overall Preferences</h2>
+                <p className="text-slate-500 text-sm">Customize your meal planning experience</p>
+              </div>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="bg-slate-900 text-white px-6 py-2 rounded-full font-medium hover:bg-slate-800 transition-colors flex items-center gap-2"
+          >
+            <Check size={18} />
+            Done
+          </button>
+        </div>
       </div>
 
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">

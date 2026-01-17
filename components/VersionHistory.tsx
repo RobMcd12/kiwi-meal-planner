@@ -590,32 +590,35 @@ const VersionHistory: React.FC<VersionHistoryProps> = ({ onBack }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white">
-      {/* Header */}
-      <div className="sticky top-0 z-20 bg-white/95 backdrop-blur-sm border-b border-slate-200">
-        <div className="max-w-3xl mx-auto px-4 py-4">
-          <div className="flex items-center gap-3">
+    <div className="max-w-5xl mx-auto animate-fadeIn">
+      {/* Sticky Header */}
+      <div className="sticky top-0 z-10 bg-gradient-to-br from-emerald-50 via-white to-orange-50 pb-4 -mx-4 px-4 pt-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
             <button
               onClick={onBack}
-              className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+              className="p-2 hover:bg-slate-100 rounded-full transition-colors"
             >
-              <ArrowLeft size={20} className="text-slate-600" />
+              <ArrowLeft size={24} className="text-slate-600" />
             </button>
-            <div>
-              <h1 className="text-xl font-bold text-slate-800">What's New</h1>
-              <p className="text-sm text-slate-500">Version history & updates</p>
-            </div>
-            <div className="ml-auto">
-              <span className="px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-sm font-medium">
-                v{version}
-              </span>
+            <div className="flex items-center gap-3">
+              <div className="bg-purple-100 p-3 rounded-xl">
+                <Sparkles className="text-purple-600" size={28} />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold text-slate-800">What's New</h1>
+                <p className="text-slate-500 text-sm">Version history & updates</p>
+              </div>
             </div>
           </div>
+          <span className="px-3 py-1 bg-emerald-100 text-emerald-700 rounded-full text-sm font-medium">
+            v{version}
+          </span>
         </div>
       </div>
 
       {/* Content */}
-      <div className="max-w-3xl mx-auto px-4 py-6 space-y-4">
+      <div className="space-y-4">
         {VERSION_HISTORY.map((entry) => {
           const isExpanded = expandedVersions.has(entry.version);
 
