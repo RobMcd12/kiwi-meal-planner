@@ -10,6 +10,7 @@ import {
   Sparkles
 } from 'lucide-react';
 import { parseDictationForPantryItems } from '../services/geminiService';
+import { parseItemQuantity } from '../services/storageService';
 import type { PantryItem, ScannedPantryResult, PantryUploadMode } from '../types';
 import PantryUploadModeModal from './PantryUploadModeModal';
 
@@ -206,10 +207,16 @@ const LiveDictation: React.FC<LiveDictationProps> = ({ onItemsScanned, onClose, 
   };
 
   const finalizeAddItems = (mode: PantryUploadMode) => {
-    const items: PantryItem[] = Array.from(selectedItems).map(name => ({
-      id: `dictation-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      name,
-    }));
+    const items: PantryItem[] = Array.from(selectedItems).map(name => {
+      // Parse quantity from item name (e.g., "milk (~500ml)" -> name: "milk", quantity: 500, unit: "ml")
+      const parsed = parseItemQuantity(name);
+      return {
+        id: `dictation-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        name: parsed.name,
+        quantity: parsed.quantity,
+        unit: parsed.unit,
+      };
+    });
     onItemsScanned(items, mode);
   };
 

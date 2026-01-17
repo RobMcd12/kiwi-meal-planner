@@ -1456,6 +1456,103 @@ const blobToBase64 = (blob: Blob): Promise<string> => {
 };
 
 // ============================================
+// PANTRY CATEGORY SUGGESTION
+// ============================================
+
+// Predefined pantry categories for AI to choose from
+export const PANTRY_CATEGORIES = [
+  'Produce',
+  'Dairy',
+  'Meat & Seafood',
+  'Pantry Staples',
+  'Frozen',
+  'Beverages',
+  'Condiments & Sauces',
+  'Baking',
+  'Snacks',
+  'Grains & Pasta',
+  'Canned Goods',
+  'Spices & Seasonings',
+  'Oils & Vinegars',
+  'Bread & Bakery',
+  'Other'
+];
+
+// Schema for category suggestion
+const categorySuggestionSchema: Schema = {
+  type: Type.OBJECT,
+  properties: {
+    items: {
+      type: Type.ARRAY,
+      items: {
+        type: Type.OBJECT,
+        properties: {
+          name: { type: Type.STRING, description: "The item name" },
+          suggestedCategory: { type: Type.STRING, description: "The suggested category for this item" },
+          confidence: { type: Type.NUMBER, description: "Confidence score 0-1" },
+        },
+        required: ["name", "suggestedCategory", "confidence"],
+      },
+    },
+  },
+  required: ["items"],
+};
+
+export interface CategorySuggestion {
+  name: string;
+  suggestedCategory: string;
+  confidence: number;
+}
+
+/**
+ * Suggest categories for a list of pantry items
+ */
+export const suggestCategoriesForItems = async (
+  itemNames: string[]
+): Promise<CategorySuggestion[]> => {
+  const apiKey = process.env.API_KEY;
+  if (!apiKey) {
+    throw new Error("API key not configured");
+  }
+  const ai = new GoogleGenAI({ apiKey });
+
+  const prompt = `You are a pantry organization assistant. Suggest the best category for each of the following food/pantry items.
+
+Items to categorize:
+${itemNames.map((name, i) => `${i + 1}. ${name}`).join('\n')}
+
+Available categories:
+${PANTRY_CATEGORIES.map(c => `- ${c}`).join('\n')}
+
+For each item:
+1. Suggest the most appropriate category from the list above
+2. Provide a confidence score (0-1) for your suggestion
+
+Return your response as JSON.`;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: "gemini-2.0-flash",
+      contents: [{ text: prompt }],
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: categorySuggestionSchema,
+      },
+    });
+
+    if (!response.text) {
+      throw new Error('Empty response from AI model');
+    }
+
+    const result = JSON.parse(response.text) as { items: CategorySuggestion[] };
+    return result.items;
+  } catch (error) {
+    console.error("Category suggestion error:", error);
+    throw new Error("Failed to suggest categories for items");
+  }
+};
+
+// ============================================
 // NUTRITIONAL INFORMATION
 // ============================================
 

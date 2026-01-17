@@ -41,6 +41,150 @@ const generateId = (): string => {
 };
 
 // ============================================
+// PANTRY ITEM PARSING UTILITIES
+// ============================================
+
+// All known units for parsing
+const ALL_UNITS = [
+  // Metric
+  'g', 'grams', 'gram', 'kg', 'kilograms', 'kilogram', 'ml', 'millilitres', 'milliliters', 'L', 'litres', 'liters', 'litre', 'liter', 'cm',
+  // Imperial
+  'oz', 'ounces', 'ounce', 'lb', 'lbs', 'pounds', 'pound', 'fl oz', 'cups', 'cup', 'pt', 'pint', 'pints', 'qt', 'quart', 'quarts', 'gal', 'gallon', 'gallons', 'in', 'inches', 'inch',
+  // Universal
+  'pieces', 'piece', 'pcs', 'pc', 'items', 'item', 'bunch', 'bunches', 'pack', 'packs', 'can', 'cans', 'bottle', 'bottles', 'jar', 'jars', 'box', 'boxes', 'bag', 'bags', 'tbsp', 'tablespoon', 'tablespoons', 'tsp', 'teaspoon', 'teaspoons', 'cloves', 'clove', 'slices', 'slice', 'heads', 'head',
+  // Additional common units
+  'dozen', 'doz', 'carton', 'cartons', 'container', 'containers', 'loaf', 'loaves', 'stick', 'sticks'
+];
+
+// Normalize unit to standard form
+const normalizeUnit = (unit: string): string => {
+  const unitLower = unit.toLowerCase();
+  const unitMap: Record<string, string> = {
+    'grams': 'g', 'gram': 'g',
+    'kilograms': 'kg', 'kilogram': 'kg',
+    'millilitres': 'ml', 'milliliters': 'ml',
+    'litres': 'L', 'liters': 'L', 'litre': 'L', 'liter': 'L',
+    'ounces': 'oz', 'ounce': 'oz',
+    'pounds': 'lb', 'pound': 'lb', 'lbs': 'lb',
+    'cups': 'cups', 'cup': 'cups',
+    'pints': 'pt', 'pint': 'pt',
+    'quarts': 'qt', 'quart': 'qt',
+    'gallons': 'gal', 'gallon': 'gal',
+    'inches': 'in', 'inch': 'in',
+    'pieces': 'pieces', 'piece': 'pieces', 'pcs': 'pieces', 'pc': 'pieces',
+    'items': 'items', 'item': 'items',
+    'bunches': 'bunch',
+    'packs': 'pack',
+    'cans': 'can',
+    'bottles': 'bottle',
+    'jars': 'jar',
+    'boxes': 'box',
+    'bags': 'bag',
+    'tablespoons': 'tbsp', 'tablespoon': 'tbsp',
+    'teaspoons': 'tsp', 'teaspoon': 'tsp',
+    'clove': 'cloves',
+    'slice': 'slices',
+    'head': 'heads',
+    'dozen': 'dozen', 'doz': 'dozen',
+    'cartons': 'carton',
+    'containers': 'container',
+    'loaves': 'loaf',
+    'sticks': 'stick',
+  };
+  return unitMap[unitLower] || unit;
+};
+
+/**
+ * Parse an item name string like "milk (~500ml)" or "eggs (12)"
+ * into separate name, quantity, and unit fields
+ */
+export const parseItemQuantity = (itemString: string): { name: string; quantity?: number; unit?: string } => {
+  // Pattern to match quantity in parentheses: "item (quantity unit)" or "item (~quantity unit)"
+  // Examples: "milk (~500ml)", "eggs (12)", "flour (2 kg)", "bread (1 loaf)"
+  const parenPattern = /^(.+?)\s*\(~?(\d+(?:\.\d+)?)\s*([a-zA-Z\s]*)\)$/;
+  const parenMatch = itemString.trim().match(parenPattern);
+
+  if (parenMatch) {
+    const name = parenMatch[1].trim();
+    const quantity = parseFloat(parenMatch[2]);
+    let unit = parenMatch[3].trim();
+
+    if (unit) {
+      unit = normalizeUnit(unit);
+    }
+
+    return {
+      name,
+      quantity: isNaN(quantity) ? undefined : quantity,
+      unit: unit || undefined,
+    };
+  }
+
+  // Pattern for quantity at end without parentheses: "milk 500ml" or "2 loaves bread"
+  // Try: "item quantity unit" pattern
+  const unitsPattern = new RegExp(`^(.+?)\\s+(\\d+(?:\\.\\d+)?)\\s*(${ALL_UNITS.join('|')})\\s*$`, 'i');
+  const suffixMatch = itemString.trim().match(unitsPattern);
+
+  if (suffixMatch) {
+    const name = suffixMatch[1].trim();
+    const quantity = parseFloat(suffixMatch[2]);
+    let unit = suffixMatch[3].trim();
+
+    if (unit) {
+      unit = normalizeUnit(unit);
+    }
+
+    return {
+      name,
+      quantity: isNaN(quantity) ? undefined : quantity,
+      unit: unit || undefined,
+    };
+  }
+
+  // Pattern for quantity at start: "2 eggs", "500g flour"
+  const prefixPattern = new RegExp(`^(\\d+(?:\\.\\d+)?)\\s*(${ALL_UNITS.join('|')})?\\s+(.+)$`, 'i');
+  const prefixMatch = itemString.trim().match(prefixPattern);
+
+  if (prefixMatch) {
+    const quantity = parseFloat(prefixMatch[1]);
+    let unit = prefixMatch[2]?.trim();
+    const name = prefixMatch[3].trim();
+
+    if (unit) {
+      unit = normalizeUnit(unit);
+    }
+
+    return {
+      name,
+      quantity: isNaN(quantity) ? undefined : quantity,
+      unit: unit || undefined,
+    };
+  }
+
+  // No quantity found, return just the name
+  return { name: itemString.trim() };
+};
+
+/**
+ * Convert a PantryItem with quantity in name to one with separate quantity/unit fields
+ */
+export const normalizeItemQuantity = (item: PantryItem): PantryItem => {
+  // If item already has quantity set, don't re-parse
+  if (item.quantity !== undefined && item.quantity !== null) {
+    return item;
+  }
+
+  const parsed = parseItemQuantity(item.name);
+
+  return {
+    ...item,
+    name: parsed.name,
+    quantity: parsed.quantity,
+    unit: parsed.unit,
+  };
+};
+
+// ============================================
 // PANTRY - Supabase with LocalStorage fallback
 // ============================================
 
@@ -667,6 +811,43 @@ export const updatePantryItemQuantity = async (
 
   if (error) {
     console.error('Error updating pantry item quantity:', error);
+    return false;
+  }
+  return true;
+};
+
+// Update a pantry item's name
+export const updatePantryItemName = async (
+  id: string,
+  name: string
+): Promise<boolean> => {
+  if (!isSupabaseConfigured()) {
+    const items = loadPantryLocal();
+    const updated = items.map(item =>
+      item.id === id ? { ...item, name } : item
+    );
+    savePantryLocal(updated);
+    return true;
+  }
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    const items = loadPantryLocal();
+    const updated = items.map(item =>
+      item.id === id ? { ...item, name } : item
+    );
+    savePantryLocal(updated);
+    return true;
+  }
+
+  const { error } = await supabase
+    .from('pantry_items')
+    .update({ name })
+    .eq('id', id)
+    .eq('user_id', user.id);
+
+  if (error) {
+    console.error('Error updating pantry item name:', error);
     return false;
   }
   return true;

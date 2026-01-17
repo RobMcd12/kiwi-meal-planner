@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { PantryItem, PantryUploadMode } from '../types';
+import React, { useState, useRef, useCallback } from 'react';
+import { PantryItem, PantryCategory, PantryUploadMode } from '../types';
 import { Plus, Trash2, Archive, Camera, Sparkles, Star, ShoppingCart, Check, Video, Mic, Upload, Lock, Crown } from 'lucide-react';
 import PantryScanner from './PantryScanner';
 import ResponsiveTabs from './ResponsiveTabs';
@@ -9,7 +9,7 @@ import AudioRecorder from './AudioRecorder';
 import PantryItemEditModal from './PantryItemEditModal';
 import PantryCategorizedList from './PantryCategorizedList';
 import ConfirmModal, { useConfirmModal } from './ConfirmModal';
-import { savePantryItem, savePantryItems, updatePantryItemStaple, togglePantryItemRestock, clearStaplesRestock, updatePantryItemQuantity, removePantryItem, clearPantryItems, loadPantry } from '../services/storageService';
+import { savePantryItem, savePantryItems, updatePantryItemStaple, togglePantryItemRestock, clearStaplesRestock, updatePantryItemQuantity, updatePantryItemName, updatePantryItemCategory, removePantryItem, clearPantryItems, loadPantry } from '../services/storageService';
 
 interface PantryManagerProps {
   items: PantryItem[];
@@ -39,6 +39,12 @@ const PantryManager: React.FC<PantryManagerProps> = ({ items, setItems, onNext, 
   const [showAudioRecorder, setShowAudioRecorder] = useState(false);
   const [activeTab, setActiveTab] = useState<'pantry' | 'staples'>('pantry');
   const [editingItem, setEditingItem] = useState<PantryItem | null>(null);
+  const [pantryCategories, setPantryCategories] = useState<PantryCategory[]>([]);
+  const [stapleCategories, setStapleCategories] = useState<PantryCategory[]>([]);
+
+  // Refs to access create category functions from child components
+  const createPantryCategoryRef = useRef<((name: string) => Promise<PantryCategory | null>) | null>(null);
+  const createStapleCategoryRef = useRef<((name: string) => Promise<PantryCategory | null>) | null>(null);
 
   // Separate items into regular pantry and staples
   const regularItems = items.filter(item => !item.isStaple);
@@ -170,19 +176,48 @@ const PantryManager: React.FC<PantryManagerProps> = ({ items, setItems, onNext, 
     setItems(items.filter(item => !item.isStaple));
   };
 
-  const handleQuantitySave = async (quantity: number | null, unit: string | null) => {
+  const handleItemSave = async (quantity: number | null, unit: string | null, newName?: string, newCategoryId?: string | null) => {
     if (!editingItem) return;
 
-    const success = await updatePantryItemQuantity(editingItem.id, quantity, unit);
-    if (success) {
+    // Update quantity
+    const quantitySuccess = await updatePantryItemQuantity(editingItem.id, quantity, unit);
+
+    // Update name if provided
+    let nameSuccess = true;
+    if (newName && newName !== editingItem.name) {
+      nameSuccess = await updatePantryItemName(editingItem.id, newName);
+    }
+
+    // Update category if provided (undefined means no change, null means uncategorized)
+    let categorySuccess = true;
+    if (newCategoryId !== undefined) {
+      categorySuccess = await updatePantryItemCategory(editingItem.id, newCategoryId);
+    }
+
+    if (quantitySuccess || nameSuccess || categorySuccess) {
       setItems(items.map(item =>
         item.id === editingItem.id
-          ? { ...item, quantity: quantity || undefined, unit: unit || undefined }
+          ? {
+              ...item,
+              name: newName || item.name,
+              quantity: quantity || undefined,
+              unit: unit || undefined,
+              ...(newCategoryId !== undefined ? { categoryId: newCategoryId || undefined } : {})
+            }
           : item
       ));
     }
     setEditingItem(null);
   };
+
+  // Callbacks for category changes
+  const handlePantryCategoriesChange = useCallback((cats: PantryCategory[]) => {
+    setPantryCategories(cats);
+  }, []);
+
+  const handleStapleCategoriesChange = useCallback((cats: PantryCategory[]) => {
+    setStapleCategories(cats);
+  }, []);
 
   // Format quantity display
   const formatQuantity = (item: PantryItem): string | null => {
@@ -381,6 +416,8 @@ const PantryManager: React.FC<PantryManagerProps> = ({ items, setItems, onNext, 
               onToggleRestock={(id, needsRestock) => toggleRestock(id, needsRestock)}
               onRemoveItem={removeItem}
               formatQuantity={formatQuantity}
+              onCategoriesChange={handlePantryCategoriesChange}
+              onCreateCategoryRef={createPantryCategoryRef}
             />
           </div>
 
@@ -480,6 +517,8 @@ const PantryManager: React.FC<PantryManagerProps> = ({ items, setItems, onNext, 
               onToggleRestock={(id, needsRestock) => toggleRestock(id, needsRestock)}
               onRemoveItem={removeItem}
               formatQuantity={formatQuantity}
+              onCategoriesChange={handleStapleCategoriesChange}
+              onCreateCategoryRef={createStapleCategoryRef}
             />
           </div>
 
@@ -545,13 +584,17 @@ const PantryManager: React.FC<PantryManagerProps> = ({ items, setItems, onNext, 
         />
       )}
 
-      {/* Quantity Edit Modal */}
+      {/* Item Edit Modal */}
       {editingItem && (
         <PantryItemEditModal
           item={editingItem}
           unitSystem={unitSystem}
-          onSave={handleQuantitySave}
+          onSave={handleItemSave}
           onClose={() => setEditingItem(null)}
+          allowNameEdit={!editingItem.categoryId}
+          allowCategoryEdit={!editingItem.categoryId}
+          categories={editingItem.isStaple ? stapleCategories : pantryCategories}
+          onCreateCategory={editingItem.isStaple ? createStapleCategoryRef.current || undefined : createPantryCategoryRef.current || undefined}
         />
       )}
 

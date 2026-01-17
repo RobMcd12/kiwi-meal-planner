@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { Camera, Upload, X, Loader2, Check, Plus, Trash2, Image as ImageIcon, Sparkles, AlertCircle, AlertTriangle, Edit3, RefreshCw, Star } from 'lucide-react';
 import { scanPantryFromImages } from '../services/geminiService';
+import { parseItemQuantity } from '../services/storageService';
 import type { PantryItem, ScannedPantryResult, PantryUploadMode } from '../types';
 
 interface PantryScannerProps {
@@ -216,9 +217,15 @@ const PantryScanner: React.FC<PantryScannerProps> = ({ onItemsScanned, onClose, 
     // Get all selected items as new items
     editableItems.forEach((item) => {
       if (!item.selected) return;
+
+      // Parse quantity from item name (e.g., "milk (~500ml)" -> name: "milk", quantity: 500, unit: "ml")
+      const parsed = parseItemQuantity(item.editedName);
+
       items.push({
         id: `scanned-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        name: item.editedName,
+        name: parsed.name,
+        quantity: parsed.quantity,
+        unit: parsed.unit,
         isStaple: item.isStaple,
       });
     });
@@ -234,15 +241,19 @@ const PantryScanner: React.FC<PantryScannerProps> = ({ onItemsScanned, onClose, 
     editableItems.forEach((item) => {
       if (!item.selected) return;
 
+      // Parse quantity from item name (e.g., "milk (~500ml)" -> name: "milk", quantity: 500, unit: "ml")
+      const parsed = parseItemQuantity(item.editedName);
       const isExisting = isDuplicate(item.editedName);
 
       if (isExisting) {
-        // Update existing item - use the existing item's ID but new name (with updated quantity)
+        // Update existing item - use the existing item's ID but new parsed name and quantity
         const existingItem = findExistingItem(item.editedName);
         if (existingItem) {
           items.push({
             id: existingItem.id,
-            name: item.editedName,
+            name: parsed.name,
+            quantity: parsed.quantity,
+            unit: parsed.unit,
             isStaple: item.isStaple,
           });
         }
@@ -250,7 +261,9 @@ const PantryScanner: React.FC<PantryScannerProps> = ({ onItemsScanned, onClose, 
         // New item
         items.push({
           id: `scanned-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-          name: item.editedName,
+          name: parsed.name,
+          quantity: parsed.quantity,
+          unit: parsed.unit,
           isStaple: item.isStaple,
         });
       }

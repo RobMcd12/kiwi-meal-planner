@@ -20,6 +20,8 @@ interface PantryCategorizedListProps {
   onToggleRestock: (itemId: string, needsRestock: boolean) => void;
   onRemoveItem: (itemId: string) => void;
   formatQuantity: (item: PantryItem) => string | null;
+  onCategoriesChange?: (categories: PantryCategory[]) => void;
+  onCreateCategoryRef?: React.MutableRefObject<((name: string) => Promise<PantryCategory | null>) | null>;
 }
 
 const PantryCategorizedList: React.FC<PantryCategorizedListProps> = ({
@@ -31,6 +33,8 @@ const PantryCategorizedList: React.FC<PantryCategorizedListProps> = ({
   onToggleRestock,
   onRemoveItem,
   formatQuantity,
+  onCategoriesChange,
+  onCreateCategoryRef,
 }) => {
   const [categories, setCategories] = useState<PantryCategory[]>([]);
   const [newCategoryName, setNewCategoryName] = useState('');
@@ -47,9 +51,22 @@ const PantryCategorizedList: React.FC<PantryCategorizedListProps> = ({
     const loadCategories = async () => {
       const cats = await loadPantryCategories(isStaple);
       setCategories(cats);
+      onCategoriesChange?.(cats);
     };
     loadCategories();
-  }, [isStaple]);
+  }, [isStaple, onCategoriesChange]);
+
+  // Expose create category function to parent via ref
+  useEffect(() => {
+    if (onCreateCategoryRef) {
+      onCreateCategoryRef.current = handleAddCategory;
+    }
+    return () => {
+      if (onCreateCategoryRef) {
+        onCreateCategoryRef.current = null;
+      }
+    };
+  }, [onCreateCategoryRef, categories, isStaple]);
 
   // Filter items by staple status
   const filteredItems = items.filter(item => (item.isStaple || false) === isStaple);
@@ -71,17 +88,23 @@ const PantryCategorizedList: React.FC<PantryCategorizedListProps> = ({
 
   const uncategorizedItems = itemsByCategory.get(null) || [];
 
-  const handleAddCategory = async () => {
-    if (!newCategoryName.trim()) return;
+  const handleAddCategory = async (name?: string): Promise<PantryCategory | null> => {
+    const categoryName = name || newCategoryName.trim();
+    if (!categoryName) return null;
 
     setIsAddingCategory(true);
-    const newCat = await createPantryCategory(newCategoryName.trim(), isStaple);
+    const newCat = await createPantryCategory(categoryName, isStaple);
     if (newCat) {
-      setCategories([...categories, newCat]);
-      setNewCategoryName('');
-      setShowAddCategory(false);
+      const updatedCategories = [...categories, newCat];
+      setCategories(updatedCategories);
+      onCategoriesChange?.(updatedCategories);
+      if (!name) {
+        setNewCategoryName('');
+        setShowAddCategory(false);
+      }
     }
     setIsAddingCategory(false);
+    return newCat;
   };
 
   const handleToggleCollapse = async (categoryId: string) => {
@@ -97,7 +120,9 @@ const PantryCategorizedList: React.FC<PantryCategorizedListProps> = ({
 
   const handleDeleteCategory = async (categoryId: string) => {
     await deletePantryCategory(categoryId);
-    setCategories(categories.filter(c => c.id !== categoryId));
+    const updatedCategories = categories.filter(c => c.id !== categoryId);
+    setCategories(updatedCategories);
+    onCategoriesChange?.(updatedCategories);
     // Items in this category will have categoryId set to null automatically by DB
     setItems(items.map(item =>
       item.categoryId === categoryId ? { ...item, categoryId: undefined } : item
@@ -282,7 +307,7 @@ const PantryCategorizedList: React.FC<PantryCategorizedListProps> = ({
               autoFocus
             />
             <button
-              onClick={handleAddCategory}
+              onClick={() => handleAddCategory()}
               disabled={!newCategoryName.trim() || isAddingCategory}
               className={`px-4 py-2 rounded-lg text-white font-medium text-sm transition-colors ${
                 isStaple
