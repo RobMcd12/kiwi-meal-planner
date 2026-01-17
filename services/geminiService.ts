@@ -1512,12 +1512,16 @@ export const suggestCategoriesForItems = async (
 ): Promise<CategorySuggestion[]> => {
   // Use Edge Function in production
   if (USE_EDGE_FUNCTIONS && isSupabaseConfigured()) {
+    console.log('suggestCategoriesForItems: Calling Edge Function with', itemNames.length, 'items');
     const { data, error } = await invokeWithAuth('suggest-categories', { itemNames, categories: PANTRY_CATEGORIES });
+    console.log('suggestCategoriesForItems: Edge Function response - data:', data, 'error:', error);
     if (error) {
       console.error('Edge function error:', error);
       throw new Error('Failed to suggest categories');
     }
-    return data.items || [];
+    const items = data?.items || [];
+    console.log('suggestCategoriesForItems: Returning', items.length, 'suggestions');
+    return items;
   }
 
   // Fallback for local development

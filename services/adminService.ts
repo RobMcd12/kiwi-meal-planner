@@ -252,7 +252,31 @@ export const deleteUser = async (userId: string): Promise<{ success: boolean; er
 
     if (error) {
       console.error('Error calling delete-user function:', error);
-      return { success: false, error: error.message };
+      // Try to extract the actual error message from the response
+      // FunctionsHttpError contains context with response body
+      const errorContext = (error as any)?.context;
+      let errorMessage = error.message;
+
+      if (errorContext) {
+        try {
+          // The context might contain the JSON response body
+          const errorBody = typeof errorContext === 'string'
+            ? JSON.parse(errorContext)
+            : errorContext;
+          if (errorBody?.error) {
+            errorMessage = errorBody.error;
+          }
+        } catch {
+          // Ignore parse errors
+        }
+      }
+
+      // Also check if data contains error info even when error is set
+      if (data?.error) {
+        errorMessage = data.error;
+      }
+
+      return { success: false, error: errorMessage };
     }
 
     if (!data?.success) {

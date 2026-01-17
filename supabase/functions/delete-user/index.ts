@@ -30,9 +30,10 @@ Deno.serve(async (req) => {
     console.log('delete-user: Authorization header exists:', !!authHeader);
 
     if (!authHeader) {
+      // Return 200 with error in body - Supabase SDK treats non-2xx as function errors
       return new Response(
         JSON.stringify({ success: false, error: 'Unauthorized - No auth header' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -47,7 +48,7 @@ Deno.serve(async (req) => {
     if (authError || !requestingUser) {
       return new Response(
         JSON.stringify({ success: false, error: `Invalid authentication: ${authError?.message || 'No user found'}` }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -63,7 +64,7 @@ Deno.serve(async (req) => {
     if (adminCheckError || !adminProfile?.is_admin) {
       return new Response(
         JSON.stringify({ success: false, error: `Admin access required: ${adminCheckError?.message || 'Not an admin'}` }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -73,7 +74,7 @@ Deno.serve(async (req) => {
     if (!userId) {
       return new Response(
         JSON.stringify({ success: false, error: 'User ID is required' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -81,7 +82,7 @@ Deno.serve(async (req) => {
     if (userId === requestingUser.id) {
       return new Response(
         JSON.stringify({ success: false, error: 'Cannot delete your own account' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -103,7 +104,7 @@ Deno.serve(async (req) => {
     if (targetProfile?.is_admin) {
       return new Response(
         JSON.stringify({ success: false, error: 'Cannot delete admin users' }),
-        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -125,7 +126,7 @@ Deno.serve(async (req) => {
       console.error('Error deleting auth user:', authDeleteError);
       return new Response(
         JSON.stringify({ success: false, error: authDeleteError.message }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 

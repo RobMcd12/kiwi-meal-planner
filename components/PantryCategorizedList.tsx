@@ -146,18 +146,30 @@ const PantryCategorizedList: React.FC<PantryCategorizedListProps> = ({
     setIsSuggestingCategories(true);
     try {
       const itemNames = uncategorizedItems.map(item => item.name);
+      console.log('AI Organize: Requesting suggestions for', itemNames.length, 'items:', itemNames);
       const suggestions = await suggestCategoriesForItems(itemNames);
+      console.log('AI Organize: Received', suggestions?.length || 0, 'suggestions:', suggestions);
+
+      if (!suggestions || suggestions.length === 0) {
+        console.warn('AI Organize: No suggestions received');
+        return;
+      }
 
       // Track which categories need to be created
       let updatedCategories = [...categories];
 
       // Process each suggestion
       for (const suggestion of suggestions) {
+        console.log('AI Organize: Processing suggestion:', suggestion);
         // Find the item that matches this suggestion
         const item = uncategorizedItems.find(
           i => i.name.toLowerCase() === suggestion.name.toLowerCase()
         );
-        if (!item) continue;
+        if (!item) {
+          console.warn('AI Organize: No matching item found for:', suggestion.name, 'Available items:', uncategorizedItems.map(i => i.name));
+          continue;
+        }
+        console.log('AI Organize: Found matching item:', item.id, item.name);
 
         // Find or create the category
         let category = updatedCategories.find(
