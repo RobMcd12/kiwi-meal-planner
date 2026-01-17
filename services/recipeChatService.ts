@@ -592,12 +592,18 @@ export class RecipeSpeaker {
   }
 }
 
-// Speech Recognition functionality
+// Speech Recognition functionality with enhanced listening
 export class RecipeListener {
   private recognition: SpeechRecognition | null = null;
   private onResult: (transcript: string, isFinal: boolean) => void;
   private onStateChange: (listening: boolean) => void;
   private onError: (error: string) => void;
+  private autoRestart: boolean = false;
+  private isListening: boolean = false;
+  private restartTimeout: NodeJS.Timeout | null = null;
+  private silenceTimeout: NodeJS.Timeout | null = null;
+  private lastTranscriptTime: number = 0;
+  private minConfidence: number = 0.5; // Minimum confidence threshold
 
   constructor(
     onResult: (transcript: string, isFinal: boolean) => void,
@@ -619,51 +625,190 @@ export class RecipeListener {
     }
 
     this.recognition = new SpeechRecognition();
-    this.recognition.continuous = true;
-    this.recognition.interimResults = true;
-    this.recognition.lang = 'en-US';
+
+    // Enhanced configuration for better listening
+    this.recognition.continuous = true;      // Keep listening for multiple phrases
+    this.recognition.interimResults = true;  // Show results as user speaks
+    this.recognition.lang = 'en-US';         // Primary language
+    this.recognition.maxAlternatives = 3;    // Get multiple interpretations for better accuracy
 
     this.recognition.onstart = () => {
+      console.log('Speech recognition started');
+      this.isListening = true;
       this.onStateChange(true);
+      this.lastTranscriptTime = Date.now();
     };
 
     this.recognition.onend = () => {
-      this.onStateChange(false);
+      console.log('Speech recognition ended, autoRestart:', this.autoRestart);
+      this.isListening = false;
+
+      // Auto-restart if enabled (for open mic mode)
+      if (this.autoRestart) {
+        this.restartTimeout = setTimeout(() => {
+          if (this.autoRestart && !this.isListening) {
+            console.log('Auto-restarting speech recognition');
+            this.start();
+          }
+        }, 300);
+      } else {
+        this.onStateChange(false);
+      }
     };
 
     this.recognition.onresult = (event) => {
-      const lastResult = event.results[event.results.length - 1];
-      const transcript = lastResult[0].transcript;
-      const isFinal = lastResult.isFinal;
-      this.onResult(transcript, isFinal);
+      this.lastTranscriptTime = Date.now();
+
+      // Get the latest result
+      const lastResultIndex = event.results.length - 1;
+      const result = event.results[lastResultIndex];
+
+      // Get the best transcript (highest confidence)
+      let bestTranscript = result[0].transcript;
+      let bestConfidence = result[0].confidence;
+
+      // Check alternative interpretations for better accuracy
+      for (let i = 1; i < result.length; i++) {
+        const alt = result[i];
+        console.log(`Alt ${i}: "${alt.transcript}" (confidence: ${alt.confidence})`);
+        // Use alternative if it has higher confidence
+        if (alt.confidence > bestConfidence) {
+          bestTranscript = alt.transcript;
+          bestConfidence = alt.confidence;
+        }
+      }
+
+      const isFinal = result.isFinal;
+
+      console.log(`Speech result: "${bestTranscript}" (final: ${isFinal}, confidence: ${bestConfidence?.toFixed(2) || 'N/A'})`);
+
+      // For final results, apply confidence threshold
+      if (isFinal) {
+        // If confidence is available and too low, log but still process
+        // (confidence isn't always available on all browsers)
+        if (bestConfidence !== undefined && bestConfidence < this.minConfidence) {
+          console.log(`Low confidence result (${bestConfidence.toFixed(2)}), processing anyway: "${bestTranscript}"`);
+        }
+      }
+
+      this.onResult(bestTranscript.trim(), isFinal);
     };
 
     this.recognition.onerror = (event) => {
-      this.onStateChange(false);
-      if (event.error !== 'aborted') {
-        this.onError(`Speech recognition error: ${event.error}`);
+      console.log('Speech recognition error:', event.error);
+
+      // Handle different error types
+      switch (event.error) {
+        case 'no-speech':
+          // No speech detected - this is common, don't show error to user
+          // Auto-restart if in continuous mode
+          if (this.autoRestart) {
+            console.log('No speech detected, restarting...');
+            this.restartTimeout = setTimeout(() => {
+              if (this.autoRestart) this.start();
+            }, 500);
+          }
+          break;
+
+        case 'audio-capture':
+          // Microphone not available
+          this.onStateChange(false);
+          this.onError('Microphone not available. Please check your microphone permissions.');
+          break;
+
+        case 'not-allowed':
+          // Permission denied
+          this.onStateChange(false);
+          this.onError('Microphone permission denied. Please allow microphone access to use voice commands.');
+          break;
+
+        case 'network':
+          // Network error (speech recognition often uses cloud services)
+          this.onStateChange(false);
+          this.onError('Network error. Please check your internet connection for voice recognition.');
+          break;
+
+        case 'aborted':
+          // Intentionally stopped - don't show error
+          if (!this.autoRestart) {
+            this.onStateChange(false);
+          }
+          break;
+
+        default:
+          // Other errors
+          this.onStateChange(false);
+          if (event.error !== 'aborted') {
+            this.onError(`Speech recognition error: ${event.error}`);
+          }
       }
+    };
+
+    // Handle audio start (microphone is capturing)
+    this.recognition.onaudiostart = () => {
+      console.log('Audio capture started');
+    };
+
+    // Handle sound start (sound detected)
+    this.recognition.onsoundstart = () => {
+      console.log('Sound detected');
+    };
+
+    // Handle speech start (speech detected)
+    this.recognition.onspeechstart = () => {
+      console.log('Speech detected');
     };
   }
 
   start() {
-    if (this.recognition) {
+    if (this.recognition && !this.isListening) {
       try {
+        // Clear any pending restart
+        if (this.restartTimeout) {
+          clearTimeout(this.restartTimeout);
+          this.restartTimeout = null;
+        }
         this.recognition.start();
       } catch (e) {
-        // Already started
+        // Already started - ignore
+        console.log('Recognition already started');
       }
     }
   }
 
   stop() {
+    this.autoRestart = false;
+    if (this.restartTimeout) {
+      clearTimeout(this.restartTimeout);
+      this.restartTimeout = null;
+    }
+    if (this.silenceTimeout) {
+      clearTimeout(this.silenceTimeout);
+      this.silenceTimeout = null;
+    }
     if (this.recognition) {
       this.recognition.stop();
     }
+    this.isListening = false;
+  }
+
+  // Enable continuous listening mode (for open mic)
+  setAutoRestart(enabled: boolean) {
+    this.autoRestart = enabled;
+    console.log('Auto-restart set to:', enabled);
+  }
+
+  // Set minimum confidence threshold (0-1)
+  setMinConfidence(confidence: number) {
+    this.minConfidence = Math.max(0, Math.min(1, confidence));
   }
 
   get isSupported(): boolean {
     return this.recognition !== null;
+  }
+
+  get listening(): boolean {
+    return this.isListening;
   }
 }
 

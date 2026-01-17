@@ -233,14 +233,24 @@ const RecipeChatModal: React.FC<RecipeChatModalProps> = ({ recipe, isOpen, onClo
 
   // Helper: Speak response and restart listening if open mic mode is on
   const speakAndRestartListening = useCallback(async (text: string) => {
+    // Stop listening while speaking to avoid picking up the AI's voice
+    if (listenerRef.current?.listening) {
+      listenerRef.current.stop();
+    }
+
     if (autoSpeak && speakerRef.current) {
       await speakerRef.current.speak(text);
     }
+
     // Auto-restart listening in open mic mode after speaking
     if (openMicMode && listenerRef.current?.isSupported) {
+      // Small delay to ensure speaker has fully stopped
       setTimeout(() => {
-        listenerRef.current?.start();
-      }, 300);
+        if (listenerRef.current) {
+          listenerRef.current.setAutoRestart(true);
+          listenerRef.current.start();
+        }
+      }, 400);
     }
   }, [autoSpeak, openMicMode]);
 
@@ -541,12 +551,17 @@ const RecipeChatModal: React.FC<RecipeChatModalProps> = ({ recipe, isOpen, onClo
                   if (speakerRef.current) {
                     speakerRef.current.unlock();
                   }
-                  if (listenerRef.current?.isSupported && !isListening) {
-                    listenerRef.current.start();
+                  if (listenerRef.current?.isSupported) {
+                    // Enable auto-restart for continuous listening
+                    listenerRef.current.setAutoRestart(true);
+                    if (!isListening) {
+                      listenerRef.current.start();
+                    }
                   }
                 } else {
-                  // If turning off, stop listening
-                  if (isListening && listenerRef.current) {
+                  // If turning off, disable auto-restart and stop listening
+                  if (listenerRef.current) {
+                    listenerRef.current.setAutoRestart(false);
                     listenerRef.current.stop();
                   }
                 }
