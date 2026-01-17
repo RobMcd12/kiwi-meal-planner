@@ -31,16 +31,33 @@ export interface RecipeChatState {
 }
 
 // Convert word numbers to digits (for voice recognition)
+// Includes common speech-to-text misrecognitions
 const wordToNumber: Record<string, number> = {
-  'one': 1, 'two': 2, 'three': 3, 'four': 4, 'five': 5,
-  'six': 6, 'seven': 7, 'eight': 8, 'nine': 9, 'ten': 10,
+  'one': 1, 'won': 1, 'want': 1,
+  'two': 2, 'to': 2, 'too': 2,
+  'three': 3, 'tree': 3, 'free': 3,
+  'four': 4, 'for': 4, 'fore': 4,
+  'five': 5, 'fife': 5,
+  'six': 6, 'sex': 6, 'sicks': 6,
+  'seven': 7,
+  'eight': 8, 'ate': 8,
+  'nine': 9, 'nein': 9,
+  'ten': 10, 'tin': 10,
   'eleven': 11, 'twelve': 12, 'thirteen': 13, 'fourteen': 14, 'fifteen': 15,
   'sixteen': 16, 'seventeen': 17, 'eighteen': 18, 'nineteen': 19, 'twenty': 20,
-  'twenty-one': 21, 'twenty-two': 22, 'twenty-three': 23, 'twenty-four': 24, 'twenty-five': 25,
-  'twenty-six': 26, 'twenty-seven': 27, 'twenty-eight': 28, 'twenty-nine': 29, 'thirty': 30,
-  'forty': 40, 'forty-five': 45, 'fifty': 50, 'sixty': 60,
-  // Common variations
-  'to': 2, 'too': 2, 'for': 4, 'fore': 4,
+  'twenty-one': 21, 'twenty one': 21, 'twentyone': 21,
+  'twenty-two': 22, 'twenty two': 22, 'twentytwo': 22,
+  'twenty-three': 23, 'twenty three': 23, 'twentythree': 23,
+  'twenty-four': 24, 'twenty four': 24, 'twentyfour': 24,
+  'twenty-five': 25, 'twenty five': 25, 'twentyfive': 25,
+  'twenty-six': 26, 'twenty six': 26, 'twentysix': 26,
+  'twenty-seven': 27, 'twenty seven': 27, 'twentyseven': 27,
+  'twenty-eight': 28, 'twenty eight': 28, 'twentyeight': 28,
+  'twenty-nine': 29, 'twenty nine': 29, 'twentynine': 29,
+  'thirty': 30, 'forty': 40, 'forty-five': 45, 'forty five': 45,
+  'fifty': 50, 'sixty': 60,
+  // Common timer phrases
+  'a minute': 1, 'a couple': 2, 'couple': 2, 'a few': 3, 'few': 3,
 };
 
 // Parse a number from text (handles both digits and words)
@@ -93,7 +110,8 @@ const parseTimerCommand = (text: string): { action: 'start' | 'stop' | 'check' |
   }
 
   // Number pattern that matches both digits and common word numbers
-  const numPattern = '(\\d+|one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|twenty[- ]?one|twenty[- ]?two|twenty[- ]?three|twenty[- ]?four|twenty[- ]?five|thirty|forty|forty[- ]?five|fifty|sixty)';
+  // Also handles common speech-to-text errors
+  const numPattern = '(\\d+|one|won|two|to|too|three|four|for|fore|five|six|seven|eight|nine|ten|eleven|twelve|thirteen|fourteen|fifteen|sixteen|seventeen|eighteen|nineteen|twenty|twenty[- ]?one|twenty[- ]?two|twenty[- ]?three|twenty[- ]?four|twenty[- ]?five|thirty|forty|forty[- ]?five|fifty|sixty)';
 
   // Check for step-based timer requests FIRST (before other patterns)
   // "start a timer for step 2" or "set timer for step two" or "timer for step 3"
@@ -123,21 +141,32 @@ const parseTimerCommand = (text: string): { action: 'start' | 'stop' | 'check' |
 
   // Start timer patterns - support various ways to specify names
   // Must have explicit timer-related words AND a number
+  // Added more natural speech patterns and variations
   const startPatterns = [
+    // Simple direct commands: "timer 5 minutes" or "timer five minutes"
+    new RegExp(`^timer\\s+${numPattern}\\s*(?:minute|min)s?$`, 'i'),
+    // "5 minutes" or "five minutes" (very simple, likely timer intent in cook mode)
+    new RegExp(`^${numPattern}\\s*(?:minute|min)s?(?:\\s+timer)?$`, 'i'),
     // "set a timer for the lamb for 10 minutes" or "start a timer for pasta for 5 minutes"
-    new RegExp(`(?:set|start)\\s+(?:a\\s+)?timer\\s+(?:for\\s+)?(?:the\\s+)?(.+?)\\s+(?:for\\s+)?${numPattern}\\s*(?:minute|min)s?`, 'i'),
+    new RegExp(`(?:set|start|put|make|create)\\s+(?:a\\s+)?timer\\s+(?:for\\s+)?(?:the\\s+)?(.+?)\\s+(?:for\\s+)?${numPattern}\\s*(?:minute|min)s?`, 'i'),
     // "set timer for 10 minutes for pasta" or "set a timer for 10 minutes for the pasta"
-    new RegExp(`(?:set|start)\\s+(?:a\\s+)?timer\\s+(?:for\\s+)?${numPattern}\\s*(?:minute|min)s?\\s+(?:for\\s+)?(?:the\\s+)?(.+)`, 'i'),
+    new RegExp(`(?:set|start|put|make|create)\\s+(?:a\\s+)?timer\\s+(?:for\\s+)?${numPattern}\\s*(?:minute|min)s?\\s+(?:for\\s+)?(?:the\\s+)?(.+)`, 'i'),
     // "set a 10 minute timer for pasta"
-    new RegExp(`(?:set|start)\\s+(?:a\\s+)?${numPattern}\\s*(?:minute|min)s?\\s+timer\\s+(?:for\\s+)?(?:the\\s+)?(.+)`, 'i'),
+    new RegExp(`(?:set|start|put|make|create)\\s+(?:a\\s+)?${numPattern}\\s*(?:minute|min)s?\\s+timer\\s+(?:for\\s+)?(?:the\\s+)?(.+)`, 'i'),
     // "set a 10 minute timer" (no name)
-    new RegExp(`(?:set|start)\\s+(?:a\\s+)?${numPattern}\\s*(?:minute|min)s?\\s+timer(?:\\s*$)`, 'i'),
+    new RegExp(`(?:set|start|put|make|create)\\s+(?:a\\s+)?${numPattern}\\s*(?:minute|min)s?\\s+timer(?:\\s*$)`, 'i'),
     // "10 minute timer for pasta" (must have "timer" word)
     new RegExp(`^${numPattern}\\s*(?:minute|min)s?\\s+timer\\s+(?:for\\s+)?(?:the\\s+)?(.+)`, 'i'),
     // "timer for 10 minutes for the pasta" or "timer 10 minutes for pasta"
     new RegExp(`^timer\\s+(?:for\\s+)?${numPattern}\\s*(?:minute|min)s?\\s+(?:for\\s+)?(?:the\\s+)?(.+)?`, 'i'),
     // "set pasta timer for 10 minutes" or "start the lamb timer for 15 minutes"
-    new RegExp(`(?:set|start)\\s+(?:a\\s+|the\\s+)?(.+?)\\s+timer\\s+(?:for\\s+)?${numPattern}\\s*(?:minute|min)s?`, 'i'),
+    new RegExp(`(?:set|start|put|make|create)\\s+(?:a\\s+|the\\s+)?(.+?)\\s+timer\\s+(?:for\\s+)?${numPattern}\\s*(?:minute|min)s?`, 'i'),
+    // "remind me in 10 minutes" or "alert me in 5 minutes"
+    new RegExp(`(?:remind|alert|tell)\\s+me\\s+in\\s+${numPattern}\\s*(?:minute|min)s?`, 'i'),
+    // "10 minutes for the chicken" - assuming timer intent
+    new RegExp(`^${numPattern}\\s*(?:minute|min)s?\\s+(?:for\\s+)?(?:the\\s+)?(.+)`, 'i'),
+    // "can you set a timer for 10 minutes" - polite form
+    new RegExp(`(?:can\\s+you\\s+|please\\s+)?(?:set|start)\\s+(?:a\\s+)?timer\\s+(?:for\\s+)?${numPattern}\\s*(?:minute|min)s?`, 'i'),
   ];
 
   for (const pattern of startPatterns) {
@@ -895,31 +924,123 @@ export const findItemCookingTime = (recipe: { instructions: string; ingredients:
 
 // Check if user is asking to read recipe
 export const isReadCommand = (text: string): { type: 'full' | 'step' | 'ingredients' | 'next' | 'previous' | null; stepNum?: number } => {
-  const lowerText = text.toLowerCase();
+  const lowerText = text.toLowerCase().trim();
 
-  if (/read\s+(?:the\s+)?(?:full\s+)?recipe|read\s+(?:me\s+)?everything/i.test(lowerText)) {
-    return { type: 'full' };
+  console.log('Parsing read command:', lowerText);
+
+  // Full recipe patterns
+  const fullRecipePatterns = [
+    /read\s+(?:the\s+)?(?:full\s+|whole\s+|entire\s+)?recipe/i,
+    /read\s+(?:me\s+)?everything/i,
+    /(?:tell|give)\s+me\s+(?:the\s+)?(?:whole|full|entire)\s+recipe/i,
+    /what'?s?\s+the\s+(?:whole|full|entire)\s+recipe/i,
+  ];
+  for (const pattern of fullRecipePatterns) {
+    if (pattern.test(lowerText)) {
+      console.log('Matched full recipe command');
+      return { type: 'full' };
+    }
   }
 
-  if (/(?:read\s+)?(?:the\s+)?ingredients?|what\s+(?:are\s+)?(?:the\s+)?ingredients/i.test(lowerText)) {
-    return { type: 'ingredients' };
+  // Ingredients patterns - expanded to handle "for this step" variations
+  const ingredientPatterns = [
+    /(?:read\s+)?(?:the\s+)?ingredients?(?:\s+list)?$/i,
+    /what\s+(?:are\s+)?(?:the\s+)?ingredients/i,
+    /(?:list|tell\s+me|what)\s+(?:the\s+)?ingredients/i,
+    /ingredients?\s+(?:for|in)\s+(?:this|the|current)\s+(?:step|recipe)/i,
+    /what\s+(?:do\s+)?i\s+need(?:\s+for\s+this)?/i,
+    /what(?:'s|s)?\s+(?:in\s+)?(?:this|the)\s+(?:step|recipe)/i,
+  ];
+  for (const pattern of ingredientPatterns) {
+    if (pattern.test(lowerText)) {
+      console.log('Matched ingredients command');
+      return { type: 'ingredients' };
+    }
   }
 
-  if (/next\s+step|what'?s?\s+next|continue|go\s+on/i.test(lowerText)) {
-    return { type: 'next' };
+  // Next step patterns - significantly expanded for natural speech
+  const nextStepPatterns = [
+    /^next$/i,  // Just "next"
+    /^next\s+step$/i,
+    /^next\s+one$/i,
+    /(?:go|move)\s+(?:to\s+)?(?:the\s+)?next(?:\s+step)?/i,
+    /what'?s?\s+(?:the\s+)?next(?:\s+step)?/i,
+    /(?:show|read|tell)\s+(?:me\s+)?(?:the\s+)?next(?:\s+step)?/i,
+    /^continue$/i,
+    /^go\s+on$/i,
+    /^proceed$/i,
+    /^keep\s+going$/i,
+    /^move\s+on$/i,
+    /^advance$/i,
+    /(?:what|and)\s+(?:do\s+i\s+do\s+)?(?:now|then)(?:\?)?$/i,
+    /what'?s?\s+after\s+(?:this|that)/i,
+    /(?:ok(?:ay)?|done|finished|ready)(?:\s+(?:what'?s?\s+)?next)?$/i,
+    /and\s+then(?:\s+what)?/i,
+    /now\s+what/i,
+  ];
+  for (const pattern of nextStepPatterns) {
+    if (pattern.test(lowerText)) {
+      console.log('Matched next step command');
+      return { type: 'next' };
+    }
   }
 
-  if (/previous\s+step|go\s+back|last\s+step|repeat/i.test(lowerText)) {
-    return { type: 'previous' };
+  // Previous step patterns - expanded
+  const previousStepPatterns = [
+    /^back$/i,
+    /^previous$/i,
+    /previous\s+step/i,
+    /(?:go|move)\s+back(?:\s+(?:a\s+)?step)?/i,
+    /last\s+step/i,
+    /^repeat$/i,
+    /repeat\s+(?:that|the\s+step|last\s+step)/i,
+    /(?:say|read)\s+(?:that|it)\s+again/i,
+    /what\s+(?:was|did\s+you\s+say)/i,
+    /go\s+(?:to\s+)?(?:the\s+)?previous/i,
+    /one\s+step\s+back/i,
+    /(?:can\s+you\s+)?repeat(?:\s+that)?/i,
+    /i\s+(?:didn'?t|did\s+not)\s+(?:hear|catch|get)\s+(?:that|it)/i,
+    /(?:sorry\s+)?(?:what|huh)(?:\?)?$/i,
+    /pardon(?:\s+me)?(?:\?)?$/i,
+  ];
+  for (const pattern of previousStepPatterns) {
+    if (pattern.test(lowerText)) {
+      console.log('Matched previous step command');
+      return { type: 'previous' };
+    }
   }
 
-  const stepMatch = lowerText.match(/(?:read\s+)?step\s+(\d+)|(?:what'?s?\s+)?step\s+(\d+)/i);
-  if (stepMatch) {
-    return { type: 'step', stepNum: parseInt(stepMatch[1] || stepMatch[2]) - 1 };
+  // Specific step number patterns
+  const stepPatterns = [
+    /(?:read\s+)?step\s+(\d+)/i,
+    /(?:what'?s?\s+)?step\s+(\d+)/i,
+    /(?:go|jump|skip)\s+(?:to\s+)?step\s+(\d+)/i,
+    /(?:show|tell)\s+(?:me\s+)?step\s+(\d+)/i,
+    /step\s+number\s+(\d+)/i,
+  ];
+  for (const pattern of stepPatterns) {
+    const stepMatch = lowerText.match(pattern);
+    if (stepMatch) {
+      console.log('Matched specific step command:', stepMatch[1]);
+      return { type: 'step', stepNum: parseInt(stepMatch[1]) - 1 };
+    }
   }
 
-  if (/(?:read\s+)?(?:the\s+)?(?:current\s+)?step|where\s+(?:am\s+)?i|what\s+step/i.test(lowerText)) {
-    return { type: 'step' };
+  // Current step patterns - what step am I on
+  const currentStepPatterns = [
+    /(?:read\s+)?(?:the\s+)?(?:current\s+)?step$/i,
+    /where\s+(?:am\s+)?i/i,
+    /what\s+step(?:\s+(?:am\s+i|is\s+this))?/i,
+    /(?:read|repeat)\s+(?:this|the\s+current)\s+step/i,
+    /(?:what|which)\s+step\s+(?:am\s+i|is\s+this|are\s+we)/i,
+    /(?:show|tell)\s+(?:me\s+)?(?:the\s+)?current\s+step/i,
+    /read\s+(?:that|this)(?:\s+again)?/i,
+  ];
+  for (const pattern of currentStepPatterns) {
+    if (pattern.test(lowerText)) {
+      console.log('Matched current step command');
+      return { type: 'step' };
+    }
   }
 
   return { type: null };
