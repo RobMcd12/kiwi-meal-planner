@@ -200,3 +200,26 @@ export const fullRecipeSchema = {
   },
   required: ['main', 'sides', 'dessert'],
 };
+
+// Schema for category suggestion
+export const categorySuggestionItemSchema = {
+  type: 'OBJECT',
+  properties: {
+    name: { type: 'STRING', description: 'The original item name' },
+    suggestedCategory: { type: 'STRING', description: 'The suggested category for this item' },
+    confidence: { type: 'NUMBER', description: 'Confidence score from 0 to 1' },
+  },
+  required: ['name', 'suggestedCategory', 'confidence'],
+};
+
+export const categorySuggestionSchema = {
+  type: 'OBJECT',
+  properties: {
+    items: {
+      type: 'ARRAY',
+      items: categorySuggestionItemSchema,
+      description: 'Array of items with their suggested categories',
+    },
+  },
+  required: ['items'],
+};

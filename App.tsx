@@ -37,6 +37,7 @@ import {
   loadPreferences,
   savePantry,
   loadPantry,
+  normalizeAllPantryItems,
   savePlanToHistory,
   cacheImage
 } from './services/storageService';
@@ -183,6 +184,19 @@ const AppContent: React.FC = () => {
         setConfig(loadedConfig);
         setPreferences(loadedPrefs);
         setDataLoaded(true);
+
+        // Normalize pantry items (parse quantities from names) - run in background
+        // This is a one-time migration for existing items
+        normalizeAllPantryItems().then(async (result) => {
+          if (result.updated > 0) {
+            console.log(`Normalized ${result.updated} pantry items`);
+            // Reload pantry to get the updated items
+            const updatedPantry = await loadPantry(userIdToLoad);
+            setPantryItems(updatedPantry);
+          }
+        }).catch(err => {
+          console.error('Error normalizing pantry items:', err);
+        });
 
         // Load user profile for country (for ingredient localization)
         if (userIdToLoad) {

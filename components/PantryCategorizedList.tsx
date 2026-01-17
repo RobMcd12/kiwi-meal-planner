@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { PantryItem, PantryCategory } from '../types';
-import { Plus, FolderPlus } from 'lucide-react';
+import { Plus, FolderPlus, Sparkles, Loader2 } from 'lucide-react';
 import PantryCategorySection from './PantryCategorySection';
 import {
   loadPantryCategories,
@@ -9,7 +9,9 @@ import {
   deletePantryCategory,
   reorderCategories,
   reorderPantryItems,
+  updatePantryItemCategory,
 } from '../services/storageService';
+import { suggestCategoriesForItems } from '../services/geminiService';
 
 interface PantryCategorizedListProps {
   items: PantryItem[];
@@ -40,6 +42,7 @@ const PantryCategorizedList: React.FC<PantryCategorizedListProps> = ({
   const [newCategoryName, setNewCategoryName] = useState('');
   const [showAddCategory, setShowAddCategory] = useState(false);
   const [isAddingCategory, setIsAddingCategory] = useState(false);
+  const [isSuggestingCategories, setIsSuggestingCategories] = useState(false);
 
   // Drag state
   const [draggedItem, setDraggedItem] = useState<PantryItem | null>(null);
@@ -134,6 +137,61 @@ const PantryCategorizedList: React.FC<PantryCategorizedListProps> = ({
     setCategories(categories.map(c =>
       c.id === categoryId ? { ...c, name: newName } : c
     ));
+  };
+
+  // AI suggest categories for all uncategorized items
+  const handleAISuggestCategories = async () => {
+    if (uncategorizedItems.length === 0) return;
+
+    setIsSuggestingCategories(true);
+    try {
+      const itemNames = uncategorizedItems.map(item => item.name);
+      const suggestions = await suggestCategoriesForItems(itemNames);
+
+      // Track which categories need to be created
+      let updatedCategories = [...categories];
+
+      // Process each suggestion
+      for (const suggestion of suggestions) {
+        // Find the item that matches this suggestion
+        const item = uncategorizedItems.find(
+          i => i.name.toLowerCase() === suggestion.name.toLowerCase()
+        );
+        if (!item) continue;
+
+        // Find or create the category
+        let category = updatedCategories.find(
+          c => c.name.toLowerCase() === suggestion.suggestedCategory.toLowerCase()
+        );
+
+        if (!category) {
+          // Create the category
+          const newCat = await createPantryCategory(suggestion.suggestedCategory, isStaple);
+          if (newCat) {
+            category = newCat;
+            updatedCategories = [...updatedCategories, newCat];
+          }
+        }
+
+        if (category) {
+          // Update the item's category
+          const success = await updatePantryItemCategory(item.id, category.id);
+          if (success) {
+            setItems(prevItems => prevItems.map(i =>
+              i.id === item.id ? { ...i, categoryId: category!.id } : i
+            ));
+          }
+        }
+      }
+
+      // Update categories state
+      setCategories(updatedCategories);
+      onCategoriesChange?.(updatedCategories);
+    } catch (error) {
+      console.error('Failed to suggest categories:', error);
+    } finally {
+      setIsSuggestingCategories(false);
+    }
   };
 
   // Drag and Drop handlers for categories
@@ -328,17 +386,39 @@ const PantryCategorizedList: React.FC<PantryCategorizedListProps> = ({
             </button>
           </div>
         ) : (
-          <button
-            onClick={() => setShowAddCategory(true)}
-            className={`flex items-center gap-2 px-3 py-2 rounded-lg border-2 border-dashed transition-colors text-sm ${
-              isStaple
-                ? 'border-amber-300 text-amber-600 hover:bg-amber-50'
-                : 'border-emerald-300 text-emerald-600 hover:bg-emerald-50'
-            }`}
-          >
-            <FolderPlus size={16} />
-            Add Category
-          </button>
+          <div className="flex gap-2 flex-wrap">
+            <button
+              onClick={() => setShowAddCategory(true)}
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg border-2 border-dashed transition-colors text-sm ${
+                isStaple
+                  ? 'border-amber-300 text-amber-600 hover:bg-amber-50'
+                  : 'border-emerald-300 text-emerald-600 hover:bg-emerald-50'
+              }`}
+            >
+              <FolderPlus size={16} />
+              Add Category
+            </button>
+            {/* AI Suggest button - only show if there are uncategorized items */}
+            {uncategorizedItems.length > 0 && (
+              <button
+                onClick={handleAISuggestCategories}
+                disabled={isSuggestingCategories}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg bg-purple-100 text-purple-700 hover:bg-purple-200 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSuggestingCategories ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" />
+                    Organizing...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles size={16} />
+                    AI Organize ({uncategorizedItems.length})
+                  </>
+                )}
+              </button>
+            )}
+          </div>
         )}
       </div>
 

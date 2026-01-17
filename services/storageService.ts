@@ -816,6 +816,77 @@ export const updatePantryItemQuantity = async (
   return true;
 };
 
+// Normalize all pantry items by parsing quantities from names
+// This is a one-time migration for existing items that have quantities embedded in their names
+export const normalizeAllPantryItems = async (): Promise<{ updated: number; total: number }> => {
+  if (!isSupabaseConfigured()) {
+    const items = loadPantryLocal();
+    let updated = 0;
+    const normalizedItems = items.map(item => {
+      // Skip items that already have quantity set
+      if (item.quantity !== undefined && item.quantity !== null) {
+        return item;
+      }
+      const parsed = parseItemQuantity(item.name);
+      if (parsed.quantity !== undefined) {
+        updated++;
+        return {
+          ...item,
+          name: parsed.name,
+          quantity: parsed.quantity,
+          unit: parsed.unit,
+        };
+      }
+      return item;
+    });
+    if (updated > 0) {
+      savePantryLocal(normalizedItems);
+    }
+    return { updated, total: items.length };
+  }
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return { updated: 0, total: 0 };
+  }
+
+  // Get all items that don't have quantity set
+  const { data: items, error: fetchError } = await supabase
+    .from('pantry_items')
+    .select('id, name, quantity, unit')
+    .eq('user_id', user.id)
+    .is('quantity', null);
+
+  if (fetchError || !items) {
+    console.error('Error fetching pantry items for normalization:', fetchError);
+    return { updated: 0, total: 0 };
+  }
+
+  let updated = 0;
+  for (const item of items) {
+    const parsed = parseItemQuantity(item.name);
+    if (parsed.quantity !== undefined) {
+      const { error: updateError } = await supabase
+        .from('pantry_items')
+        .update({
+          name: parsed.name,
+          quantity: parsed.quantity,
+          unit: parsed.unit || null,
+        })
+        .eq('id', item.id)
+        .eq('user_id', user.id);
+
+      if (!updateError) {
+        updated++;
+      } else {
+        console.error('Error normalizing pantry item:', updateError);
+      }
+    }
+  }
+
+  return { updated, total: items.length };
+};
+
 // Update a pantry item's name
 export const updatePantryItemName = async (
   id: string,

@@ -1510,6 +1510,17 @@ export interface CategorySuggestion {
 export const suggestCategoriesForItems = async (
   itemNames: string[]
 ): Promise<CategorySuggestion[]> => {
+  // Use Edge Function in production
+  if (USE_EDGE_FUNCTIONS && isSupabaseConfigured()) {
+    const { data, error } = await invokeWithAuth('suggest-categories', { itemNames, categories: PANTRY_CATEGORIES });
+    if (error) {
+      console.error('Edge function error:', error);
+      throw new Error('Failed to suggest categories');
+    }
+    return data.items || [];
+  }
+
+  // Fallback for local development
   const apiKey = process.env.API_KEY;
   if (!apiKey) {
     throw new Error("API key not configured");
