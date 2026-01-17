@@ -1,0 +1,19 @@
+# Robots.txt for Kiwi Meal Planner
+# https://www.kiwimealplanner.co.nz
+
+User-agent: *
+Allow: /
+
+# Allow all crawlers
+User-agent: Googlebot
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+
+# Disallow admin and sensitive paths
+Disallow: /admin
+Disallow: /api/
+
+# Sitemap location
+Sitemap: https://www.kiwimealplanner.co.nz/sitemap.xml
