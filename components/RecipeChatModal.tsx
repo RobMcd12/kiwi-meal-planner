@@ -17,6 +17,7 @@ import {
   Send,
   Loader2,
   AlertCircle,
+  Radio,
 } from 'lucide-react';
 import { Meal } from '../types';
 import {
@@ -70,6 +71,7 @@ const RecipeChatModal: React.FC<RecipeChatModalProps> = ({ recipe, isOpen, onClo
   const [interimTranscript, setInterimTranscript] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [autoSpeak, setAutoSpeak] = useState(true);
+  const [openMicMode, setOpenMicMode] = useState(false);
 
   // Refs
   const speakerRef = useRef<RecipeSpeaker | null>(null);
@@ -229,6 +231,19 @@ const RecipeChatModal: React.FC<RecipeChatModalProps> = ({ recipe, isOpen, onClo
     return timers.filter(t => t.isExpired);
   }, [timers]);
 
+  // Helper: Speak response and restart listening if open mic mode is on
+  const speakAndRestartListening = useCallback(async (text: string) => {
+    if (autoSpeak && speakerRef.current) {
+      await speakerRef.current.speak(text);
+    }
+    // Auto-restart listening in open mic mode after speaking
+    if (openMicMode && listenerRef.current?.isSupported) {
+      setTimeout(() => {
+        listenerRef.current?.start();
+      }, 300);
+    }
+  }, [autoSpeak, openMicMode]);
+
   // Handle user input (from voice or text)
   const handleUserInput = async (input: string) => {
     if (!input.trim()) return;
@@ -241,7 +256,7 @@ const RecipeChatModal: React.FC<RecipeChatModalProps> = ({ recipe, isOpen, onClo
       // Check for timer commands
       const timerCmd = parseTimerCommand(input);
       if (timerCmd.action) {
-        handleTimerCommand(timerCmd);
+        await handleTimerCommand(timerCmd);
         setIsProcessing(false);
         return;
       }
@@ -249,7 +264,7 @@ const RecipeChatModal: React.FC<RecipeChatModalProps> = ({ recipe, isOpen, onClo
       // Check for read commands
       const readCmd = isReadCommand(input);
       if (readCmd.type) {
-        handleReadCommand(readCmd);
+        await handleReadCommand(readCmd);
         setIsProcessing(false);
         return;
       }
@@ -274,10 +289,6 @@ const RecipeChatModal: React.FC<RecipeChatModalProps> = ({ recipe, isOpen, onClo
 
       addMessage('assistant', response);
 
-      if (autoSpeak && speakerRef.current) {
-        await speakerRef.current.speak(response);
-      }
-
       // Handle suggested timer
       if (suggestedTimer) {
         const success = createTimer(suggestedTimer.name, suggestedTimer.minutes);
@@ -285,16 +296,27 @@ const RecipeChatModal: React.FC<RecipeChatModalProps> = ({ recipe, isOpen, onClo
           addMessage('system', `Timer set: ${suggestedTimer.name} for ${suggestedTimer.minutes} minutes`);
         }
       }
+
+      // Speak and restart listening if in open mic mode
+      await speakAndRestartListening(response);
     } catch (err) {
       console.error('Chat error:', err);
       setError('Failed to get response. Please try again.');
+      // Restart listening even on error if in open mic mode
+      if (openMicMode && listenerRef.current?.isSupported) {
+        setTimeout(() => {
+          listenerRef.current?.start();
+        }, 300);
+      }
     }
 
     setIsProcessing(false);
   };
 
   // Handle timer commands
-  const handleTimerCommand = (cmd: { action: 'start' | 'stop' | 'check' | null; name?: string; minutes?: number; stepNumber?: number; itemName?: string }) => {
+  const handleTimerCommand = async (cmd: { action: 'start' | 'stop' | 'check' | null; name?: string; minutes?: number; stepNumber?: number; itemName?: string }) => {
+    let response = '';
+
     switch (cmd.action) {
       case 'start':
         // Handle step-based timer request
@@ -306,32 +328,14 @@ const RecipeChatModal: React.FC<RecipeChatModalProps> = ({ recipe, isOpen, onClo
             if (timeInfo) {
               const timerName = `Step ${cmd.stepNumber}`;
               const success = createTimer(timerName, timeInfo.minutes);
-              if (success) {
-                const response = `${timerName} timer set for ${timeInfo.minutes} minute${timeInfo.minutes > 1 ? 's' : ''}.`;
-                addMessage('assistant', response);
-                if (autoSpeak && speakerRef.current) {
-                  speakerRef.current.speak(response);
-                }
-              } else {
-                const response = `You already have ${MAX_TIMERS} timers running. Please dismiss one first.`;
-                addMessage('assistant', response);
-                if (autoSpeak && speakerRef.current) {
-                  speakerRef.current.speak(response);
-                }
-              }
+              response = success
+                ? `${timerName} timer set for ${timeInfo.minutes} minute${timeInfo.minutes > 1 ? 's' : ''}.`
+                : `You already have ${MAX_TIMERS} timers running. Please dismiss one first.`;
             } else {
-              const response = `I couldn't find a cooking time in step ${cmd.stepNumber}. Try saying the specific time, like "set a timer for 10 minutes".`;
-              addMessage('assistant', response);
-              if (autoSpeak && speakerRef.current) {
-                speakerRef.current.speak(response);
-              }
+              response = `I couldn't find a cooking time in step ${cmd.stepNumber}. Try saying the specific time, like "set a timer for 10 minutes".`;
             }
           } else {
-            const response = `Step ${cmd.stepNumber} doesn't exist. This recipe has ${steps.length} steps.`;
-            addMessage('assistant', response);
-            if (autoSpeak && speakerRef.current) {
-              speakerRef.current.speak(response);
-            }
+            response = `Step ${cmd.stepNumber} doesn't exist. This recipe has ${steps.length} steps.`;
           }
           break;
         }
@@ -342,147 +346,84 @@ const RecipeChatModal: React.FC<RecipeChatModalProps> = ({ recipe, isOpen, onClo
           if (itemTime) {
             const timerName = cmd.itemName.charAt(0).toUpperCase() + cmd.itemName.slice(1);
             const success = createTimer(timerName, itemTime.minutes);
-            if (success) {
-              const response = `${timerName} timer set for ${itemTime.minutes} minute${itemTime.minutes > 1 ? 's' : ''}, based on the recipe.`;
-              addMessage('assistant', response);
-              if (autoSpeak && speakerRef.current) {
-                speakerRef.current.speak(response);
-              }
-            } else {
-              const response = `You already have ${MAX_TIMERS} timers running. Please dismiss one first.`;
-              addMessage('assistant', response);
-              if (autoSpeak && speakerRef.current) {
-                speakerRef.current.speak(response);
-              }
-            }
+            response = success
+              ? `${timerName} timer set for ${itemTime.minutes} minute${itemTime.minutes > 1 ? 's' : ''}, based on the recipe.`
+              : `You already have ${MAX_TIMERS} timers running. Please dismiss one first.`;
           } else {
-            const response = `I couldn't find a cooking time for "${cmd.itemName}" in this recipe. Try saying the specific time, like "set a timer for ${cmd.itemName} for 10 minutes".`;
-            addMessage('assistant', response);
-            if (autoSpeak && speakerRef.current) {
-              speakerRef.current.speak(response);
-            }
+            response = `I couldn't find a cooking time for "${cmd.itemName}" in this recipe. Try saying the specific time, like "set a timer for ${cmd.itemName} for 10 minutes".`;
           }
           break;
         }
 
         // Handle explicit minutes timer
         if (cmd.minutes) {
-          // Capitalize the timer name for better display
           const timerName = cmd.name
             ? cmd.name.charAt(0).toUpperCase() + cmd.name.slice(1)
             : 'Cooking timer';
           const success = createTimer(timerName, cmd.minutes);
-          if (success) {
-            const response = `${timerName} timer set for ${cmd.minutes} minute${cmd.minutes > 1 ? 's' : ''}.`;
-            addMessage('assistant', response);
-            if (autoSpeak && speakerRef.current) {
-              speakerRef.current.speak(response);
-            }
-          } else {
-            // Max timers reached
-            const response = `You already have ${MAX_TIMERS} timers running. Please dismiss one first.`;
-            addMessage('assistant', response);
-            if (autoSpeak && speakerRef.current) {
-              speakerRef.current.speak(response);
-            }
-          }
+          response = success
+            ? `${timerName} timer set for ${cmd.minutes} minute${cmd.minutes > 1 ? 's' : ''}.`
+            : `You already have ${MAX_TIMERS} timers running. Please dismiss one first.`;
         }
         break;
 
       case 'stop':
-        // First check for expired timers - dismiss those first
         const expiredTimersList = getExpiredTimers();
         if (expiredTimersList.length > 0) {
-          // Dismiss all expired timers
           expiredTimersList.forEach(t => dismissExpiredTimer(t.id));
           const names = expiredTimersList.map(t => t.name).join(', ');
-          const response = expiredTimersList.length === 1
+          response = expiredTimersList.length === 1
             ? `Dismissed the ${names} timer.`
             : `Dismissed ${expiredTimersList.length} expired timers.`;
-          addMessage('assistant', response);
-          if (autoSpeak && speakerRef.current) {
-            speakerRef.current.speak(response);
-          }
         } else if (cmd.name) {
-          // If a name was specified, try to find that timer
           const namedTimer = findTimerByName(cmd.name);
           if (namedTimer) {
             removeGlobalTimer(namedTimer.id);
-            const response = `Stopped the ${namedTimer.name} timer.`;
-            addMessage('assistant', response);
-            if (autoSpeak && speakerRef.current) {
-              speakerRef.current.speak(response);
-            }
+            response = `Stopped the ${namedTimer.name} timer.`;
           } else {
-            const response = `I couldn't find a timer called "${cmd.name}".`;
-            addMessage('assistant', response);
-            if (autoSpeak && speakerRef.current) {
-              speakerRef.current.speak(response);
-            }
+            response = `I couldn't find a timer called "${cmd.name}".`;
           }
         } else {
-          // Stop the first active timer
           const activeTimer = getActiveTimer();
           if (activeTimer) {
             removeGlobalTimer(activeTimer.id);
-            const response = `Stopped the ${activeTimer.name} timer.`;
-            addMessage('assistant', response);
-            if (autoSpeak && speakerRef.current) {
-              speakerRef.current.speak(response);
-            }
+            response = `Stopped the ${activeTimer.name} timer.`;
           } else {
-            const response = "There's no active timer to stop.";
-            addMessage('assistant', response);
-            if (autoSpeak && speakerRef.current) {
-              speakerRef.current.speak(response);
-            }
+            response = "There's no active timer to stop.";
           }
         }
         break;
 
       case 'check':
         if (timers.length === 0) {
-          const response = "You don't have any timers running.";
-          addMessage('assistant', response);
-          if (autoSpeak && speakerRef.current) {
-            speakerRef.current.speak(response);
-          }
+          response = "You don't have any timers running.";
         } else if (cmd.name) {
-          // Check specific timer by name
           const namedTimer = findTimerByName(cmd.name);
           if (namedTimer) {
             const mins = Math.floor(namedTimer.seconds / 60);
             const secs = namedTimer.seconds % 60;
-            const response = `The ${namedTimer.name} timer has ${mins} minute${mins !== 1 ? 's' : ''} and ${secs} second${secs !== 1 ? 's' : ''} remaining.`;
-            addMessage('assistant', response);
-            if (autoSpeak && speakerRef.current) {
-              speakerRef.current.speak(response);
-            }
+            response = `The ${namedTimer.name} timer has ${mins} minute${mins !== 1 ? 's' : ''} and ${secs} second${secs !== 1 ? 's' : ''} remaining.`;
           } else {
-            const response = `I couldn't find a timer called "${cmd.name}". You have ${timers.length} timer${timers.length > 1 ? 's' : ''} running: ${timers.map(t => t.name).join(', ')}.`;
-            addMessage('assistant', response);
-            if (autoSpeak && speakerRef.current) {
-              speakerRef.current.speak(response);
-            }
+            response = `I couldn't find a timer called "${cmd.name}". You have ${timers.length} timer${timers.length > 1 ? 's' : ''} running: ${timers.map(t => t.name).join(', ')}.`;
           }
         } else {
-          // List all timers
-          const timerStatus = timers.map(t => {
+          response = timers.map(t => {
             const mins = Math.floor(t.seconds / 60);
             const secs = t.seconds % 60;
             return `${t.name}: ${mins} minute${mins !== 1 ? 's' : ''} and ${secs} second${secs !== 1 ? 's' : ''} remaining`;
           }).join('. ');
-          addMessage('assistant', timerStatus);
-          if (autoSpeak && speakerRef.current) {
-            speakerRef.current.speak(timerStatus);
-          }
         }
         break;
+    }
+
+    if (response) {
+      addMessage('assistant', response);
+      await speakAndRestartListening(response);
     }
   };
 
   // Handle read commands
-  const handleReadCommand = (cmd: { type: 'full' | 'step' | 'ingredients' | 'next' | 'previous' | null; stepNum?: number }) => {
+  const handleReadCommand = async (cmd: { type: 'full' | 'step' | 'ingredients' | 'next' | 'previous' | null; stepNum?: number }) => {
     let response = '';
 
     switch (cmd.type) {
@@ -526,9 +467,7 @@ const RecipeChatModal: React.FC<RecipeChatModalProps> = ({ recipe, isOpen, onClo
     }
 
     addMessage('assistant', response);
-    if (autoSpeak && speakerRef.current) {
-      speakerRef.current.speak(response);
-    }
+    await speakAndRestartListening(response);
   };
 
   // Toggle listening
@@ -591,6 +530,39 @@ const RecipeChatModal: React.FC<RecipeChatModalProps> = ({ recipe, isOpen, onClo
             </div>
           </div>
           <div className="flex items-center gap-2">
+            {/* Open Mic Toggle */}
+            <button
+              onClick={() => {
+                const newOpenMicMode = !openMicMode;
+                setOpenMicMode(newOpenMicMode);
+                // If turning on, also turn on auto-speak and start listening
+                if (newOpenMicMode) {
+                  setAutoSpeak(true);
+                  if (speakerRef.current) {
+                    speakerRef.current.unlock();
+                  }
+                  if (listenerRef.current?.isSupported && !isListening) {
+                    listenerRef.current.start();
+                  }
+                } else {
+                  // If turning off, stop listening
+                  if (isListening && listenerRef.current) {
+                    listenerRef.current.stop();
+                  }
+                }
+              }}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-colors ${
+                openMicMode
+                  ? 'bg-red-500 hover:bg-red-600 text-white'
+                  : 'bg-white/10 hover:bg-white/20'
+              }`}
+              title={openMicMode ? 'Open Mic ON - Always listening' : 'Open Mic OFF - Tap to enable hands-free mode'}
+            >
+              <Radio size={16} className={openMicMode ? 'animate-pulse' : ''} />
+              <span className="text-xs font-medium hidden sm:inline">
+                {openMicMode ? 'LIVE' : 'Open Mic'}
+              </span>
+            </button>
             <button
               onClick={() => setAutoSpeak(!autoSpeak)}
               className={`p-2 rounded-lg transition-colors ${autoSpeak ? 'bg-white/20 hover:bg-white/30' : 'bg-white/10 hover:bg-white/20'}`}
@@ -850,7 +822,17 @@ const RecipeChatModal: React.FC<RecipeChatModalProps> = ({ recipe, isOpen, onClo
                 <span className="w-1 h-6 bg-red-500 rounded-full animate-[pulse_0.5s_ease-in-out_infinite_0.1s]" />
                 <span className="w-1 h-4 bg-red-500 rounded-full animate-[pulse_0.5s_ease-in-out_infinite_0.2s]" />
               </div>
-              <span className="text-sm font-medium">Listening...</span>
+              <span className="text-sm font-medium">
+                {openMicMode ? 'Open Mic Active - Speak anytime...' : 'Listening...'}
+              </span>
+            </div>
+          )}
+
+          {/* Open Mic Mode Indicator when not listening */}
+          {openMicMode && !isListening && !isProcessing && !isSpeaking && (
+            <div className="mt-3 flex items-center justify-center gap-2 text-emerald-600">
+              <Radio size={16} className="animate-pulse" />
+              <span className="text-sm font-medium">Open Mic ready - will listen after response</span>
             </div>
           )}
         </div>
