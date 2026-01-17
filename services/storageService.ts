@@ -95,13 +95,14 @@ const normalizeUnit = (unit: string): string => {
 };
 
 /**
- * Parse an item name string like "milk (~500ml)" or "eggs (12)"
+ * Parse an item name string like "milk (~500ml)" or "eggs (12)" or "whole milk (~500ml remaining)"
  * into separate name, quantity, and unit fields
  */
 export const parseItemQuantity = (itemString: string): { name: string; quantity?: number; unit?: string } => {
   // Pattern to match quantity in parentheses: "item (quantity unit)" or "item (~quantity unit)"
   // Examples: "milk (~500ml)", "eggs (12)", "flour (2 kg)", "bread (1 loaf)"
-  const parenPattern = /^(.+?)\s*\(~?(\d+(?:\.\d+)?)\s*([a-zA-Z\s]*)\)$/;
+  // Also handles "milk (~500ml remaining)" format from AI scanner
+  const parenPattern = /^(.+?)\s*\(~?(\d+(?:\.\d+)?)\s*([a-zA-Z]*)\s*(?:remaining)?\s*\)$/i;
   const parenMatch = itemString.trim().match(parenPattern);
 
   if (parenMatch) {

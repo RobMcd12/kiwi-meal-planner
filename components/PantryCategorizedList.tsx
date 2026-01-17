@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { PantryItem, PantryCategory } from '../types';
-import { Plus, FolderPlus, Sparkles, Loader2, Undo2 } from 'lucide-react';
+import { Plus, FolderPlus, Sparkles, Loader2, Undo2, ChevronsUpDown, ChevronsDownUp } from 'lucide-react';
 import PantryCategorySection from './PantryCategorySection';
 import {
   loadPantryCategories,
@@ -165,6 +165,33 @@ const PantryCategorizedList: React.FC<PantryCategorizedListProps> = ({
     ));
   };
 
+  // Check if all categories are collapsed or expanded
+  const allCollapsed = categories.length > 0 && categories.every(c => c.isCollapsed);
+  const allExpanded = categories.length > 0 && categories.every(c => !c.isCollapsed);
+
+  // Expand/collapse all categories
+  const handleExpandAll = async () => {
+    const updatedCategories = categories.map(c => ({ ...c, isCollapsed: false }));
+    setCategories(updatedCategories);
+    // Persist to database
+    for (const cat of categories) {
+      if (cat.isCollapsed) {
+        await updatePantryCategory(cat.id, { isCollapsed: false });
+      }
+    }
+  };
+
+  const handleCollapseAll = async () => {
+    const updatedCategories = categories.map(c => ({ ...c, isCollapsed: true }));
+    setCategories(updatedCategories);
+    // Persist to database
+    for (const cat of categories) {
+      if (!cat.isCollapsed) {
+        await updatePantryCategory(cat.id, { isCollapsed: true });
+      }
+    }
+  };
+
   // AI suggest categories for all uncategorized items
   const handleAISuggestCategories = async () => {
     if (uncategorizedItems.length === 0) return;
@@ -255,12 +282,23 @@ const PantryCategorizedList: React.FC<PantryCategorizedListProps> = ({
     setIsUndoing(true);
     try {
       // Restore each item to its previous category (which was undefined/null for uncategorized)
+      // We need to batch the updates and then refresh state once
+      const itemIdsToRestore = undoState.items.map(item => item.id);
+
       for (const itemState of undoState.items) {
-        await updatePantryItemCategory(itemState.id, itemState.categoryId || null);
-        setItems(prevItems => prevItems.map(i =>
-          i.id === itemState.id ? { ...i, categoryId: itemState.categoryId } : i
-        ));
+        await updatePantryItemCategory(itemState.id, null); // Set to null (uncategorized)
       }
+
+      // Update all items at once to avoid multiple re-renders
+      setItems(prevItems => prevItems.map(i => {
+        if (itemIdsToRestore.includes(i.id)) {
+          // Remove categoryId entirely for uncategorized items
+          const { categoryId, ...rest } = i;
+          return rest as PantryItem;
+        }
+        return i;
+      }));
+
       setUndoState(null);
     } catch (error) {
       console.error('Failed to undo organization:', error);
@@ -509,6 +547,26 @@ const PantryCategorizedList: React.FC<PantryCategorizedListProps> = ({
                   <>
                     <Undo2 size={16} />
                     Undo
+                  </>
+                )}
+              </button>
+            )}
+            {/* Expand/Collapse All button - only show if there are categories */}
+            {categories.length > 0 && (
+              <button
+                onClick={allCollapsed ? handleExpandAll : handleCollapseAll}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors text-sm"
+                title={allCollapsed ? 'Expand all categories' : 'Collapse all categories'}
+              >
+                {allCollapsed ? (
+                  <>
+                    <ChevronsUpDown size={16} />
+                    Expand All
+                  </>
+                ) : (
+                  <>
+                    <ChevronsDownUp size={16} />
+                    Collapse All
                   </>
                 )}
               </button>
