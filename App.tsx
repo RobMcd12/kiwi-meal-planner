@@ -49,6 +49,7 @@ import type { SubscriptionState } from './types';
 import { ChefHat, Settings, LogOut, User, Shield, MessageSquare, Bell, HelpCircle, Menu, X, CalendarPlus, BookHeart, FolderHeart, Sparkles, UserCircle, RefreshCw, List, ShoppingCart, Apple, History } from 'lucide-react';
 import HelpModal from './components/HelpModal';
 import VersionHistory from './components/VersionHistory';
+import PullToRefresh from './components/PullToRefresh';
 
 // --- Default States ---
 const DEFAULT_CONFIG: MealConfig = {
@@ -591,6 +592,7 @@ const AppContent: React.FC = () => {
   if (step === AppStep.LANDING || step === AppStep.AUTH || step === AppStep.FEATURES) {
     return (
       <div className="min-h-screen">
+        <PullToRefresh />
         {renderStep()}
         <ToastContainer toasts={toasts} onDismiss={dismissToast} />
         <InstallPrompt />
@@ -600,6 +602,9 @@ const AppContent: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-100 via-emerald-50/50 to-orange-50 flex flex-col">
+      {/* Pull to refresh for iOS PWA */}
+      <PullToRefresh />
+
       {/* Impersonation Banner - shown when admin is viewing as another user */}
       <ImpersonationBanner />
 
