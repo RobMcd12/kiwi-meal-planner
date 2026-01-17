@@ -13,7 +13,7 @@ interface PullToRefreshProps {
  */
 const PullToRefresh: React.FC<PullToRefreshProps> = ({
   onRefresh,
-  threshold = 80,
+  threshold = 100,
 }) => {
   const [pullDistance, setPullDistance] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -22,6 +22,7 @@ const PullToRefresh: React.FC<PullToRefreshProps> = ({
   const startYRef = useRef(0);
   const currentYRef = useRef(0);
   const isPullingRef = useRef(false);
+  const canPullRef = useRef(false);
 
   // Check if we're running as a PWA on iOS
   const isIOSPWA = useCallback(() => {
@@ -30,14 +31,15 @@ const PullToRefresh: React.FC<PullToRefreshProps> = ({
     return isIOS && isStandalone;
   }, []);
 
-  // Check if we're at the top of the page
+  // Check if we're at the top of the page (with small tolerance)
   const isAtTop = useCallback(() => {
-    return window.scrollY <= 0;
+    return window.scrollY <= 5;
   }, []);
 
   const handleTouchStart = useCallback((e: TouchEvent) => {
-    // Only activate if at top of page
-    if (!isAtTop()) return;
+    // Check if at top at the start of touch
+    canPullRef.current = isAtTop();
+    if (!canPullRef.current) return;
 
     startYRef.current = e.touches[0].clientY;
     currentYRef.current = startYRef.current;
@@ -45,18 +47,28 @@ const PullToRefresh: React.FC<PullToRefreshProps> = ({
 
   const handleTouchMove = useCallback((e: TouchEvent) => {
     if (isRefreshing) return;
+    if (!canPullRef.current) return;
 
     currentYRef.current = e.touches[0].clientY;
     const distance = currentYRef.current - startYRef.current;
 
-    // Only activate pull-to-refresh when pulling down from top
-    if (distance > 0 && isAtTop()) {
-      // Apply resistance factor for natural feel
-      const resistedDistance = Math.min(distance * 0.5, threshold * 1.5);
+    // Only activate pull-to-refresh when pulling down
+    if (distance > 0) {
+      // Double check we're still at top (user might have scrolled up to reach top)
+      if (!isAtTop() && !isPullingRef.current) {
+        canPullRef.current = false;
+        return;
+      }
 
-      if (!isPullingRef.current && resistedDistance > 10) {
+      // Apply resistance factor for natural feel (more resistance = slower pull)
+      const resistedDistance = Math.min(distance * 0.4, threshold * 1.5);
+
+      // Start pull mode after a small threshold to avoid accidental triggers
+      if (!isPullingRef.current && resistedDistance > 15) {
         isPullingRef.current = true;
         setIsPulling(true);
+        // Lock scroll position
+        document.body.style.overflow = 'hidden';
       }
 
       if (isPullingRef.current) {
@@ -68,6 +80,9 @@ const PullToRefresh: React.FC<PullToRefreshProps> = ({
   }, [isRefreshing, isAtTop, threshold]);
 
   const handleTouchEnd = useCallback(async () => {
+    // Restore scroll
+    document.body.style.overflow = '';
+
     if (!isPullingRef.current) return;
 
     if (pullDistance >= threshold && !isRefreshing) {
@@ -90,31 +105,37 @@ const PullToRefresh: React.FC<PullToRefreshProps> = ({
         setPullDistance(0);
         setIsPulling(false);
         isPullingRef.current = false;
+        canPullRef.current = false;
       }, 500);
     } else {
       // Reset if threshold not met
       setPullDistance(0);
       setIsPulling(false);
       isPullingRef.current = false;
+      canPullRef.current = false;
     }
   }, [pullDistance, threshold, isRefreshing, onRefresh]);
 
   useEffect(() => {
-    // Only enable for iOS PWA or all mobile for testing
-    const shouldEnable = isIOSPWA() || /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    // Enable for iOS PWA and all mobile browsers
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    const shouldEnable = isIOSPWA() || isMobile;
 
     if (!shouldEnable) return;
 
-    const options: AddEventListenerOptions = { passive: false };
-
+    // Use non-passive for touchmove to allow preventDefault
     document.addEventListener('touchstart', handleTouchStart, { passive: true });
-    document.addEventListener('touchmove', handleTouchMove, options);
+    document.addEventListener('touchmove', handleTouchMove, { passive: false });
     document.addEventListener('touchend', handleTouchEnd, { passive: true });
+    document.addEventListener('touchcancel', handleTouchEnd, { passive: true });
 
     return () => {
       document.removeEventListener('touchstart', handleTouchStart);
       document.removeEventListener('touchmove', handleTouchMove);
       document.removeEventListener('touchend', handleTouchEnd);
+      document.removeEventListener('touchcancel', handleTouchEnd);
+      // Ensure scroll is restored on cleanup
+      document.body.style.overflow = '';
     };
   }, [handleTouchStart, handleTouchMove, handleTouchEnd, isIOSPWA]);
 

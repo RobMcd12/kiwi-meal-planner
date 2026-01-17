@@ -618,7 +618,7 @@ const VersionHistory: React.FC<VersionHistoryProps> = ({ onBack }) => {
       </div>
 
       {/* Content */}
-      <div className="space-y-4">
+      <div className="mt-4 space-y-4">
         {VERSION_HISTORY.map((entry) => {
           const isExpanded = expandedVersions.has(entry.version);
 

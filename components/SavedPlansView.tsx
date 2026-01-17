@@ -313,7 +313,7 @@ const SavedPlansView: React.FC<SavedPlansViewProps> = ({ onBack, onLoadPlan }) =
       </div>
 
       {plans.length === 0 ? (
-        <div className="bg-white rounded-2xl border border-slate-100 p-12 text-center">
+        <div className="mt-4 bg-white rounded-2xl border border-slate-100 p-12 text-center">
           <div className="bg-slate-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
             <FolderHeart className="text-slate-400" size={32} />
           </div>
@@ -323,7 +323,7 @@ const SavedPlansView: React.FC<SavedPlansViewProps> = ({ onBack, onLoadPlan }) =
           </p>
         </div>
       ) : (
-        <div className="grid gap-4">
+        <div className="mt-4 grid gap-4">
           {plans.map(plan => (
             <div
               key={plan.id}

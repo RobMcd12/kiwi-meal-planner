@@ -222,7 +222,7 @@ const SettingsView: React.FC<SettingsViewProps> = ({
         </div>
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+      <div className="mt-4 bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
         {/* Tabs */}
         <ResponsiveTabs
           tabs={[

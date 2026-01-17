@@ -1081,7 +1081,7 @@ const MasterShoppingList: React.FC<MasterShoppingListProps> = ({
       </div>
 
       {/* Source Selection */}
-      <div className="bg-slate-50 rounded-xl border border-slate-200 mb-6">
+      <div className="mt-4 bg-slate-50 rounded-xl border border-slate-200 mb-6">
         <button
           onClick={() => setShowAddSources(!showAddSources)}
           className="w-full px-4 py-3 flex items-center justify-between text-left"

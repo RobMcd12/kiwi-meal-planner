@@ -990,7 +990,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
 
       {/* Message */}
       {message && (
-        <div className={`mb-6 p-4 rounded-xl flex items-center gap-3 ${
+        <div className={`mb-4 p-4 rounded-xl flex items-center gap-3 ${
           message.type === 'success'
             ? 'bg-emerald-50 border border-emerald-200 text-emerald-700'
             : 'bg-red-50 border border-red-200 text-red-700'
@@ -1018,7 +1018,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
         onTabChange={(tabId) => setActiveTab(tabId as any)}
         variant="pill"
         visibleCount={4}
-        className="mb-6"
+        className="mt-4 mb-6"
       />
 
       {/* Overview Tab */}

@@ -98,10 +98,10 @@
   }
 }
 
-/* Prevent overscroll bounce on iOS when not pulling */
-html, body {
-  overscroll-behavior-y: none;
-}
+/*
+ * Note: We removed overscroll-behavior-y: none to allow pull-to-refresh on iOS PWA.
+ * The PullToRefresh component handles preventing default scroll when actively pulling.
+ */
 
 /* iOS safe area padding */
 @supports (padding-top: env(safe-area-inset-top)) {

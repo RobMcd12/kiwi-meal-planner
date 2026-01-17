@@ -101,11 +101,11 @@ const MyFeedback: React.FC<MyFeedbackProps> = ({ currentUserId, onBack }) => {
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center py-16">
+        <div className="mt-4 flex items-center justify-center py-16">
           <Loader2 size={32} className="animate-spin text-emerald-600" />
         </div>
       ) : feedback.length === 0 ? (
-        <div className="text-center py-16 bg-white rounded-2xl border border-slate-200">
+        <div className="mt-4 text-center py-16 bg-white rounded-2xl border border-slate-200">
           <MessageSquare className="mx-auto text-slate-300 mb-4" size={48} />
           <h3 className="text-lg font-medium text-slate-700 mb-2">No feedback yet</h3>
           <p className="text-slate-500">
@@ -113,7 +113,7 @@ const MyFeedback: React.FC<MyFeedbackProps> = ({ currentUserId, onBack }) => {
           </p>
         </div>
       ) : (
-        <div className="space-y-4">
+        <div className="mt-4 space-y-4">
           {feedback.map((item) => {
             const Icon = TYPE_ICONS[item.type];
             const isExpanded = expandedId === item.id;

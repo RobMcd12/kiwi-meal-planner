@@ -368,7 +368,7 @@ const SingleRecipeGenerator: React.FC<SingleRecipeGeneratorProps> = ({
 
       {!generatedRecipe ? (
         // Input Form
-        <div className="bg-white rounded-2xl border border-slate-100 p-6 space-y-6">
+        <div className="mt-4 bg-white rounded-2xl border border-slate-100 p-6 space-y-6">
           {/* Description Input */}
           <div>
             <label className="block text-sm font-medium text-slate-700 mb-2">
@@ -739,7 +739,7 @@ const SingleRecipeGenerator: React.FC<SingleRecipeGeneratorProps> = ({
         </div>
       ) : (
         // Generated Recipe Display
-        <div className="space-y-6">
+        <div className="mt-4 space-y-6">
           {/* Recipe Card */}
           <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
             {/* Recipe Image */}
