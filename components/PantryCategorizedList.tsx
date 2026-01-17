@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { PantryItem, PantryCategory } from '../types';
-import { Plus, FolderPlus, Sparkles, Loader2 } from 'lucide-react';
+import { Plus, FolderPlus, Sparkles, Loader2, Undo2 } from 'lucide-react';
 import PantryCategorySection from './PantryCategorySection';
 import {
   loadPantryCategories,
@@ -12,6 +12,12 @@ import {
   updatePantryItemCategory,
 } from '../services/storageService';
 import { suggestCategoriesForItems } from '../services/geminiService';
+
+// Type for undo state
+interface UndoState {
+  items: Array<{ id: string; categoryId?: string }>;
+  timestamp: number;
+}
 
 interface PantryCategorizedListProps {
   items: PantryItem[];
@@ -43,6 +49,26 @@ const PantryCategorizedList: React.FC<PantryCategorizedListProps> = ({
   const [showAddCategory, setShowAddCategory] = useState(false);
   const [isAddingCategory, setIsAddingCategory] = useState(false);
   const [isSuggestingCategories, setIsSuggestingCategories] = useState(false);
+  const [undoState, setUndoState] = useState<UndoState | null>(null);
+  const [isUndoing, setIsUndoing] = useState(false);
+  const undoTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Clear undo state after 30 seconds
+  useEffect(() => {
+    if (undoState) {
+      if (undoTimeoutRef.current) {
+        clearTimeout(undoTimeoutRef.current);
+      }
+      undoTimeoutRef.current = setTimeout(() => {
+        setUndoState(null);
+      }, 30000); // 30 seconds to undo
+    }
+    return () => {
+      if (undoTimeoutRef.current) {
+        clearTimeout(undoTimeoutRef.current);
+      }
+    };
+  }, [undoState]);
 
   // Drag state
   const [draggedItem, setDraggedItem] = useState<PantryItem | null>(null);
@@ -145,6 +171,15 @@ const PantryCategorizedList: React.FC<PantryCategorizedListProps> = ({
 
     setIsSuggestingCategories(true);
     try {
+      // Save current state for undo - store category assignments of uncategorized items
+      const previousState: UndoState = {
+        items: uncategorizedItems.map(item => ({
+          id: item.id,
+          categoryId: item.categoryId,
+        })),
+        timestamp: Date.now(),
+      };
+
       const itemNames = uncategorizedItems.map(item => item.name);
       console.log('AI Organize: Requesting suggestions for', itemNames.length, 'items:', itemNames);
       const suggestions = await suggestCategoriesForItems(itemNames);
@@ -157,6 +192,7 @@ const PantryCategorizedList: React.FC<PantryCategorizedListProps> = ({
 
       // Track which categories need to be created
       let updatedCategories = [...categories];
+      let organizedCount = 0;
 
       // Process each suggestion
       for (const suggestion of suggestions) {
@@ -189,6 +225,7 @@ const PantryCategorizedList: React.FC<PantryCategorizedListProps> = ({
           // Update the item's category
           const success = await updatePantryItemCategory(item.id, category.id);
           if (success) {
+            organizedCount++;
             setItems(prevItems => prevItems.map(i =>
               i.id === item.id ? { ...i, categoryId: category!.id } : i
             ));
@@ -199,10 +236,36 @@ const PantryCategorizedList: React.FC<PantryCategorizedListProps> = ({
       // Update categories state
       setCategories(updatedCategories);
       onCategoriesChange?.(updatedCategories);
+
+      // Save undo state only if we organized at least one item
+      if (organizedCount > 0) {
+        setUndoState(previousState);
+      }
     } catch (error) {
       console.error('Failed to suggest categories:', error);
     } finally {
       setIsSuggestingCategories(false);
+    }
+  };
+
+  // Undo AI organize
+  const handleUndoOrganize = async () => {
+    if (!undoState) return;
+
+    setIsUndoing(true);
+    try {
+      // Restore each item to its previous category (which was undefined/null for uncategorized)
+      for (const itemState of undoState.items) {
+        await updatePantryItemCategory(itemState.id, itemState.categoryId || null);
+        setItems(prevItems => prevItems.map(i =>
+          i.id === itemState.id ? { ...i, categoryId: itemState.categoryId } : i
+        ));
+      }
+      setUndoState(null);
+    } catch (error) {
+      console.error('Failed to undo organization:', error);
+    } finally {
+      setIsUndoing(false);
     }
   };
 
@@ -426,6 +489,26 @@ const PantryCategorizedList: React.FC<PantryCategorizedListProps> = ({
                   <>
                     <Sparkles size={16} />
                     AI Organize ({uncategorizedItems.length})
+                  </>
+                )}
+              </button>
+            )}
+            {/* Undo button - show after AI organize for 30 seconds */}
+            {undoState && (
+              <button
+                onClick={handleUndoOrganize}
+                disabled={isUndoing}
+                className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-100 text-slate-700 hover:bg-slate-200 transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isUndoing ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" />
+                    Undoing...
+                  </>
+                ) : (
+                  <>
+                    <Undo2 size={16} />
+                    Undo
                   </>
                 )}
               </button>

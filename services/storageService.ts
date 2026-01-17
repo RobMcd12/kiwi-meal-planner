@@ -510,20 +510,36 @@ export const savePantry = async (items: PantryItem[]): Promise<void> => {
 
 // Save or update multiple pantry items to Supabase
 // Used by PantryScanner to persist scanned items
+// Automatically parses quantities from item names (e.g., "milk (~500ml)" -> name: "milk", quantity: 500, unit: "ml")
 export const savePantryItems = async (
   items: PantryItem[],
   mode: 'add_new' | 'update_existing' | 'replace'
 ): Promise<PantryItem[]> => {
+  // Pre-process items to parse quantities from names if not already set
+  const processedItems = items.map(item => {
+    // Only parse if quantity is not already set
+    if (item.quantity === undefined || item.quantity === null) {
+      const parsed = parseItemQuantity(item.name);
+      return {
+        ...item,
+        name: parsed.name,
+        quantity: parsed.quantity,
+        unit: parsed.unit || item.unit,
+      };
+    }
+    return item;
+  });
+
   if (!isSupabaseConfigured()) {
     // For localStorage fallback
     const existing = loadPantryLocal();
     if (mode === 'replace') {
-      savePantryLocal(items);
-      return items;
+      savePantryLocal(processedItems);
+      return processedItems;
     } else if (mode === 'update_existing') {
       // Update existing items, add new ones
       const updatedItems = [...existing];
-      items.forEach(item => {
+      processedItems.forEach(item => {
         const existingIndex = updatedItems.findIndex(e => e.id === item.id);
         if (existingIndex >= 0) {
           updatedItems[existingIndex] = { ...updatedItems[existingIndex], ...item };
@@ -535,7 +551,7 @@ export const savePantryItems = async (
       return updatedItems;
     } else {
       // add_new - filter out duplicates by name
-      const newItems = items.filter(
+      const newItems = processedItems.filter(
         item => !existing.some(e => e.name.toLowerCase() === item.name.toLowerCase())
       );
       const combined = [...existing, ...newItems];
@@ -549,11 +565,11 @@ export const savePantryItems = async (
     // Same localStorage fallback for unauthenticated users
     const existing = loadPantryLocal();
     if (mode === 'replace') {
-      savePantryLocal(items);
-      return items;
+      savePantryLocal(processedItems);
+      return processedItems;
     } else if (mode === 'update_existing') {
       const updatedItems = [...existing];
-      items.forEach(item => {
+      processedItems.forEach(item => {
         const existingIndex = updatedItems.findIndex(e => e.id === item.id);
         if (existingIndex >= 0) {
           updatedItems[existingIndex] = { ...updatedItems[existingIndex], ...item };
@@ -564,7 +580,7 @@ export const savePantryItems = async (
       savePantryLocal(updatedItems);
       return updatedItems;
     } else {
-      const newItems = items.filter(
+      const newItems = processedItems.filter(
         item => !existing.some(e => e.name.toLowerCase() === item.name.toLowerCase())
       );
       const combined = [...existing, ...newItems];
@@ -581,7 +597,7 @@ export const savePantryItems = async (
     await supabase.from('pantry_items').delete().eq('user_id', user.id);
 
     // Insert all new items
-    for (const item of items) {
+    for (const item of processedItems) {
       const { data, error } = await supabase
         .from('pantry_items')
         .insert({
@@ -608,7 +624,7 @@ export const savePantryItems = async (
     }
   } else if (mode === 'update_existing') {
     // Update existing items by ID, insert new ones
-    for (const item of items) {
+    for (const item of processedItems) {
       // Check if this is an existing item (has a valid UUID format)
       const isExistingId = item.id && !item.id.startsWith('scanned-');
 
@@ -666,7 +682,7 @@ export const savePantryItems = async (
     }
   } else {
     // add_new - only insert items that don't exist
-    for (const item of items) {
+    for (const item of processedItems) {
       // Check if item with this name already exists
       const { data: existing } = await supabase
         .from('pantry_items')

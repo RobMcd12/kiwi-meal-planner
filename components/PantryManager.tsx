@@ -591,7 +591,7 @@ const PantryManager: React.FC<PantryManagerProps> = ({ items, setItems, onNext, 
           unitSystem={unitSystem}
           onSave={handleItemSave}
           onClose={() => setEditingItem(null)}
-          allowNameEdit={!editingItem.categoryId}
+          allowNameEdit={true}
           allowCategoryEdit={!editingItem.categoryId}
           categories={editingItem.isStaple ? stapleCategories : pantryCategories}
           onCreateCategory={editingItem.isStaple ? createStapleCategoryRef.current || undefined : createPantryCategoryRef.current || undefined}
