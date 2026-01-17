@@ -72,6 +72,7 @@ import { getVideoCount } from '../services/recipeVideoService';
 import { Crown, BookOpen, HardDrive, Calendar, ArrowUpDown } from 'lucide-react';
 import ResponsiveTabs from './ResponsiveTabs';
 import SecurityComplianceViewer from './SecurityComplianceViewer';
+import SEODashboard from './admin/SEODashboard';
 import ConfirmModal, { useConfirmModal } from './ConfirmModal';
 
 interface AdminDashboardProps {
@@ -153,7 +154,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
   const { state: confirmState, confirm, alert: showAlert } = useConfirmModal();
   const [stats, setStats] = useState<Stats>({ totalUsers: 0, totalMealPlans: 0, totalFavorites: 0, totalVideos: 0 });
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'overview' | 'feedback' | 'data' | 'users' | 'instructions' | 'subscriptions' | 'videos' | 'security'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'feedback' | 'data' | 'users' | 'instructions' | 'subscriptions' | 'videos' | 'security' | 'seo'>('overview');
   const [counterModalType, setCounterModalType] = useState<'users' | 'videos' | 'recipes' | 'mealPlans' | null>(null);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
@@ -1006,6 +1007,7 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
           { id: 'subscriptions', label: 'Subscriptions', icon: <Crown size={18} /> },
           { id: 'data', label: 'Data Management', icon: <Database size={18} /> },
           { id: 'users', label: 'Users', icon: <Users size={18} /> },
+          { id: 'seo', label: 'SEO', icon: <Search size={18} /> },
           { id: 'security', label: 'Security', icon: <ShieldCheck size={18} /> },
         ]}
         activeTab={activeTab}
@@ -2599,6 +2601,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ onBack }) => {
             </div>
           )}
         </div>
+      )}
+
+      {/* SEO Tab */}
+      {activeTab === 'seo' && (
+        <SEODashboard />
       )}
 
       {/* Security Tab */}
