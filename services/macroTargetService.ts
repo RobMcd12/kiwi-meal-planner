@@ -21,9 +21,21 @@ export const getUserMacroTargets = async (userId?: string): Promise<UserMacroTar
       .from('user_macro_targets')
       .select('*')
       .eq('user_id', effectiveUserId)
-      .single();
+      .maybeSingle();
 
-    if (error || !data) {
+    if (error) {
+      console.error('Error fetching macro targets:', error);
+      // Return defaults on error
+      return {
+        userId: effectiveUserId,
+        targets: { ...DEFAULT_MACRO_TARGETS },
+        isCustom: false,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+    }
+
+    if (!data) {
       // Return defaults if no custom targets set
       return {
         userId: effectiveUserId,
