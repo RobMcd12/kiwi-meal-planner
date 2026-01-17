@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { CheckCircle, Circle, ChevronDown, ChevronUp, Sparkles, X, Settings, Apple, CalendarPlus, BookHeart } from 'lucide-react';
+import { CheckCircle, Circle, ChevronDown, ChevronUp, Sparkles, X, Settings, Apple, CalendarPlus, BookHeart, EyeOff } from 'lucide-react';
 
 interface OnboardingStep {
   id: string;
@@ -22,7 +22,23 @@ interface OnboardingChecklistProps {
   onViewCookbook: () => void;
 }
 
-const STORAGE_KEY = 'kiwi_onboarding_dismissed';
+// Storage key for dismissal preference
+export const ONBOARDING_STORAGE_KEY = 'kiwi_onboarding_dismissed';
+
+// Helper functions to check/set onboarding visibility (exported for use in Settings)
+export const isOnboardingPermanentlyDismissed = (): boolean => {
+  return localStorage.getItem(ONBOARDING_STORAGE_KEY) === 'permanent';
+};
+
+export const setOnboardingPermanentlyDismissed = (permanent: boolean): void => {
+  if (permanent) {
+    localStorage.setItem(ONBOARDING_STORAGE_KEY, 'permanent');
+  } else {
+    localStorage.removeItem(ONBOARDING_STORAGE_KEY);
+  }
+};
+
+const STORAGE_KEY = ONBOARDING_STORAGE_KEY;
 
 const OnboardingChecklist: React.FC<OnboardingChecklistProps> = ({
   hasPreferences,
@@ -36,11 +52,12 @@ const OnboardingChecklist: React.FC<OnboardingChecklistProps> = ({
 }) => {
   const [isExpanded, setIsExpanded] = useState(true);
   const [isDismissed, setIsDismissed] = useState(false);
+  const [showDismissOptions, setShowDismissOptions] = useState(false);
 
-  // Check if user dismissed the checklist
+  // Check if user dismissed the checklist (either temporarily or permanently)
   useEffect(() => {
     const dismissed = localStorage.getItem(STORAGE_KEY);
-    if (dismissed === 'true') {
+    if (dismissed === 'true' || dismissed === 'permanent') {
       setIsDismissed(true);
     }
   }, []);
@@ -93,9 +110,18 @@ const OnboardingChecklist: React.FC<OnboardingChecklistProps> = ({
     return null;
   }
 
-  const handleDismiss = () => {
+  // Dismiss for this session only (will show again on next login)
+  const handleDismissTemporary = () => {
     localStorage.setItem(STORAGE_KEY, 'true');
     setIsDismissed(true);
+    setShowDismissOptions(false);
+  };
+
+  // Dismiss permanently (won't show again unless re-enabled in settings)
+  const handleDismissPermanent = () => {
+    localStorage.setItem(STORAGE_KEY, 'permanent');
+    setIsDismissed(true);
+    setShowDismissOptions(false);
   };
 
   return (
@@ -117,16 +143,43 @@ const OnboardingChecklist: React.FC<OnboardingChecklistProps> = ({
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              handleDismiss();
-            }}
-            className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
-            title="Dismiss"
-          >
-            <X size={16} />
-          </button>
+          <div className="relative">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowDismissOptions(!showDismissOptions);
+              }}
+              className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+              title="Dismiss options"
+            >
+              <X size={16} />
+            </button>
+            {/* Dismiss Options Dropdown */}
+            {showDismissOptions && (
+              <div
+                className="absolute right-0 top-full mt-1 w-56 bg-white rounded-xl shadow-lg border border-slate-200 py-1 z-20"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <button
+                  onClick={handleDismissTemporary}
+                  className="w-full px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                >
+                  <X size={16} className="text-slate-400" />
+                  <span>Hide for now</span>
+                </button>
+                <button
+                  onClick={handleDismissPermanent}
+                  className="w-full px-4 py-2.5 text-left text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2"
+                >
+                  <EyeOff size={16} className="text-slate-400" />
+                  <div>
+                    <span>Don't show again</span>
+                    <p className="text-xs text-slate-400 mt-0.5">Re-enable in Settings → Account</p>
+                  </div>
+                </button>
+              </div>
+            )}
+          </div>
           <button className="p-1.5 text-slate-400 hover:text-slate-600 transition-colors">
             {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
           </button>

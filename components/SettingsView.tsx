@@ -9,7 +9,8 @@ import { useAuth } from './AuthProvider';
 import { supabase } from '../services/authService';
 import { getSubscriptionState } from '../services/subscriptionService';
 import { getUserProfile, updateUserProfile, COUNTRY_OPTIONS } from '../services/profileService';
-import { ArrowLeft, Check, Sliders, Archive, Utensils, UserCircle, Loader2, FileVideo, Crown, Pencil, Globe, Save, Book } from 'lucide-react';
+import { isOnboardingPermanentlyDismissed, setOnboardingPermanentlyDismissed } from './OnboardingChecklist';
+import { ArrowLeft, Check, Sliders, Archive, Utensils, UserCircle, Loader2, FileVideo, Crown, Pencil, Globe, Save, Book, Sparkles } from 'lucide-react';
 import ResponsiveTabs, { Tab } from './ResponsiveTabs';
 
 interface SettingsViewProps {
@@ -50,6 +51,9 @@ const SettingsView: React.FC<SettingsViewProps> = ({
   const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [profileSaveSuccess, setProfileSaveSuccess] = useState(false);
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
+
+  // Onboarding checklist visibility state
+  const [hideOnboardingChecklist, setHideOnboardingChecklist] = useState(isOnboardingPermanentlyDismissed());
 
   // Load user profile
   useEffect(() => {
@@ -609,6 +613,46 @@ const SettingsView: React.FC<SettingsViewProps> = ({
                             </div>
                         </div>
                     )}
+
+                    {/* Getting Started Checklist Setting */}
+                    <div className="bg-white rounded-xl border border-slate-200 p-6">
+                        <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="bg-emerald-100 p-2 rounded-lg">
+                                    <Sparkles className="text-emerald-600" size={20} />
+                                </div>
+                                <div>
+                                    <h3 className="font-semibold text-slate-800">Getting Started Checklist</h3>
+                                    <p className="text-sm text-slate-500">
+                                        {hideOnboardingChecklist
+                                            ? 'The onboarding checklist is hidden'
+                                            : 'Show the getting started guide on home screen'}
+                                    </p>
+                                </div>
+                            </div>
+                            <button
+                                onClick={() => {
+                                    const newValue = !hideOnboardingChecklist;
+                                    setHideOnboardingChecklist(newValue);
+                                    setOnboardingPermanentlyDismissed(newValue);
+                                }}
+                                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                                    hideOnboardingChecklist ? 'bg-slate-300' : 'bg-emerald-600'
+                                }`}
+                            >
+                                <span
+                                    className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                                        hideOnboardingChecklist ? 'translate-x-1' : 'translate-x-6'
+                                    }`}
+                                />
+                            </button>
+                        </div>
+                        {hideOnboardingChecklist && (
+                            <p className="text-xs text-slate-400 mt-3">
+                                Toggle on to show the Getting Started checklist on your home screen again.
+                            </p>
+                        )}
+                    </div>
 
                     {/* Uploaded Media Files */}
                     <div className="bg-white rounded-xl border border-slate-200 p-6">
