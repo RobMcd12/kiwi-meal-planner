@@ -33,11 +33,15 @@ Deno.serve(async (req) => {
 
   try {
     // Verify authentication
+    console.log('suggest-categories: Starting auth verification');
     const auth = await verifyAuth(req);
+    console.log('suggest-categories: Auth result:', auth ? `userId: ${auth.userId}` : 'null');
     if (!auth) {
+      console.error('suggest-categories: Auth failed');
+      // Return 200 with error in body - Supabase SDK treats non-2xx as function errors
       return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: { ...responseHeaders, 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: 'Unauthorized', items: [] }),
+        { status: 200, headers: { ...responseHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
