@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { HardDrive, Check, X, Loader2, FolderOpen, RefreshCw, ExternalLink, AlertCircle, Cloud } from 'lucide-react';
 import { getGoogleDriveConfig, disconnectGoogleDrive } from '../../services/recipeVideoService';
 import { initiateGoogleDriveAuth, isGoogleDriveClientConfigured, listDriveFolders, createDriveFolder } from '../../services/googleDriveService';
+import { useToastContext } from '../../contexts/ToastContext';
 import type { GoogleDriveConfig } from '../../types';
 
 interface GoogleDriveSetupProps {
@@ -9,6 +10,7 @@ interface GoogleDriveSetupProps {
 }
 
 const GoogleDriveSetup: React.FC<GoogleDriveSetupProps> = ({ onConfigChange }) => {
+  const { error: showError } = useToastContext();
   const [config, setConfig] = useState<GoogleDriveConfig | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isDisconnecting, setIsDisconnecting] = useState(false);
@@ -31,7 +33,7 @@ const GoogleDriveSetup: React.FC<GoogleDriveSetupProps> = ({ onConfigChange }) =
 
   const handleConnect = () => {
     if (!isGoogleDriveClientConfigured()) {
-      alert('Google Drive Client ID is not configured. Please add VITE_GOOGLE_DRIVE_CLIENT_ID to your environment variables.');
+      showError('Google Drive Client ID is not configured. Please add VITE_GOOGLE_DRIVE_CLIENT_ID to your environment variables.');
       return;
     }
     initiateGoogleDriveAuth();

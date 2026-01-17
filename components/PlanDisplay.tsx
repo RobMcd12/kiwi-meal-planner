@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { MealPlanResponse, Meal, ShoppingCategory, Ingredient } from '../types';
 import { Calendar, ShoppingCart, ChevronDown, ChevronUp, ExternalLink, Check, RefreshCw, Heart, Loader2, Clock, ChefHat, Image as ImageIcon, Share, LayoutGrid, List, Save, CheckCircle, X, GripVertical } from 'lucide-react';
+import { useToastContext } from '../contexts/ToastContext';
 import { saveFavoriteMeal, removeFavoriteMeal, getFavoriteMeals, saveCheckedItems, loadCheckedItems, getCachedImage, cacheImage, saveMealPlan } from '../services/storageService';
 import { generateDishImage } from '../services/geminiService';
 import { addPlanToShoppingList } from '../services/shoppingListService';
@@ -11,6 +12,7 @@ interface PlanDisplayProps {
 }
 
 const PlanDisplay: React.FC<PlanDisplayProps> = ({ data, onReset }) => {
+  const { info, warning, success } = useToastContext();
   const [activeTab, setActiveTab] = useState<'plan' | 'shop'>('plan');
   const [expandedDays, setExpandedDays] = useState<Set<string>>(new Set());
   const [expandedMeal, setExpandedMeal] = useState<string | null>(null);
@@ -268,7 +270,7 @@ const PlanDisplay: React.FC<PlanDisplayProps> = ({ data, onReset }) => {
   const handleShare = async () => {
     const text = generateListText();
     if (!text.trim()) {
-      alert("All items are checked off!");
+      info("All items are checked off!");
       return;
     }
 
@@ -283,7 +285,7 @@ const PlanDisplay: React.FC<PlanDisplayProps> = ({ data, onReset }) => {
       }
     } else {
       navigator.clipboard.writeText(text);
-      alert("List copied to clipboard (Share not supported on this device)");
+      info("List copied to clipboard (Share not supported on this device)");
     }
   };
 
@@ -336,7 +338,7 @@ const PlanDisplay: React.FC<PlanDisplayProps> = ({ data, onReset }) => {
 
     if (itemsToBuy.length === 0) {
         setIsNewWorldLoading(false);
-        alert("All items are checked off! Nothing to add to cart.");
+        info("All items are checked off! Nothing to add to cart.");
         return;
     }
 

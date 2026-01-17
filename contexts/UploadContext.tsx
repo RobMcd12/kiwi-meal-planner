@@ -2,7 +2,7 @@ import React, { createContext, useContext, useState, useCallback, ReactNode } fr
 import { UploadTask, Meal, ExtractedRecipe } from '../types';
 import { extractRecipeFromImage, extractRecipeFromText, extractRecipeFromPDF, extractRecipeFromURL, autoTagRecipe } from '../services/geminiService';
 import { createPlaceholderRecipe, updateRecipeFromExtraction, updateRecipeStatus } from '../services/recipeService';
-import { useToast } from '../hooks/useToast';
+import { useToastContext } from './ToastContext';
 
 interface UploadContextType {
   uploads: UploadTask[];
@@ -43,7 +43,7 @@ const fileToBase64 = (file: File): Promise<string> => {
 
 export const UploadProvider: React.FC<UploadProviderProps> = ({ children }) => {
   const [uploads, setUploads] = useState<UploadTask[]>([]);
-  const { success, error: showError } = useToast();
+  const { success, error: showError } = useToastContext();
 
   /**
    * Update the status of an upload task

@@ -1,6 +1,7 @@
 import React, { useState, useRef, useCallback } from 'react';
 import { X, Upload, FileText, Image as ImageIcon, FileType, Loader2, CheckCircle, AlertCircle, Link, Camera, Plus, Trash2 } from 'lucide-react';
 import { useUpload } from '../contexts/UploadContext';
+import { useToastContext } from '../contexts/ToastContext';
 import TagEditor from './TagEditor';
 import ResponsiveTabs from './ResponsiveTabs';
 
@@ -24,6 +25,7 @@ const RecipeUploadModal: React.FC<RecipeUploadModalProps> = ({
   onUploadComplete
 }) => {
   const { startUpload, uploads } = useUpload();
+  const { warning } = useToastContext();
   const [mode, setMode] = useState<UploadMode>('image');
   const [textContent, setTextContent] = useState('');
   const [urlContent, setUrlContent] = useState('');
@@ -55,7 +57,7 @@ const RecipeUploadModal: React.FC<RecipeUploadModalProps> = ({
       setSelectedFile(file);
       setSelectedFiles([]);
     } else {
-      alert('Please select an image (JPG, PNG, WebP) or PDF file.');
+      warning('Please select an image (JPG, PNG, WebP) or PDF file.');
     }
   };
 
@@ -63,7 +65,7 @@ const RecipeUploadModal: React.FC<RecipeUploadModalProps> = ({
   const handleMultipleFiles = (files: FileList) => {
     const imageFiles = Array.from(files).filter(f => f.type.startsWith('image/'));
     if (imageFiles.length === 0) {
-      alert('Please select image files (JPG, PNG, WebP).');
+      warning('Please select image files (JPG, PNG, WebP).');
       return;
     }
     setMode('image');
@@ -141,7 +143,7 @@ const RecipeUploadModal: React.FC<RecipeUploadModalProps> = ({
         setUrlContent('');
       } else if (mode === 'text') {
         if (!textContent.trim()) {
-          alert('Please enter some recipe text.');
+          warning('Please enter some recipe text.');
           setIsUploading(false);
           return;
         }
@@ -157,7 +159,7 @@ const RecipeUploadModal: React.FC<RecipeUploadModalProps> = ({
         setSelectedFile(null);
         setSelectedFiles([]);
       } else {
-        alert('Please select a file.');
+        warning('Please select a file.');
         setIsUploading(false);
         return;
       }

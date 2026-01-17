@@ -22,11 +22,11 @@ import ImpersonationBanner from './components/ImpersonationBanner';
 import { AuthProvider, useAuth } from './components/AuthProvider';
 import { UploadProvider } from './contexts/UploadContext';
 import { TimerProvider } from './contexts/TimerContext';
+import { ToastProvider, useToastContext } from './contexts/ToastContext';
 import GlobalTimerIndicator from './components/GlobalTimerIndicator';
 import NotificationPermissionPrompt from './components/NotificationPermissionPrompt';
 import NavBar from './components/NavBar';
 import { ToastContainer } from './components/Toast';
-import { useToast } from './hooks/useToast';
 import { useNavigationHistory, pathToStep, isOAuthCallback } from './hooks/useNavigationHistory';
 import { generateMealPlan, generateShoppingListFromFavorites, generateDishImage, MealWithSidesForShopping } from './services/geminiService';
 import { getSidesForRecipe } from './services/suggestSidesService';
@@ -69,7 +69,7 @@ const DEFAULT_PREFERENCES: UserPreferences = {
 
 const AppContent: React.FC = () => {
   const { user, isAuthenticated, loading: authLoading, isAdmin, isImpersonating, impersonatedUser, effectiveUserId } = useAuth();
-  const { toasts, dismissToast, success, error: showError } = useToast();
+  const { toasts, dismissToast, success, error: showError } = useToastContext();
 
   // Determine initial step from URL or default to landing
   const getInitialStep = (): AppStep => {
@@ -434,8 +434,15 @@ const AppContent: React.FC = () => {
               setStep(AppStep.SETTINGS);
             }}
             onViewShoppingList={() => setStep(AppStep.SHOPPING_LIST)}
+            onSetPreferences={() => {
+              setSettingsInitialTab('prefs');
+              setStep(AppStep.SETTINGS);
+            }}
             hasPantryItems={pantryItems.length > 0}
             hasShoppingListItems={pantryItems.some(item => item.isStaple && item.needsRestock)}
+            hasPreferences={Boolean(preferences.dietaryRestrictions || preferences.likes || preferences.dislikes)}
+            hasGeneratedPlan={planData !== null}
+            hasSavedRecipe={false}
           />
         );
 
@@ -1056,13 +1063,15 @@ const AppContent: React.FC = () => {
 const App: React.FC = () => {
   return (
     <ErrorBoundary>
-      <AuthProvider>
-        <UploadProvider>
-          <TimerProvider>
-            <AppContent />
-          </TimerProvider>
-        </UploadProvider>
-      </AuthProvider>
+      <ToastProvider>
+        <AuthProvider>
+          <UploadProvider>
+            <TimerProvider>
+              <AppContent />
+            </TimerProvider>
+          </UploadProvider>
+        </AuthProvider>
+      </ToastProvider>
     </ErrorBoundary>
   );
 };

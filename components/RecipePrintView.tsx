@@ -1,6 +1,7 @@
 import React, { useRef } from 'react';
 import { X, Printer, Download, ChefHat, Clock, Users } from 'lucide-react';
 import type { Meal, MealWithSides, SideDish, Dessert } from '../types';
+import { useToastContext } from '../contexts/ToastContext';
 
 interface RecipePrintViewProps {
   meal: Meal | MealWithSides;
@@ -8,6 +9,7 @@ interface RecipePrintViewProps {
 }
 
 const RecipePrintView: React.FC<RecipePrintViewProps> = ({ meal, onClose }) => {
+  const { warning, error: showError } = useToastContext();
   const printRef = useRef<HTMLDivElement>(null);
 
   // Cast to MealWithSides to access optional sides/desserts properties
@@ -20,7 +22,7 @@ const RecipePrintView: React.FC<RecipePrintViewProps> = ({ meal, onClose }) => {
     // Create a new window for printing
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
-      alert('Please allow pop-ups to print recipes');
+      warning('Please allow pop-ups to print recipes');
       return;
     }
 
@@ -572,7 +574,7 @@ const RecipePrintView: React.FC<RecipePrintViewProps> = ({ meal, onClose }) => {
       pdf.save(`${meal.name.replace(/[^a-z0-9]/gi, '_')}_recipe.pdf`);
     } catch (error) {
       console.error('PDF generation failed:', error);
-      alert('Failed to generate PDF. Please try printing instead.');
+      showError('Failed to generate PDF. Please try printing instead.');
     }
   };
 

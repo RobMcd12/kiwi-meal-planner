@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { ArrowLeft, FolderHeart, Trash2, Calendar, ShoppingCart, ChefHat, Clock, AlertCircle, RefreshCw, ChevronDown, ChevronUp, Download, Share, Sun, Coffee, Moon, Filter, Utensils, Pencil, Check, X, Store, LayoutList } from 'lucide-react';
 import type { SavedMealPlan, DayPlan, ShoppingCategory, Meal } from '../types';
+import { useToastContext } from '../contexts/ToastContext';
+import { SkeletonList } from './ui/Skeleton';
 import { getSavedMealPlans, deleteSavedMealPlan, updateSavedMealPlanName } from '../services/storageService';
 import { getDefaultLayout, DEFAULT_CATEGORIES, type SupermarketLayout } from '../services/supermarketLayoutService';
 import RecipePrintView from './RecipePrintView';
@@ -14,6 +16,7 @@ interface SavedPlansViewProps {
 }
 
 const SavedPlansView: React.FC<SavedPlansViewProps> = ({ onBack, onLoadPlan }) => {
+  const { success } = useToastContext();
   const [plans, setPlans] = useState<SavedMealPlan[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -215,7 +218,7 @@ const SavedPlansView: React.FC<SavedPlansViewProps> = ({ onBack, onLoadPlan }) =
       // Fallback to clipboard
       try {
         await navigator.clipboard.writeText(shareText);
-        alert('Shopping list copied to clipboard!');
+        success('Shopping list copied to clipboard!');
       } catch {
         console.error('Failed to copy to clipboard');
       }
@@ -259,9 +262,16 @@ const SavedPlansView: React.FC<SavedPlansViewProps> = ({ onBack, onLoadPlan }) =
         >
           <ArrowLeft size={16} /> Back
         </button>
-        <div className="flex items-center justify-center py-20">
-          <div className="w-10 h-10 border-4 border-emerald-600 border-t-transparent rounded-full animate-spin" />
+        <div className="flex items-center gap-4 mb-6">
+          <div className="bg-slate-100 w-12 h-12 rounded-full flex items-center justify-center">
+            <FolderHeart className="text-slate-400" size={24} />
+          </div>
+          <div>
+            <h2 className="text-2xl font-bold text-slate-800">Saved Meal Plans</h2>
+            <p className="text-slate-500 text-sm">Loading your saved plans...</p>
+          </div>
         </div>
+        <SkeletonList count={3} />
       </div>
     );
   }

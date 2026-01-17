@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Meal, CookbookTab, SideDish, UserProfile } from '../types';
 import { getFavoriteMeals, removeFavoriteMeal, getCachedImage, cacheImage, updateFavoriteMealImage, saveFavoriteMeal } from '../services/storageService';
+import { SkeletonGrid } from './ui/Skeleton';
 import { useAuth } from './AuthProvider';
 import { getUserProfile } from '../services/profileService';
 import { generateDishImage, editDishImage, TAG_CATEGORIES, adjustRecipe, AdjustedRecipe } from '../services/geminiService';
@@ -1114,9 +1115,8 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({
 
       {/* Loading State */}
       {!activeTab || isLoadingRecipes ? (
-        <div className="text-center py-20">
-          <Loader2 size={32} className="animate-spin text-slate-400 mx-auto mb-4" />
-          <p className="text-slate-500">Loading recipes...</p>
+        <div className="py-6">
+          <SkeletonGrid count={6} />
         </div>
       ) : currentRecipes.length === 0 ? (
         <div className="text-center py-20 bg-white rounded-xl border border-slate-100">

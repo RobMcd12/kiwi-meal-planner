@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { ArrowLeft, ShoppingCart, Check, Package, Star, RefreshCw, Trash2, Plus, ChevronDown, ChevronUp, FolderHeart, BookHeart, Share, Download, Printer, X, Settings, GripVertical, Store, LayoutList, Edit2, Save as SaveIcon, Crown, Lock } from 'lucide-react';
 import type { PantryItem, SavedMealPlan, ShoppingCategory, Ingredient, Meal } from '../types';
+import { useToastContext } from '../contexts/ToastContext';
 import { loadPantry, getSavedMealPlans, togglePantryItemRestock, getFavoriteMeals } from '../services/storageService';
 import {
   getShoppingListSelections,
@@ -55,6 +56,7 @@ const MasterShoppingList: React.FC<MasterShoppingListProps> = ({
   hasPro = false,
   onUpgradeClick
 }) => {
+  const { info, warning, error: showError } = useToastContext();
   const [loading, setLoading] = useState(true);
   const [items, setItems] = useState<ShoppingItem[]>([]);
   const [checkedItems, setCheckedItems] = useState<Set<string>>(new Set());
@@ -744,7 +746,7 @@ const MasterShoppingList: React.FC<MasterShoppingListProps> = ({
     // Check if there are any unchecked items
     const uncheckedItems = items.filter(i => !checkedItems.has(i.id));
     if (uncheckedItems.length === 0) {
-      alert('All items are checked off!');
+      info('All items are checked off!');
       return;
     }
 
@@ -761,7 +763,7 @@ const MasterShoppingList: React.FC<MasterShoppingListProps> = ({
       }
     } else {
       navigator.clipboard.writeText(text);
-      alert('List copied to clipboard (Share not supported on this device)');
+      info('List copied to clipboard (Share not supported on this device)');
     }
   };
 
@@ -776,7 +778,7 @@ const MasterShoppingList: React.FC<MasterShoppingListProps> = ({
 
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
-      alert('Please allow pop-ups to print');
+      warning('Please allow pop-ups to print');
       return;
     }
 
@@ -1005,7 +1007,7 @@ const MasterShoppingList: React.FC<MasterShoppingListProps> = ({
       pdf.save(`shopping_list_${new Date().toISOString().split('T')[0]}.pdf`);
     } catch (error) {
       console.error('PDF generation failed:', error);
-      alert('Failed to generate PDF. Please try printing instead.');
+      showError('Failed to generate PDF. Please try printing instead.');
     }
   };
 

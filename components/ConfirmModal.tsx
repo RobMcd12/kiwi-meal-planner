@@ -117,14 +117,14 @@ const ConfirmModal: React.FC<ConfirmModalProps> = ({
           {showCancel && onCancel && (
             <button
               onClick={onCancel}
-              className="flex-1 py-2.5 px-4 rounded-lg border border-slate-300 text-slate-700 font-medium hover:bg-slate-50 transition-colors"
+              className="flex-1 min-h-[44px] py-2.5 px-4 rounded-lg border border-slate-300 text-slate-700 font-medium hover:bg-slate-50 transition-colors"
             >
               {cancelText}
             </button>
           )}
           <button
             onClick={onConfirm}
-            className={`flex-1 py-2.5 px-4 rounded-lg font-medium transition-colors ${confirmButtonClasses}`}
+            className={`flex-1 min-h-[44px] py-2.5 px-4 rounded-lg font-medium transition-colors ${confirmButtonClasses}`}
           >
             {confirmText}
           </button>

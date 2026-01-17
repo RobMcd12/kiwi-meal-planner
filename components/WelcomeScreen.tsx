@@ -1,5 +1,6 @@
 import React from 'react';
 import { BookHeart, CalendarPlus, FolderHeart, ArrowRight, ChefHat, Package, Sparkles, Archive, Star, ShoppingCart } from 'lucide-react';
+import OnboardingChecklist from './OnboardingChecklist';
 
 interface WelcomeScreenProps {
   onStartNew: () => void;
@@ -9,8 +10,12 @@ interface WelcomeScreenProps {
   onUseWhatIHave?: () => void;
   onManagePantry?: () => void;
   onViewShoppingList?: () => void;
+  onSetPreferences?: () => void;
   hasPantryItems?: boolean;
   hasShoppingListItems?: boolean;
+  hasPreferences?: boolean;
+  hasGeneratedPlan?: boolean;
+  hasSavedRecipe?: boolean;
 }
 
 const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
@@ -21,8 +26,12 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
   onUseWhatIHave,
   onManagePantry,
   onViewShoppingList,
+  onSetPreferences,
   hasPantryItems = false,
-  hasShoppingListItems = false
+  hasShoppingListItems = false,
+  hasPreferences = false,
+  hasGeneratedPlan = false,
+  hasSavedRecipe = false,
 }) => {
   const foodImages = [
     'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400&h=300&fit=crop',
@@ -32,6 +41,18 @@ const WelcomeScreen: React.FC<WelcomeScreenProps> = ({
 
   return (
     <div className="animate-fadeIn">
+      {/* Onboarding Checklist */}
+      <OnboardingChecklist
+        hasPreferences={hasPreferences}
+        hasPantryItems={hasPantryItems}
+        hasGeneratedPlan={hasGeneratedPlan}
+        hasSavedRecipe={hasSavedRecipe}
+        onSetPreferences={onSetPreferences || onStartNew}
+        onManagePantry={onManagePantry || (() => {})}
+        onCreatePlan={onStartNew}
+        onViewCookbook={onViewFavorites}
+      />
+
       {/* Hero Section */}
       <div className="grid md:grid-cols-2 gap-8 items-center mb-12">
         <div className="space-y-6">

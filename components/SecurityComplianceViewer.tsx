@@ -27,6 +27,7 @@ import {
   Bell,
   ChefHat,
 } from 'lucide-react';
+import { useToastContext } from '../contexts/ToastContext';
 
 interface SecurityComplianceViewerProps {
   onClose?: () => void; // Optional - when not provided, renders inline (for tab usage)
@@ -42,6 +43,7 @@ interface SecuritySection {
 }
 
 const SecurityComplianceViewer: React.FC<SecurityComplianceViewerProps> = ({ onClose }) => {
+  const { error: showError } = useToastContext();
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['executive-summary']));
   const [activeSection, setActiveSection] = useState('executive-summary');
@@ -1102,7 +1104,7 @@ frame-src 'self' https://js.stripe.com;`}</pre>
       pdf.save('Kiwi_Meal_Planner_Security_Compliance.pdf');
     } catch (error) {
       console.error('PDF generation failed:', error);
-      alert('Failed to generate PDF. Please try again.');
+      showError('Failed to generate PDF. Please try again.');
     }
   };
 
