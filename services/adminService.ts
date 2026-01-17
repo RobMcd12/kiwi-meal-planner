@@ -228,6 +228,7 @@ export const createUser = async (
 
 /**
  * Delete a user (requires admin privileges)
+ * Uses Edge Function to properly delete from auth.users
  */
 export const deleteUser = async (userId: string): Promise<{ success: boolean; error?: string }> => {
   if (!isSupabaseConfigured()) {
@@ -235,19 +236,28 @@ export const deleteUser = async (userId: string): Promise<{ success: boolean; er
   }
 
   try {
-    // Delete from profiles table first
-    const { error: profileError } = await supabase
-      .from('profiles')
-      .delete()
-      .eq('id', userId);
-
-    if (profileError) {
-      console.error('Error deleting profile:', profileError);
-      return { success: false, error: profileError.message };
+    // Get current session for auth header
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      return { success: false, error: 'Not authenticated' };
     }
 
-    // Note: Deleting from auth.users requires Edge Function with service role
-    // For now, we just delete the profile which effectively disables the user
+    // Call Edge Function to delete user (requires service role key)
+    const { data, error } = await supabase.functions.invoke('delete-user', {
+      body: { userId },
+      headers: {
+        Authorization: `Bearer ${session.access_token}`,
+      },
+    });
+
+    if (error) {
+      console.error('Error calling delete-user function:', error);
+      return { success: false, error: error.message };
+    }
+
+    if (!data?.success) {
+      return { success: false, error: data?.error || 'Failed to delete user' };
+    }
 
     return { success: true };
   } catch (err: any) {
