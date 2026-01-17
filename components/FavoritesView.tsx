@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { Meal, CookbookTab, SideDish, UserProfile } from '../types';
-import { getFavoriteMeals, removeFavoriteMeal, getCachedImage, cacheImage, updateFavoriteMealImage, saveFavoriteMeal } from '../services/storageService';
+import { getFavoriteMeals, removeFavoriteMeal, getBatchCachedImages, cacheImage, updateFavoriteMealImage, saveFavoriteMeal } from '../services/storageService';
 import { SkeletonGrid } from './ui/Skeleton';
 import { useAuth } from './AuthProvider';
 import { getUserProfile } from '../services/profileService';
@@ -310,24 +310,36 @@ const FavoritesView: React.FC<FavoritesViewProps> = ({
         }
       }
 
-      // Load cached images and auto-generate for recipes without images
-      const recipesNeedingImages: Meal[] = [];
+      // Load cached images using batch query (single DB call instead of N calls)
+      const recipesWithDbImages: Record<string, string> = {};
+      const recipesNeedingCacheLookup: string[] = [];
 
-      for (const meal of loadedRecipes) {
-        // Check if recipe already has an image URL from DB
+      loadedRecipes.forEach(meal => {
         if (meal.imageUrl) {
-          setMealImages(prev => ({ ...prev, [meal.name]: meal.imageUrl! }));
+          recipesWithDbImages[meal.name] = meal.imageUrl;
         } else {
-          // Try to load from local cache
-          const cached = await getCachedImage(meal.name);
-          if (cached) {
-            setMealImages(prev => ({ ...prev, [meal.name]: cached }));
-          } else {
-            // No image - queue for auto-generation
-            recipesNeedingImages.push(meal);
-          }
+          recipesNeedingCacheLookup.push(meal.name);
+        }
+      });
+
+      // Set images from DB first
+      if (Object.keys(recipesWithDbImages).length > 0) {
+        setMealImages(prev => ({ ...prev, ...recipesWithDbImages }));
+      }
+
+      // Batch fetch cached images for recipes without DB images
+      let cachedImages: Record<string, string> = {};
+      if (recipesNeedingCacheLookup.length > 0) {
+        cachedImages = await getBatchCachedImages(recipesNeedingCacheLookup);
+        if (Object.keys(cachedImages).length > 0) {
+          setMealImages(prev => ({ ...prev, ...cachedImages }));
         }
       }
+
+      // Find recipes still needing images (not in DB and not in cache)
+      const recipesNeedingImages = loadedRecipes.filter(meal =>
+        !meal.imageUrl && !cachedImages[meal.name]
+      );
 
       // Auto-generate images for recipes without them (in background)
       if (recipesNeedingImages.length > 0) {

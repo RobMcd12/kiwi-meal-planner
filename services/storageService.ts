@@ -1406,6 +1406,29 @@ export const getCachedImage = async (mealName: string): Promise<string | null> =
   return data?.image_data || null;
 };
 
+// Batch fetch cached images for multiple meal names (performance optimization)
+export const getBatchCachedImages = async (mealNames: string[]): Promise<Record<string, string>> => {
+  if (!isSupabaseConfigured() || mealNames.length === 0) return {};
+
+  const { data, error } = await supabase
+    .from('meal_image_cache')
+    .select('meal_name, image_data')
+    .in('meal_name', mealNames);
+
+  if (error) {
+    console.error('Error loading batch cached images:', error);
+    return {};
+  }
+
+  const result: Record<string, string> = {};
+  data?.forEach(row => {
+    if (row.image_data) {
+      result[row.meal_name] = row.image_data;
+    }
+  });
+  return result;
+};
+
 export const cacheImage = async (mealName: string, description: string, imageData: string): Promise<void> => {
   if (!isSupabaseConfigured()) return;
 
