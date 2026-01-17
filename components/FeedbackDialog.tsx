@@ -1,5 +1,5 @@
-import React, { useState, useRef, useCallback } from 'react';
-import { X, Loader2, Bug, Sparkles, HelpCircle, MessageSquare, CheckCircle, Camera, Trash2, Image as ImageIcon, Square, Pause, Play, Circle } from 'lucide-react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
+import { X, Loader2, Bug, Sparkles, HelpCircle, MessageSquare, CheckCircle, Camera, Trash2, Image as ImageIcon, Square, Pause, Play, Circle, Video, RefreshCw } from 'lucide-react';
 import { submitFeedback } from '../services/feedbackService';
 import { useScreenRecording } from '../hooks/useScreenRecording';
 import type { FeedbackType } from '../types';
@@ -32,9 +32,13 @@ const FeedbackDialog: React.FC<FeedbackDialogProps> = ({ isOpen, onClose, curren
   const [error, setError] = useState<string | null>(null);
   const [screenshot, setScreenshot] = useState<string | null>(null);
   const [isCapturing, setIsCapturing] = useState(false);
+  const [showCameraPreview, setShowCameraPreview] = useState(false);
+  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
+  const [cameraFacing, setCameraFacing] = useState<'user' | 'environment'>('environment');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraVideoRef = useRef<HTMLVideoElement>(null);
 
-  // Screen recording
+  // Screen recording (or camera recording on mobile/iOS)
   const {
     state: recordingState,
     recordingBlob,
@@ -47,6 +51,7 @@ const FeedbackDialog: React.FC<FeedbackDialogProps> = ({ isOpen, onClose, curren
     resumeRecording,
     clearRecording,
     isSupported: isRecordingSupported,
+    isCameraMode,
   } = useScreenRecording({
     maxDurationMs: MAX_RECORDING_SECONDS * 1000,
   });
@@ -61,7 +66,81 @@ const FeedbackDialog: React.FC<FeedbackDialogProps> = ({ isOpen, onClose, curren
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
+  // Handle camera preview for mobile recording
+  const startCameraPreview = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: cameraFacing },
+        audio: false,
+      });
+      setCameraStream(stream);
+      setShowCameraPreview(true);
+      if (cameraVideoRef.current) {
+        cameraVideoRef.current.srcObject = stream;
+      }
+    } catch (err) {
+      console.error('Failed to access camera:', err);
+      setError('Could not access camera. Please check permissions.');
+    }
+  }, [cameraFacing]);
+
+  const stopCameraPreview = useCallback(() => {
+    if (cameraStream) {
+      cameraStream.getTracks().forEach(track => track.stop());
+      setCameraStream(null);
+    }
+    setShowCameraPreview(false);
+  }, [cameraStream]);
+
+  const switchCamera = useCallback(async () => {
+    const newFacing = cameraFacing === 'user' ? 'environment' : 'user';
+    setCameraFacing(newFacing);
+    if (cameraStream) {
+      cameraStream.getTracks().forEach(track => track.stop());
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: newFacing },
+          audio: false,
+        });
+        setCameraStream(stream);
+        if (cameraVideoRef.current) {
+          cameraVideoRef.current.srcObject = stream;
+        }
+      } catch (err) {
+        console.error('Failed to switch camera:', err);
+      }
+    }
+  }, [cameraFacing, cameraStream]);
+
+  // Cleanup camera stream on unmount or when recording stops
+  useEffect(() => {
+    if (recordingState === 'stopped' || recordingState === 'idle') {
+      stopCameraPreview();
+    }
+  }, [recordingState, stopCameraPreview]);
+
+  useEffect(() => {
+    return () => {
+      if (cameraStream) {
+        cameraStream.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, [cameraStream]);
+
   const handleStartRecording = async () => {
+    if (isCameraMode) {
+      // For camera mode, show preview first
+      await startCameraPreview();
+    } else {
+      // For screen mode, start directly
+      await startRecordingHook();
+    }
+  };
+
+  const handleStartCameraRecording = async () => {
+    // Stop the preview stream first
+    stopCameraPreview();
+    // Then start the actual recording
     await startRecordingHook();
   };
 
@@ -185,7 +264,73 @@ const FeedbackDialog: React.FC<FeedbackDialogProps> = ({ isOpen, onClose, curren
     }
   };
 
-  // Render floating recording controls when actively recording
+  // Render camera preview modal for mobile camera recording
+  if (showCameraPreview && isCameraMode) {
+    return (
+      <div className="fixed inset-0 bg-black/90 flex flex-col items-center justify-center z-[100] p-4">
+        <div className="bg-white rounded-2xl max-w-lg w-full shadow-xl animate-fadeIn overflow-hidden">
+          {/* Header */}
+          <div className="flex items-center justify-between p-4 border-b border-slate-200">
+            <div className="flex items-center gap-2">
+              <Video className="text-red-500" size={20} />
+              <h3 className="font-semibold text-slate-800">Camera Preview</h3>
+            </div>
+            <button
+              type="button"
+              onClick={stopCameraPreview}
+              className="p-2 hover:bg-slate-100 rounded-full transition-colors"
+            >
+              <X size={20} className="text-slate-400" />
+            </button>
+          </div>
+
+          {/* Camera preview */}
+          <div className="relative bg-black aspect-video">
+            <video
+              ref={cameraVideoRef}
+              autoPlay
+              muted
+              playsInline
+              className="w-full h-full object-cover"
+            />
+            {/* Camera switch button */}
+            <button
+              onClick={switchCamera}
+              className="absolute top-3 right-3 p-2 bg-black/50 hover:bg-black/70 rounded-full transition-colors"
+            >
+              <RefreshCw size={20} className="text-white" />
+            </button>
+          </div>
+
+          {/* Controls */}
+          <div className="p-4 flex flex-col gap-3">
+            <p className="text-sm text-slate-500 text-center">
+              Point your camera at the screen to show us the issue
+            </p>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={stopCameraPreview}
+                className="flex-1 px-4 py-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-medium transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={handleStartCameraRecording}
+                className="flex-1 flex items-center justify-center gap-2 px-4 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-medium transition-colors"
+              >
+                <Circle size={16} className="fill-white" />
+                Start Recording
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Render floating recording controls when actively recording (for both screen and camera modes)
   if (isActivelyRecording) {
     return (
       <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-[100] animate-fadeIn">
@@ -249,7 +394,7 @@ const FeedbackDialog: React.FC<FeedbackDialogProps> = ({ isOpen, onClose, curren
 
         {/* Helper text */}
         <p className="text-center text-white/80 text-sm mt-3 bg-slate-900/80 rounded-lg px-4 py-2 backdrop-blur-sm">
-          Navigate around the app to show us the issue
+          {isCameraMode ? 'Recording from camera...' : 'Navigate around the app to show us the issue'}
         </p>
       </div>
     );
@@ -403,11 +548,11 @@ const FeedbackDialog: React.FC<FeedbackDialogProps> = ({ isOpen, onClose, curren
                 </p>
               </div>
 
-              {/* Screen Recording Section */}
+              {/* Screen/Camera Recording Section */}
               {isRecordingSupported && (
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Screen Recording (optional, max 30s)
+                    {isCameraMode ? 'Video Recording (optional, max 30s)' : 'Screen Recording (optional, max 30s)'}
                   </label>
 
                   {recordingUrl ? (
@@ -416,6 +561,7 @@ const FeedbackDialog: React.FC<FeedbackDialogProps> = ({ isOpen, onClose, curren
                       <video
                         src={recordingUrl}
                         controls
+                        playsInline
                         className="w-full rounded-xl border border-slate-200 max-h-48 bg-slate-900"
                       />
                       <button
@@ -435,7 +581,7 @@ const FeedbackDialog: React.FC<FeedbackDialogProps> = ({ isOpen, onClose, curren
                       className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 rounded-xl font-medium transition-colors"
                     >
                       <Circle size={16} className="fill-red-500 text-red-500" />
-                      Record Screen
+                      {isCameraMode ? 'Record Video' : 'Record Screen'}
                     </button>
                   )}
 
@@ -443,7 +589,9 @@ const FeedbackDialog: React.FC<FeedbackDialogProps> = ({ isOpen, onClose, curren
                     <p className="text-xs text-red-500 mt-2">{recordingError}</p>
                   )}
                   <p className="text-xs text-slate-400 mt-2">
-                    Click to start recording. The dialog will hide so you can navigate the app.
+                    {isCameraMode
+                      ? 'Use your camera to record what you see on screen.'
+                      : 'Click to start recording. The dialog will hide so you can navigate the app.'}
                   </p>
                 </div>
               )}

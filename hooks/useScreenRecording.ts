@@ -19,9 +19,14 @@ interface UseScreenRecordingReturn {
   resumeRecording: () => void;
   clearRecording: () => void;
   isSupported: boolean;
+  isCameraMode: boolean; // True when using camera instead of screen capture
 }
 
 const MAX_DURATION_DEFAULT = 30000; // 30 seconds
+
+// Check if running on iOS/mobile
+const isIOS = typeof navigator !== 'undefined' && /iPad|iPhone|iPod/.test(navigator.userAgent);
+const isMobile = typeof navigator !== 'undefined' && /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
 export function useScreenRecording(options: UseScreenRecordingOptions = {}): UseScreenRecordingReturn {
   const { maxDurationMs = MAX_DURATION_DEFAULT, onMaxDurationReached } = options;
@@ -39,9 +44,19 @@ export function useScreenRecording(options: UseScreenRecordingOptions = {}): Use
   const startTimeRef = useRef<number>(0);
   const pausedTimeRef = useRef<number>(0);
 
-  const isSupported = typeof navigator !== 'undefined' &&
+  // Screen recording (getDisplayMedia) is only supported on desktop browsers
+  const isScreenRecordingSupported = typeof navigator !== 'undefined' &&
     'mediaDevices' in navigator &&
     'getDisplayMedia' in navigator.mediaDevices;
+
+  // Camera recording (getUserMedia) is supported on all modern browsers including iOS
+  const isCameraRecordingSupported = typeof navigator !== 'undefined' &&
+    'mediaDevices' in navigator &&
+    'getUserMedia' in navigator.mediaDevices;
+
+  // On mobile (especially iOS), we use camera recording as fallback
+  const useCameraMode = !isScreenRecordingSupported && isMobile && isCameraRecordingSupported;
+  const isSupported = isScreenRecordingSupported || useCameraMode;
 
   const clearTimer = useCallback(() => {
     if (timerRef.current) {
@@ -79,7 +94,7 @@ export function useScreenRecording(options: UseScreenRecordingOptions = {}): Use
 
   const startRecording = useCallback(async () => {
     if (!isSupported) {
-      setError('Screen recording is not supported in this browser');
+      setError('Recording is not supported in this browser');
       return;
     }
 
@@ -91,28 +106,51 @@ export function useScreenRecording(options: UseScreenRecordingOptions = {}): Use
     }
 
     try {
-      // Request screen capture with audio
-      const stream = await navigator.mediaDevices.getDisplayMedia({
-        video: {
-          displaySurface: 'browser',
-          width: { ideal: 1280, max: 1920 },
-          height: { ideal: 720, max: 1080 },
-          frameRate: { ideal: 15, max: 30 },
-        },
-        audio: false, // Usually not needed for UI recordings
-      });
+      let stream: MediaStream;
+
+      if (useCameraMode) {
+        // Use camera recording for mobile/iOS
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: 'environment', // Back camera preferred
+            width: { ideal: 1280, max: 1920 },
+            height: { ideal: 720, max: 1080 },
+            frameRate: { ideal: 15, max: 30 },
+          },
+          audio: false,
+        });
+      } else {
+        // Use screen recording for desktop
+        stream = await navigator.mediaDevices.getDisplayMedia({
+          video: {
+            displaySurface: 'browser',
+            width: { ideal: 1280, max: 1920 },
+            height: { ideal: 720, max: 1080 },
+            frameRate: { ideal: 15, max: 30 },
+          },
+          audio: false,
+        });
+      }
 
       streamRef.current = stream;
       chunksRef.current = [];
 
-      // Determine supported MIME type
-      const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
-        ? 'video/webm;codecs=vp9'
-        : MediaRecorder.isTypeSupported('video/webm;codecs=vp8')
-        ? 'video/webm;codecs=vp8'
-        : MediaRecorder.isTypeSupported('video/webm')
-        ? 'video/webm'
-        : 'video/mp4';
+      // Determine supported MIME type - iOS Safari prefers MP4
+      let mimeType: string;
+      if (isIOS) {
+        // iOS Safari has limited MediaRecorder support, use MP4 if available
+        mimeType = MediaRecorder.isTypeSupported('video/mp4')
+          ? 'video/mp4'
+          : 'video/webm';
+      } else {
+        mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9')
+          ? 'video/webm;codecs=vp9'
+          : MediaRecorder.isTypeSupported('video/webm;codecs=vp8')
+          ? 'video/webm;codecs=vp8'
+          : MediaRecorder.isTypeSupported('video/webm')
+          ? 'video/webm'
+          : 'video/mp4';
+      }
 
       const mediaRecorder = new MediaRecorder(stream, {
         mimeType,
@@ -144,7 +182,8 @@ export function useScreenRecording(options: UseScreenRecordingOptions = {}): Use
         cleanup();
       };
 
-      // Handle when user stops sharing via browser UI
+      // Handle when user stops sharing via browser UI (for screen recording)
+      // or when camera stream ends
       stream.getVideoTracks()[0].onended = () => {
         if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
           mediaRecorderRef.current.stop();
@@ -159,17 +198,17 @@ export function useScreenRecording(options: UseScreenRecordingOptions = {}): Use
       setState('recording');
       startTimer();
     } catch (err: any) {
-      console.error('Failed to start screen recording:', err);
+      console.error('Failed to start recording:', err);
       if (err.name === 'NotAllowedError') {
-        setError('Screen recording permission was denied');
+        setError(useCameraMode ? 'Camera permission was denied' : 'Screen recording permission was denied');
       } else if (err.name === 'NotFoundError') {
-        setError('No screen available to record');
+        setError(useCameraMode ? 'No camera available' : 'No screen available to record');
       } else {
-        setError('Failed to start screen recording');
+        setError('Failed to start recording');
       }
       cleanup();
     }
-  }, [isSupported, recordingUrl, startTimer, cleanup, clearTimer]);
+  }, [isSupported, useCameraMode, recordingUrl, startTimer, cleanup, clearTimer]);
 
   const stopRecording = useCallback(() => {
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
@@ -220,5 +259,6 @@ export function useScreenRecording(options: UseScreenRecordingOptions = {}): Use
     resumeRecording,
     clearRecording,
     isSupported,
+    isCameraMode: useCameraMode,
   };
 }
